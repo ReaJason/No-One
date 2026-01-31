@@ -1,16 +1,10 @@
 import type * as React from "react";
-import { X } from "lucide-react";
-import type { Column } from "@tanstack/react-table";
+import {X} from "lucide-react";
+import type {Column} from "@tanstack/react-table";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
 
 interface DataTableToolbarProps {
   table: any;

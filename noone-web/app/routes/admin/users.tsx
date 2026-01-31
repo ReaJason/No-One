@@ -1,31 +1,55 @@
-import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { Button } from "@/components/ui/button";
-import { UsersTableActionBar } from "@/components/user-action-bar";
-import { userColumns } from "@/components/user-columns";
-import { useDataTable } from "@/hooks/use-data-table";
-import { getUsers } from "@/lib/user-api";
-import { loadUserSearchParams } from "@/lib/user-sreach-param";
-import type { UserResponse } from "@/types/user";
+import {Download, Plus} from "lucide-react";
+import * as React from "react";
+import {use} from "react";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link, useLoaderData} from "react-router";
+import type {PaginatedResponse} from "@/api/api-client";
+import {getAllRoles} from "@/api/role-api";
+import {getUsers, loadUserSearchParams} from "@/api/user-api";
+import {DataTable} from "@/components/data-table/data-table";
+import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
+import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
+import {Button} from "@/components/ui/button";
+import {UsersTableActionBar} from "@/components/user/user-action-bar";
+import {useUserColumns} from "@/components/user/user-columns";
+import {useDataTable} from "@/hooks/use-data-table";
+import {createBreadcrumb} from "@/lib/breadcrumb-utils";
+import type {User} from "@/types/admin";
+
+export const handle = createBreadcrumb(() => ({
+  id: "users",
+  label: "Users",
+  to: "/admin/users",
+}));
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const params = await loadUserSearchParams(request);
+  const {
+    username,
+    roles: roleId,
+    enabled,
+    page,
+    perPage,
+    sortBy,
+    sortOrder,
+  } = loadUserSearchParams(request);
   return {
-    userResponse: getUsers(params),
+    userResponse: getUsers({
+      username,
+      roleId,
+      enabled,
+      page,
+      perPage,
+      sortBy,
+      sortOrder,
+    }),
+    roles: getAllRoles(),
   };
 }
 
 export default function Users() {
-  const { userResponse } = useLoaderData() as {
-    userResponse: Promise<UserResponse>;
-  };
-  const handleCreateUser = () => {
-    console.log("Create user");
+  const { userResponse, roles } = useLoaderData() as {
+    userResponse: Promise<PaginatedResponse<User>>;
+    roles: Promise<any[]>;
   };
 
   return (
@@ -44,10 +68,12 @@ export default function Users() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={handleCreateUser}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add User
-          </Button>
+          <Link to="/admin/users/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add User
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -69,7 +95,7 @@ export default function Users() {
           />
         }
       >
-        <UserTable userResponse={userResponse} />
+        <UserTable userResponse={userResponse} roles={roles} />
       </React.Suspense>
     </div>
   );
@@ -77,13 +103,18 @@ export default function Users() {
 
 export function UserTable({
   userResponse,
+  roles,
 }: {
-  userResponse: Promise<UserResponse>;
+  userResponse: Promise<PaginatedResponse<User>>;
+  roles: Promise<any[]>;
 }) {
   const userResponseData = use(userResponse);
+  const rolesData = use(roles);
+  const columns = useUserColumns(rolesData);
+
   const { table } = useDataTable({
-    columns: userColumns,
-    data: userResponseData.data,
+    columns,
+    data: userResponseData.content,
     pageCount: userResponseData.totalPages,
     initialState: {
       pagination: {

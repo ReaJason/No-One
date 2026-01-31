@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="https://jakarta.ee/xml/ns/jakartaee"
+        xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd"
+        version="5.0"
+        metadata-complete="false"
+>
+    <welcome-file-list>
+        <welcome-file>index.html</welcome-file>
+    </welcome-file-list>
+    <servlet>
+        <servlet-name>test</servlet-name>
+        <servlet-class>jakarta.TestServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>test</servlet-name>
+        <url-pattern>/test</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>upload</servlet-name>
+        <servlet-class>jakarta.UploadServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>upload</servlet-name>
+        <url-pattern>/upload</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>java-deserialize</servlet-name>
+        <servlet-class>jakarta.JavaReadObjServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>java-deserialize</servlet-name>
+        <url-pattern>/java_deserialize</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>b64</servlet-name>
+        <servlet-class>jakarta.Base64ClassLoaderServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>b64</servlet-name>
+        <url-pattern>/b64</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>biginteger</servlet-name>
+        <servlet-class>jakarta.BigIntegerClassLaoderServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>biginteger</servlet-name>
+        <url-pattern>/biginteger</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>js</servlet-name>
+        <servlet-class>jakarta.ScriptEngineServlet</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>js</servlet-name>
+        <url-pattern>/js</url-pattern>
+    </servlet-mapping>
+
+    <filter>
+        <filter-name>empty</filter-name>
+        <filter-class>jakarta.EmptyFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>empty</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-app>

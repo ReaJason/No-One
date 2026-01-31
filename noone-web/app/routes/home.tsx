@@ -1,9 +1,11 @@
-import { Activity, Cable, Calendar, Folder, TrendingUp } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {Activity, Cable, Calendar, Folder, TrendingUp} from "lucide-react";
+import {useState} from "react";
+import {Link, type LoaderFunctionArgs} from "react-router";
+import {Badge} from "@/components/ui/badge";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {authUtils} from "@/lib/auth";
+import {createBreadcrumb} from "@/lib/breadcrumb-utils";
 
 interface Project {
   id: string;
@@ -52,12 +54,29 @@ const mockProjects: Project[] = [
   },
 ];
 
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { user, token } = await authUtils.getAuthFromRequest(request);
+  if (!user) {
+    throw new Response("Unauthorized", {
+      status: 302,
+      headers: { Location: "/auth/login?returnTo=/" },
+    });
+  }
+  return { user, token };
+}
+
 const dashboardStats: DashboardStats = {
   totalProjects: 4,
   totalShells: 41,
   activeConnections: 28,
   recentActivity: 15,
 };
+
+export const handle = createBreadcrumb(() => ({
+  id: "home",
+  label: "Home",
+  to: "/",
+}));
 
 export default function HomePage() {
   const [projects] = useState<Project[]>(mockProjects);

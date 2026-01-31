@@ -1,9 +1,9 @@
-# No one
+# No One
 
 [![Telegram](https://img.shields.io/badge/Chat-Telegram-%2326A5E4?style=flat-square&logo=telegram&logoColor=%2326A5E4)](https://t.me/memshell)
 [![MemShellParty](https://img.shields.io/badge/SisterProj-MemShellParty-%23646CFF?style=flat-square&logoColor=%23646CFF)](https://github.com/ReaJason/MemShellParty)
 
-No one（无名）：Next Generation Java WebShell Manager，让我们一起如入无人之境。
+No One（无名）：Next Generation Java WebShell Manager，让我们一起如入无人之境。
 
 > [!WARNING]
 > 本工具仅供安全研究人员、网络管理员及相关技术人员进行授权的安全测试、漏洞评估和安全审计工作使用。使用本工具进行任何未经授权的网络攻击或渗透测试等行为均属违法，使用者需自行承担相应的法律责任。

@@ -19,5 +19,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "noone"
-include("noone-core")
+include("noone-server")
 include("noone-vul:vul-webapp")
+include("noone-vul:vul-webapp-jakarta")
+
+include("noone-core")

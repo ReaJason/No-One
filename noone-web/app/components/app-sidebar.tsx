@@ -1,40 +1,33 @@
 import {
-  ArrowLeft,
-  Cable,
-  Command,
-  Folder,
-  Home,
-  Key,
-  Loader,
-  PlugZap2,
-  Settings,
-  Shield,
-  Sparkles,
-  Sprout,
-  UserCheck,
-  Users,
+    ArrowLeft,
+    Cable,
+    Command,
+    Folder,
+    Home,
+    Key,
+    Loader,
+    PlugZap2,
+    Settings,
+    Shield,
+    Sparkles,
+    Sprout,
+    UserCheck,
+    Users,
 } from "lucide-react";
-import { NavLink, useLocation, useParams } from "react-router";
+import {NavLink, useLocation, useParams} from "react-router";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { NavUser } from "./nav-user";
-
-const user = {
-  name: "ReaJason",
-  email: "reajason1225@gmail.com",
-  avatar:
-    "https://cdn.jsdelivr.net/gh/ReaJason/blog_imgs/default/blog_avatar.jpg",
-};
+import {NavUser} from "./nav-user";
 
 interface NavItem {
   title: string;
@@ -53,27 +46,30 @@ function NavItemRenderer({ item, location }: NavItemRendererProps) {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive}>
-        {isActive ? (
-          <div className="flex items-center gap-2">
-            <item.icon />
-            <span>{item.title}</span>
-          </div>
-        ) : (
-          <NavLink to={item.url} viewTransition>
-            {({ isPending }) => (
-              <>
-                {isPending ? (
-                  <Loader className="animate-spin" />
-                ) : (
-                  <item.icon />
-                )}
-                <span>{item.title}</span>
-              </>
-            )}
-          </NavLink>
-        )}
-      </SidebarMenuButton>
+      <SidebarMenuButton
+        isActive={isActive}
+        render={
+          isActive ? (
+            <div className="flex items-center gap-2">
+              <item.icon />
+              <span>{item.title}</span>
+            </div>
+          ) : (
+            <NavLink to={item.url} viewTransition>
+              {({ isPending }) => (
+                <>
+                  {isPending ? (
+                    <Loader className="animate-spin" />
+                  ) : (
+                    <item.icon />
+                  )}
+                  <span>{item.title}</span>
+                </>
+              )}
+            </NavLink>
+          )
+        }
+      ></SidebarMenuButton>
     </SidebarMenuItem>
   );
 }
@@ -175,19 +171,17 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <a href="/" rel="noopener noreferrer">
+            <a href="/" rel="noopener noreferrer">
+              <SidebarMenuButton size="lg">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">
-                    No one Shell Manager
-                  </span>
+                  <span className="truncate font-medium">No One</span>
                   <span className="truncate text-xs">Professional</span>
                 </div>
-              </a>
-            </SidebarMenuButton>
+              </SidebarMenuButton>
+            </a>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -272,7 +266,7 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter>
-        <NavUser user={user} />
+        <NavUser />
       </SidebarFooter>
     </Sidebar>
   );

@@ -1,16 +1,12 @@
-import type { Table } from "@tanstack/react-table";
-import { Loader, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
+import type {Table} from "@tanstack/react-table";
+import {Loader, X} from "lucide-react";
+import {AnimatePresence, motion} from "motion/react";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import {Button} from "@/components/ui/button";
+import {Separator} from "@/components/ui/separator";
+import {Tooltip, TooltipContent, TooltipTrigger,} from "@/components/ui/tooltip";
+import {cn} from "@/lib/utils";
 
 interface DataTableActionBarProps<TData>
   extends React.ComponentProps<typeof motion.div> {
@@ -111,7 +107,7 @@ function DataTableActionBarAction({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+      <TooltipTrigger render={trigger}></TooltipTrigger>
       <TooltipContent
         sideOffset={6}
         className="border bg-accent font-semibold text-foreground dark:bg-zinc-900 [&>span]:hidden"
@@ -143,16 +139,18 @@ function DataTableActionBarSelection<TData>({
         className="mr-1 ml-2 data-[orientation=vertical]:h-4"
       />
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-5"
-            onClick={onClearSelection}
-          >
-            <X className="size-3.5" />
-          </Button>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-5"
+              onClick={onClearSelection}
+            >
+              <X className="size-3.5" />
+            </Button>
+          }
+        ></TooltipTrigger>
         <TooltipContent
           sideOffset={10}
           className="flex items-center gap-2 border bg-accent px-2 py-1 font-semibold text-foreground dark:bg-zinc-900 [&>span]:hidden"

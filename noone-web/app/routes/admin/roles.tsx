@@ -1,32 +1,35 @@
-import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { RoleTableActionBar } from "@/components/role-action-bar";
-import { roleColumns } from "@/components/role-columns";
-import { Button } from "@/components/ui/button";
-import { useDataTable } from "@/hooks/use-data-table";
-import { getRoles } from "@/lib/role-api";
-import { loadRoleSearchParams } from "@/lib/role-search-param";
-import type { RoleResponse } from "@/types/role";
+import {Download, Plus} from "lucide-react";
+import React, {use} from "react";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link, useLoaderData} from "react-router";
+import type {PaginatedResponse} from "@/api/api-client";
+import {getRoles, loadRoleSearchParams} from "@/api/role-api";
+import {DataTable} from "@/components/data-table/data-table";
+import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
+import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
+import {RoleTableActionBar} from "@/components/role/role-action-bar";
+import {roleColumns} from "@/components/role/role-columns";
+import {Button} from "@/components/ui/button";
+import {useDataTable} from "@/hooks/use-data-table";
+import type {Role} from "@/types/admin";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const params = await loadRoleSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } =
+    loadRoleSearchParams(request);
   return {
-    roleResponse: getRoles(params),
+    roleResponse: getRoles({
+      name,
+      page,
+      perPage,
+      sortBy,
+      sortOrder,
+    }),
   };
 }
 
 export default function Roles() {
   const { roleResponse } = useLoaderData() as {
-    roleResponse: Promise<RoleResponse>;
-  };
-
-  const handleCreateRole = () => {
-    console.log("Create role");
+    roleResponse: Promise<PaginatedResponse<Role>>;
   };
 
   return (
@@ -45,10 +48,12 @@ export default function Roles() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={handleCreateRole}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Role
-          </Button>
+          <Link to="/admin/roles/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Role
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -71,12 +76,12 @@ export default function Roles() {
 export function RoleTable({
   roleResponse,
 }: {
-  roleResponse: Promise<RoleResponse>;
+  roleResponse: Promise<PaginatedResponse<Role>>;
 }) {
   const roleResponseData = use(roleResponse);
   const { table } = useDataTable({
     columns: roleColumns,
-    data: roleResponseData.data,
+    data: roleResponseData.content,
     pageCount: roleResponseData.totalPages,
     initialState: {
       pagination: {

@@ -1,32 +1,35 @@
-import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { PermissionTableActionBar } from "@/components/permission-action-bar";
-import { permissionColumns } from "@/components/permission-columns";
-import { Button } from "@/components/ui/button";
-import { useDataTable } from "@/hooks/use-data-table";
-import { getPermissions } from "@/lib/permission-api";
-import { loadPermissionSearchParams } from "@/lib/permission-search-param";
-import type { PermissionResponse } from "@/types/permission";
+import {Download, Plus} from "lucide-react";
+import React, {use} from "react";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link, useLoaderData} from "react-router";
+import type {PaginatedResponse} from "@/api/api-client";
+import {getPermissions, loadPermissionSearchParams,} from "@/api/permission-api";
+import {DataTable} from "@/components/data-table/data-table";
+import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
+import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
+import {PermissionTableActionBar} from "@/components/permission/permission-action-bar";
+import {permissionColumns} from "@/components/permission/permission-columns";
+import {Button} from "@/components/ui/button";
+import {useDataTable} from "@/hooks/use-data-table";
+import type {Permission} from "@/types/admin";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const params = await loadPermissionSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } =
+    loadPermissionSearchParams(request);
   return {
-    permissionResponse: getPermissions(params),
+    permissionResponse: getPermissions({
+      name,
+      page,
+      perPage,
+      sortBy,
+      sortOrder,
+    }),
   };
 }
 
 export default function Permissions() {
   const { permissionResponse } = useLoaderData() as {
-    permissionResponse: Promise<PermissionResponse>;
-  };
-
-  const handleCreatePermission = () => {
-    console.log("Create permission");
+    permissionResponse: Promise<PaginatedResponse<Permission>>;
   };
 
   return (
@@ -45,10 +48,12 @@ export default function Permissions() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={handleCreatePermission}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Permission
-          </Button>
+          <Link to="/admin/permissions/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Permission
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -79,12 +84,12 @@ export default function Permissions() {
 export function PermissionTable({
   permissionResponse,
 }: {
-  permissionResponse: Promise<PermissionResponse>;
+  permissionResponse: Promise<PaginatedResponse<Permission>>;
 }) {
   const permissionResponseData = use(permissionResponse);
   const { table } = useDataTable({
     columns: permissionColumns,
-    data: permissionResponseData.data,
+    data: permissionResponseData.content,
     pageCount: permissionResponseData.totalPages,
     initialState: {
       pagination: {

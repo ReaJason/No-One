@@ -1,43 +1,37 @@
-export interface ShellConnection {
-  id: string;
-  name: string;
-  description?: string;
-  url: string;
-  proxyUrl?: string;
-  host: string;
-  port: number;
-  username: string;
-  password?: string;
-  privateKey?: string;
-  projectId: string;
-  projectName: string;
-  groupId: string;
-  groupName: string;
-  shellType: "webshell" | "reverse" | "bind";
-  status: "connected" | "disconnected" | "connecting" | "error";
-  createdAt: string;
-  firstConnectedAt?: string;
-  lastConnectedAt?: string;
-  tags: string[];
-}
+export type ShellType = "WEBSHELL" | "REVERSE" | "BIND";
+export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
 
-export interface ShellConnectionResponse {
-  data: ShellConnection[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
+export interface ShellConnection {
+  id: number;
+  url: string;
+  shellType: ShellType;
+  status: ShellStatus;
+  group?: string;
+  projectId?: number | null;
+  createTime: string;
+  connectTime?: string;
+  updateTime: string;
+
+  // Profile related fields
+  profileId: number;
+  profileName?: string;
+
+  // Connection configuration
+  proxyUrl?: string;
+  customHeaders?: Record<string, string>;
+  connectTimeoutMs?: number;
+  readTimeoutMs?: number;
+  skipSslVerify?: boolean;
+  maxRetries?: number;
+  retryDelayMs?: number;
 }
 
 export interface ShellConnectionSearchParams {
-  name: string;
-  projectId: string;
-  groupId: string;
-  shellType: string;
-  status: string;
-  tags: string[];
-  page: number;
-  perPage: number;
-  sortBy: string;
-  sortOrder: "asc" | "desc";
+  group?: string;
+  status?: ShellStatus | string;
+  projectId?: number;
+  page?: number;
+  perPage?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }

@@ -1,16 +1,18 @@
-import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { shellConnectionColumns } from "@/components/shell-connection-columns";
-import { Button } from "@/components/ui/button";
-import { useDataTable } from "@/hooks/use-data-table";
-import { getShellConnections } from "@/lib/shell-connection-api";
-import { loadShellConnectionSearchParams } from "@/lib/shell-connection-search-param";
-import type { ShellConnectionResponse } from "@/types/shell-connection";
+import {Download, Plus} from "lucide-react";
+import React, {use} from "react";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link, useLoaderData} from "react-router";
+import type {PaginatedResponse} from "@/api/api-client";
+import {DataTable} from "@/components/data-table/data-table";
+import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
+import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
+import {shellConnectionColumns} from "@/components/shell/shell-connection-columns";
+import {Button} from "@/components/ui/button";
+import {useDataTable} from "@/hooks/use-data-table";
+import {createBreadcrumb} from "@/lib/breadcrumb-utils";
+import {getShellConnections} from "@/lib/shell-connection-api";
+import {loadShellConnectionSearchParams} from "@/lib/shell-connection-search-param";
+import type {ShellConnection} from "@/types/shell-connection";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const params = await loadShellConnectionSearchParams(request);
@@ -19,13 +21,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
 }
 
+export const handle = createBreadcrumb(() => ({
+  id: "shells",
+  label: "All Shell Connections",
+  to: "/shells",
+}));
+
 export default function Shells() {
   const { shellConnectionResponse } = useLoaderData() as {
-    shellConnectionResponse: Promise<ShellConnectionResponse>;
-  };
-
-  const handleCreateShell = () => {
-    console.log("Create shell connection");
+    shellConnectionResponse: Promise<PaginatedResponse<ShellConnection>>;
   };
 
   return (
@@ -44,26 +48,30 @@ export default function Shells() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button onClick={handleCreateShell}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Shell
-          </Button>
+          <Link to="/shells/create">
+            <Button>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Shell
+            </Button>
+          </Link>
         </div>
       </div>
 
       <React.Suspense
         fallback={
           <DataTableSkeleton
-            columnCount={8}
-            filterCount={5}
+            columnCount={9}
+            filterCount={2}
             cellWidths={[
               "10rem",
-              "25rem",
-              "12rem",
+              "28rem",
               "8rem",
-              "12rem",
+              "8rem",
+              "10rem",
               "12rem",
               "15rem",
+              "12rem",
+              "10rem",
               "6rem",
             ]}
             shrinkZero
@@ -81,12 +89,12 @@ export default function Shells() {
 export function ShellConnectionTable({
   shellConnectionResponse,
 }: {
-  shellConnectionResponse: Promise<ShellConnectionResponse>;
+  shellConnectionResponse: Promise<PaginatedResponse<ShellConnection>>;
 }) {
   const shellConnectionResponseData = use(shellConnectionResponse);
   const { table } = useDataTable({
     columns: shellConnectionColumns,
-    data: shellConnectionResponseData.data,
+    data: shellConnectionResponseData.content,
     pageCount: shellConnectionResponseData.totalPages,
     initialState: {
       pagination: {

@@ -1,54 +1,30 @@
-import type { ColumnSort, SortDirection, Table } from "@tanstack/react-table";
-import {
-  ArrowDownUp,
-  ChevronsUpDown,
-  GripVertical,
-  Trash2,
-} from "lucide-react";
+"use client";
+
+import type {ColumnSort, SortDirection, Table} from "@tanstack/react-table";
+import {ArrowDownUp, ChevronsUpDown, GripVertical, Trash2,} from "lucide-react";
 import * as React from "react";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sortable,
-  SortableContent,
-  SortableItem,
-  SortableItemHandle,
-  SortableOverlay,
-} from "@/components/ui/sortable";
-import { dataTableConfig } from "@/config/data-table";
-import { cn } from "@/lib/utils";
+import {Badge} from "@/components/ui/badge";
+import {Button} from "@/components/ui/button";
+import {Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,} from "@/components/ui/command";
+import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import {Sortable, SortableContent, SortableItem, SortableItemHandle, SortableOverlay,} from "@/components/ui/sortable";
+import {dataTableConfig} from "@/config/data-table";
+import {cn} from "@/lib/utils";
 
-const OPEN_MENU_SHORTCUT = "s";
+const SORT_SHORTCUT_KEY = "s";
 const REMOVE_SORT_SHORTCUTS = ["backspace", "delete"];
 
 interface DataTableSortListProps<TData>
   extends React.ComponentProps<typeof PopoverContent> {
   table: Table<TData>;
+  disabled?: boolean;
 }
 
 export function DataTableSortList<TData>({
   table,
+  disabled,
   ...props
 }: DataTableSortListProps<TData>) {
   const id = React.useId();
@@ -122,34 +98,26 @@ export function DataTableSortList<TData>({
     function onKeyDown(event: KeyboardEvent) {
       if (
         event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
+        event.target instanceof HTMLTextAreaElement ||
+        (event.target instanceof HTMLElement &&
+          event.target.contentEditable === "true")
       ) {
         return;
       }
 
       if (
-        event.key.toLowerCase() === OPEN_MENU_SHORTCUT &&
-        !event.ctrlKey &&
-        !event.metaKey &&
-        !event.shiftKey
+        event.key.toLowerCase() === SORT_SHORTCUT_KEY &&
+        (event.ctrlKey || event.metaKey) &&
+        event.shiftKey
       ) {
         event.preventDefault();
-        setOpen(true);
-      }
-
-      if (
-        event.key.toLowerCase() === OPEN_MENU_SHORTCUT &&
-        event.shiftKey &&
-        sorting.length > 0
-      ) {
-        event.preventDefault();
-        onSortingReset();
+        setOpen((prev) => !prev);
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [sorting.length, onSortingReset]);
+  }, []);
 
   const onTriggerKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -171,9 +139,15 @@ export function DataTableSortList<TData>({
       getItemValue={(item) => item.id}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" onKeyDown={onTriggerKeyDown}>
-            <ArrowDownUp />
+        <PopoverTrigger>
+          <Button
+            variant="outline"
+            size="sm"
+            className="font-normal"
+            onKeyDown={onTriggerKeyDown}
+            disabled={disabled}
+          >
+            <ArrowDownUp className="text-muted-foreground" />
             Sort
             {sorting.length > 0 && (
               <Badge
@@ -188,7 +162,7 @@ export function DataTableSortList<TData>({
         <PopoverContent
           aria-labelledby={labelId}
           aria-describedby={descriptionId}
-          className="flex w-full max-w-[var(--radix-popover-content-available-width)] origin-[var(--radix-popover-content-transform-origin)] flex-col gap-3.5 p-4 sm:min-w-[380px]"
+          className="flex w-full max-w-(--radix-popover-content-available-width) flex-col gap-3.5 p-4 sm:min-w-[380px]"
           {...props}
         >
           <div className="flex flex-col gap-1">
@@ -209,7 +183,10 @@ export function DataTableSortList<TData>({
           </div>
           {sorting.length > 0 && (
             <SortableContent asChild>
-              <ul className="flex max-h-[300px] flex-col gap-2 overflow-y-auto p-1">
+              <div
+                role="list"
+                className="flex max-h-[300px] flex-col gap-2 overflow-y-auto p-1"
+              >
                 {sorting.map((sort) => (
                   <DataTableSortItem
                     key={sort.id}
@@ -221,7 +198,7 @@ export function DataTableSortList<TData>({
                     onSortRemove={onSortRemove}
                   />
                 ))}
-              </ul>
+              </div>
             </SortableContent>
           )}
           <div className="flex w-full items-center gap-2">
@@ -285,7 +262,7 @@ function DataTableSortItem({
     React.useState(false);
 
   const onItemKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLLIElement>) => {
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement
@@ -307,14 +284,15 @@ function DataTableSortItem({
 
   return (
     <SortableItem value={sort.id} asChild>
-      <li
+      <div
+        role="listitem"
         id={sortItemId}
         tabIndex={-1}
         className="flex items-center gap-2"
         onKeyDown={onItemKeyDown}
       >
         <Popover open={showFieldSelector} onOpenChange={setShowFieldSelector}>
-          <PopoverTrigger asChild>
+          <PopoverTrigger>
             <Button
               id={fieldTriggerId}
               aria-controls={fieldListboxId}
@@ -328,7 +306,7 @@ function DataTableSortItem({
           </PopoverTrigger>
           <PopoverContent
             id={fieldListboxId}
-            className="w-[var(--radix-popover-trigger-width)] origin-[var(--radix-popover-content-transform-origin)] p-0"
+            className="w-(--radix-popover-trigger-width) p-0"
           >
             <Command>
               <CommandInput placeholder="Search fields..." />
@@ -359,13 +337,14 @@ function DataTableSortItem({
         >
           <SelectTrigger
             aria-controls={directionListboxId}
-            className="h-8 w-24 rounded [&[data-size]]:h-8"
+            size="sm"
+            className="w-24 rounded"
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent
             id={directionListboxId}
-            className="min-w-[var(--radix-select-trigger-width)] origin-[var(--radix-select-content-transform-origin)]"
+            className="min-w-(--radix-select-trigger-width)"
           >
             {dataTableConfig.sortOrders.map((order) => (
               <SelectItem key={order.value} value={order.value}>
@@ -392,7 +371,7 @@ function DataTableSortItem({
             <GripVertical />
           </Button>
         </SortableItemHandle>
-      </li>
+      </div>
     </SortableItem>
   );
 }

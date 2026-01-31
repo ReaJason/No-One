@@ -1,17 +1,15 @@
-import type { Column } from "@tanstack/react-table";
-import { PlusCircle, XCircle } from "lucide-react";
+"use client";
+
+import type {Column} from "@tanstack/react-table";
+import {PlusCircle, XCircle} from "lucide-react";
 import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Separator } from "@/components/ui/separator";
-import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {Popover, PopoverContent, PopoverTrigger,} from "@/components/ui/popover";
+import {Separator} from "@/components/ui/separator";
+import {Slider} from "@/components/ui/slider";
+import {cn} from "@/lib/utils";
 
 interface Range {
   min: number;
@@ -29,6 +27,21 @@ function getIsValidRange(value: unknown): value is RangeValue {
   );
 }
 
+function parseValuesAsNumbers(value: unknown): RangeValue | undefined {
+  if (
+    Array.isArray(value) &&
+    value.length === 2 &&
+    value.every(
+      (v) =>
+        (typeof v === "string" || typeof v === "number") && !Number.isNaN(v),
+    )
+  ) {
+    return [Number(value[0]), Number(value[1])];
+  }
+
+  return undefined;
+}
+
 interface DataTableSliderFilterProps<TData> {
   column: Column<TData, unknown>;
   title?: string;
@@ -40,9 +53,7 @@ export function DataTableSliderFilter<TData>({
 }: DataTableSliderFilterProps<TData>) {
   const id = React.useId();
 
-  const columnFilterValue = getIsValidRange(column.getFilterValue())
-    ? (column.getFilterValue() as RangeValue)
-    : undefined;
+  const columnFilterValue = parseValuesAsNumbers(column.getFilterValue());
 
   const defaultRange = column.columnDef.meta?.range;
   const unit = column.columnDef.meta?.unit;
@@ -127,8 +138,12 @@ export function DataTableSliderFilter<TData>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="border-dashed">
+      <PopoverTrigger>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-dashed font-normal"
+        >
           {columnFilterValue ? (
             <div
               role="button"

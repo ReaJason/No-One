@@ -1,16 +1,9 @@
-import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
+import {flexRender, type Table as TanstackTable} from "@tanstack/react-table";
 import type * as React from "react";
-import { DataTablePagination } from "@/components/data-table/data-table-pagination";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { getCommonPinningStyles } from "@/lib/data-table";
-import { cn } from "@/lib/utils";
+import {DataTablePagination} from "@/components/data-table/data-table-pagination";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
+import {getCommonPinningStyles} from "@/lib/data-table";
+import {cn} from "@/lib/utils";
 
 interface DataTableProps<TData> extends React.ComponentProps<"div"> {
   table: TanstackTable<TData>;
@@ -62,6 +55,7 @@ export function DataTable<TData>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
+                    className="hover:bg-muted/50"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell
@@ -71,6 +65,7 @@ export function DataTable<TData>({
                             column: cell.column,
                           }),
                         }}
+                        className="py-2"
                       >
                         {flexRender(
                           cell.column.columnDef.cell,

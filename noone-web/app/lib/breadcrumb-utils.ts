@@ -1,106 +1,118 @@
-import { useMatches } from "react-router";
+import type {ReactNode} from "react";
+import type {Params} from "react-router";
+import {useMatches} from "react-router";
 
-// 模拟项目数据
-const mockProjects = {
-  "1": { name: "RASP VUL" },
-  "2": { name: "Tomcat Server" },
-  "3": { name: "TongWeb Server" },
-  "4": { name: "Mobile System" },
-};
-
-export interface BreadcrumbItem {
-  label: string;
-  href: string;
+export interface BreadcrumbDefinition {
+  id?: string;
+  label: ReactNode;
+  to?: string;
 }
 
-// 路径到面包屑标签的映射
-const pathToBreadcrumb: Record<string, string> = {
+export interface BreadcrumbDescriptor extends BreadcrumbDefinition {
+  id: string;
+}
+
+export interface BreadcrumbContext<Data = unknown> {
+  data: Data;
+  params: Params<string>;
+  pathname: string;
+}
+
+export type CrumbFunction<Data = unknown> = (
+  context: BreadcrumbContext<Data>,
+) => BreadcrumbDefinition | BreadcrumbDefinition[] | null | undefined;
+
+export interface BreadcrumbHandle<Data = unknown> {
+  crumb: CrumbFunction<Data>;
+}
+
+export function createBreadcrumb<Data = unknown>(
+  crumb: CrumbFunction<Data>,
+): BreadcrumbHandle<Data> {
+  return { crumb };
+}
+
+const pathToBreadcrumb: Record<string, ReactNode> = {
   "/": "Home",
   "/shells": "All Shell Connections",
   "/generator": "Generator",
   "/profiles": "Profiles",
+  "/profiles/create": "Create Profile",
+  "/profiles/edit": "Edit Profile",
   "/plugins": "Plugins",
   "/settings": "Settings",
   "/audit": "Audit",
+  "/admin": "Admin",
   "/admin/users": "Users",
+  "/admin/users/create": "Create User",
+  "/admin/users/edit-roles": "Edit User Roles",
+  "/admin/users/update": "Update User",
   "/admin/roles": "Roles",
+  "/admin/roles/create": "Create Role",
+  "/admin/roles/edit": "Edit Role",
+  "/admin/roles/update": "Update Role",
   "/admin/permissions": "Permissions",
+  "/admin/permissions/create": "Create Permission",
+  "/admin/permissions/edit": "Edit Permission",
+  "/admin/permissions/update": "Update Permission",
   "/projects": "Projects",
   "/projects/create": "Create Project",
+  "/projects/edit": "Edit Project",
+  "/projects/update": "Update Project",
 };
 
-export function useBreadcrumbs(): BreadcrumbItem[] {
+function asArray(
+  value: BreadcrumbDefinition | BreadcrumbDefinition[] | null | undefined,
+) {
+  if (!value) return [] as BreadcrumbDefinition[];
+  return Array.isArray(value) ? value : [value];
+}
+
+export function useBreadcrumbs(): BreadcrumbDescriptor[] {
   const matches = useMatches();
 
-  // 获取当前路径
-  const currentPath = matches[matches.length - 1]?.pathname || "/";
+  const breadcrumbs: BreadcrumbDescriptor[] = [];
 
-  const breadcrumbs: BreadcrumbItem[] = [];
-
-  // 处理根路径
-  if (currentPath === "/") {
-    return [{ label: "Home", href: "/" }];
-  }
-
-  // 处理 admin 路由
-  if (currentPath.startsWith("/admin")) {
-    breadcrumbs.push({ label: "Admin", href: "/admin" });
-
-    const adminBreadcrumb = pathToBreadcrumb[currentPath];
-    if (adminBreadcrumb) {
-      breadcrumbs.push({ label: adminBreadcrumb, href: currentPath });
+  matches.forEach((match) => {
+    if (typeof match.pathname !== "string" || match.pathname === "/") {
+      return;
     }
-  }
-  // 处理 projects 路由
-  else if (currentPath.startsWith("/projects")) {
-    breadcrumbs.push({ label: "Projects", href: "/projects" });
 
-    // 处理项目详情页
-    const projectMatch = currentPath.match(/^\/projects\/([^/]+)(?:\/(.+))?$/);
-    if (projectMatch) {
-      const projectId = projectMatch[1];
-      const subPath = projectMatch[2];
+    const crumbDefinitions = asArray(
+      typeof match.handle?.crumb === "function"
+        ? match.handle.crumb({
+            data: match.data,
+            params: match.params,
+            pathname: match.pathname,
+          })
+        : null,
+    );
 
-      // 如果是项目详情页
-      if (projectId && !subPath) {
-        const projectName =
-          mockProjects[projectId as keyof typeof mockProjects]?.name;
-        if (projectName) {
-          breadcrumbs.push({
-            label: projectName,
-            href: `/projects/${projectId}`,
-          });
-        }
+    if (crumbDefinitions.length === 0) {
+      const fallbackLabel = pathToBreadcrumb[match.pathname];
+      if (fallbackLabel) {
+        breadcrumbs.push({
+          id: match.id ?? match.pathname,
+          label: fallbackLabel,
+          to: match.pathname,
+        });
       }
-      // 如果是项目的子页面
-      else if (projectId && subPath) {
-        const projectName =
-          mockProjects[projectId as keyof typeof mockProjects]?.name;
-        if (projectName) {
-          breadcrumbs.push({
-            label: projectName,
-            href: `/projects/${projectId}`,
-          });
-        }
-
-        // 添加子页面面包屑
-        if (subPath === "shells") {
-          breadcrumbs.push({ label: "Shell Connections", href: currentPath });
-        }
-      }
-      // 如果是创建项目页面
-      else if (currentPath === "/projects/create") {
-        breadcrumbs.push({ label: "Create Project", href: currentPath });
-      }
+      return;
     }
-  }
-  // 处理其他路由
-  else {
-    const breadcrumb = pathToBreadcrumb[currentPath];
-    if (breadcrumb) {
-      breadcrumbs.push({ label: breadcrumb, href: currentPath });
-    }
-  }
+
+    crumbDefinitions.forEach((definition, index) => {
+      const { label, to, id } = definition;
+      if (!label) {
+        return;
+      }
+
+      breadcrumbs.push({
+        id: id ?? `${match.id ?? match.pathname}-${index}`,
+        label,
+        to: to ?? match.pathname,
+      });
+    });
+  });
 
   return breadcrumbs;
 }

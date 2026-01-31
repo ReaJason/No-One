@@ -1,24 +1,22 @@
-import { Separator } from "@radix-ui/react-separator";
-import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
-import { Link, Outlet, useParams } from "react-router";
-import { Toaster } from "sonner";
-import { AppSidebar } from "@/components/app-sidebar";
-import { Icons } from "@/components/icons";
+import {Separator} from "@radix-ui/react-separator";
+import {NuqsAdapter} from "nuqs/adapters/react-router/v7";
+import React from "react";
+import {Link, Outlet, useParams} from "react-router";
+import {Toaster} from "sonner";
+import {AppSidebar} from "@/components/app-sidebar";
+import {Icons} from "@/components/icons";
+import {ModeToggle} from "@/components/mode-toggle";
 import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
+    Breadcrumb,
+    BreadcrumbItem,
+    BreadcrumbLink,
+    BreadcrumbList,
+    BreadcrumbPage,
+    BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
+import {Button} from "@/components/ui/button";
+import {SidebarInset, SidebarProvider, SidebarTrigger,} from "@/components/ui/sidebar";
+import {useBreadcrumbs} from "@/lib/breadcrumb-utils";
 
 // 模拟项目数据
 const mockProjects = {
@@ -51,32 +49,32 @@ export default function Layout() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link to="/">No one WebShell Manager</Link>
-                  </BreadcrumbLink>
+                  <BreadcrumbLink
+                    render={<Link to="/">No One</Link>}
+                  ></BreadcrumbLink>
                 </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
                 {breadcrumbs.map((crumb, index) => (
-                  <div key={crumb.label} className="flex items-center">
-                    {index > 0 && (
-                      <BreadcrumbSeparator className="hidden md:block" />
-                    )}
-                    <BreadcrumbItem>
+                  <React.Fragment key={crumb.id}>
+                    <BreadcrumbSeparator className="hidden md:block" />
+                    <BreadcrumbItem className="hidden md:block">
                       {index === breadcrumbs.length - 1 ? (
                         <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink asChild>
-                          <Link to={crumb.href}>{crumb.label}</Link>
-                        </BreadcrumbLink>
+                        <BreadcrumbLink
+                          render={
+                            <Link to={crumb.to ?? "#"}>{crumb.label}</Link>
+                          }
+                        ></BreadcrumbLink>
                       )}
                     </BreadcrumbItem>
-                  </div>
+                  </React.Fragment>
                 ))}
               </BreadcrumbList>
             </Breadcrumb>
           </div>
           <nav className="flex flex-1 items-center md:justify-end pr-4">
-            <Button variant="ghost" size="icon" className="size-8" asChild>
+            <ModeToggle />
+            <Button variant="ghost" size="icon" className="size-8">
               <Link
                 aria-label="GitHub repo"
                 to="https://github.com/ReaJason/No-one"
@@ -88,7 +86,7 @@ export default function Layout() {
             </Button>
           </nav>
         </header>
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 min-h-0 overflow-auto">
           <NuqsAdapter>
             <Outlet />
           </NuqsAdapter>

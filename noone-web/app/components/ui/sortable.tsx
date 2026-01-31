@@ -1,47 +1,43 @@
 "use client";
 
 import {
-  type Announcements,
-  closestCenter,
-  closestCorners,
-  DndContext,
-  type DndContextProps,
-  type DragEndEvent,
-  type DraggableAttributes,
-  type DraggableSyntheticListeners,
-  DragOverlay,
-  type DragStartEvent,
-  type DropAnimation,
-  defaultDropAnimationSideEffects,
-  KeyboardSensor,
-  MouseSensor,
-  type ScreenReaderInstructions,
-  TouchSensor,
-  type UniqueIdentifier,
-  useSensor,
-  useSensors,
+    type Announcements,
+    closestCenter,
+    closestCorners,
+    defaultDropAnimationSideEffects,
+    DndContext,
+    type DndContextProps,
+    type DragEndEvent,
+    type DraggableAttributes,
+    type DraggableSyntheticListeners,
+    DragOverlay,
+    type DragStartEvent,
+    type DropAnimation,
+    KeyboardSensor,
+    MouseSensor,
+    type ScreenReaderInstructions,
+    TouchSensor,
+    type UniqueIdentifier,
+    useSensor,
+    useSensors,
 } from "@dnd-kit/core";
+import {restrictToHorizontalAxis, restrictToParentElement, restrictToVerticalAxis,} from "@dnd-kit/modifiers";
 import {
-  restrictToHorizontalAxis,
-  restrictToParentElement,
-  restrictToVerticalAxis,
-} from "@dnd-kit/modifiers";
-import {
-  arrayMove,
-  horizontalListSortingStrategy,
-  SortableContext,
-  type SortableContextProps,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
+    arrayMove,
+    horizontalListSortingStrategy,
+    SortableContext,
+    type SortableContextProps,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Slot } from "@radix-ui/react-slot";
+import {CSS} from "@dnd-kit/utilities";
+import {Slot} from "@radix-ui/react-slot";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
-import { useComposedRefs } from "@/lib/compose-refs";
-import { cn } from "@/lib/utils";
+import {useComposedRefs} from "@/lib/compose-refs";
+import {cn} from "@/lib/utils";
 
 const orientationConfig = {
   vertical: {

@@ -1,28 +1,29 @@
-import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
-import { Link, useLoaderData } from "react-router";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
-import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { ProjectTableActionBar } from "@/components/project-action-bar";
-import { projectColumns } from "@/components/project-columns";
-import { Button } from "@/components/ui/button";
-import { useDataTable } from "@/hooks/use-data-table";
-import { getProjects } from "@/lib/project-api";
-import { loadProjectSearchParams } from "@/lib/project-search-param";
-import type { ProjectResponse } from "@/types/project";
+import {Download, Plus} from "lucide-react";
+import React, {use} from "react";
+import type {LoaderFunctionArgs} from "react-router";
+import {Link, useLoaderData} from "react-router";
+import type {PaginatedResponse} from "@/api/api-client";
+import {getProjects, loadProjectSearchParams} from "@/api/project-api";
+import {DataTable} from "@/components/data-table/data-table";
+import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
+import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
+import {ProjectTableActionBar} from "@/components/project/project-action-bar";
+import {projectColumns} from "@/components/project/project-columns";
+import {Button} from "@/components/ui/button";
+import {useDataTable} from "@/hooks/use-data-table";
+import type {Project} from "@/types/project";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const params = await loadProjectSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } =
+    loadProjectSearchParams(request);
   return {
-    projectResponse: getProjects(params),
+    projectResponse: getProjects({ name, page, perPage, sortBy, sortOrder }),
   };
 }
 
 export default function ProjectList() {
   const { projectResponse } = useLoaderData() as {
-    projectResponse: Promise<ProjectResponse>;
+    projectResponse: Promise<PaginatedResponse<Project>>;
   };
 
   return (
@@ -76,12 +77,12 @@ export default function ProjectList() {
 export function ProjectTable({
   projectResponse,
 }: {
-  projectResponse: Promise<ProjectResponse>;
+  projectResponse: Promise<PaginatedResponse<Project>>;
 }) {
   const projectResponseData = use(projectResponse);
   const { table } = useDataTable({
     columns: projectColumns,
-    data: projectResponseData.data,
+    data: projectResponseData.content,
     pageCount: projectResponseData.totalPages,
     initialState: {
       pagination: {

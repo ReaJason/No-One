@@ -1,4 +1,11 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
+import {createBreadcrumb} from "@/lib/breadcrumb-utils";
+
+export const handle = createBreadcrumb(() => ({
+  id: "generator",
+  label: "Generator",
+  to: "/generator",
+}));
 
 export default function Generator() {
   return (

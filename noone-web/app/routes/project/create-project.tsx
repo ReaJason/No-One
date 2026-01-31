@@ -1,39 +1,70 @@
-import { ArrowLeft, Plus } from "lucide-react";
-import type React from "react";
-import { useState } from "react";
-import { useNavigate } from "react-router";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {ArrowLeft, Plus, Search} from "lucide-react";
+import {useMemo, useState} from "react";
+import {
+    type ActionFunctionArgs,
+    Form,
+    type LoaderFunctionArgs,
+    redirect,
+    useActionData,
+    useLoaderData,
+    useNavigate,
+} from "react-router";
+import {toast} from "sonner";
+import {createProject, type CreateProjectRequest} from "@/api/project-api";
+import {getAllUsers} from "@/api/user-api";
+import {Button} from "@/components/ui/button";
+import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
+import {Input} from "@/components/ui/input";
+import {Label} from "@/components/ui/label";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import type {User} from "@/types/admin";
+
+export async function loader(_args: LoaderFunctionArgs) {
+  const users = await getAllUsers();
+  return { users } as { users: User[] };
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const name = (formData.get("name") as string)?.trim();
+  const code = (formData.get("code") as string)?.trim();
+  const memberIds = (formData.getAll("memberIds") as string[])
+    .map((id) => Number(id))
+    .filter((n) => Number.isFinite(n));
+  const errors: Record<string, string> = {};
+  if (!name) errors.name = "Project name is required";
+  if (!code) errors.code = "Project code is required";
+  if (Object.keys(errors).length > 0) return { errors, success: false };
+  try {
+    const payload: CreateProjectRequest = {
+      name,
+      code,
+      memberIds: memberIds.length > 0 ? memberIds : undefined,
+    };
+    await createProject(payload);
+    toast.success("Project created successfully");
+    return redirect("/projects");
+  } catch (error: any) {
+    toast.error(error?.message || "Failed to create project");
+    return {
+      errors: { general: error?.message || "Failed to create project" },
+      success: false,
+    };
+  }
+}
 
 export default function CreateProject() {
-  const [projectName, setProjectName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { users } = useLoaderData() as { users: User[] };
   const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!projectName.trim()) {
-      toast.error("Please enter project name");
-      return;
-    }
-    setIsLoading(true);
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success("Project created successfully");
-
-      // 返回项目列表页面
-      navigate("/projects");
-    } catch (_) {
-      toast.error("Failed to create project, please try again");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const actionData = useActionData() as
+    | { errors?: Record<string, string>; success?: boolean }
+    | undefined;
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    if (!query) return users;
+    const q = query.toLowerCase();
+    return users.filter((u) => u.username.toLowerCase().includes(q));
+  }, [users, query]);
 
   return (
     <div className="container mx-auto p-6 max-w-2xl">
@@ -61,53 +92,111 @@ export default function CreateProject() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <Form method="post" className="space-y-6">
+            {actionData?.errors?.general && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {actionData.errors.general}
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="projectName">Project Name *</Label>
+              <Label htmlFor="name">Project Name *</Label>
               <Input
-                id="projectName"
+                id="name"
+                name="name"
                 type="text"
                 placeholder="Please enter project name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                disabled={isLoading}
-                className="w-full"
+                className={
+                  actionData?.errors?.name ? "border-destructive" : "w-full"
+                }
+                required
               />
+              {actionData?.errors?.name && (
+                <p className="text-sm text-destructive">
+                  {actionData.errors.name}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 The project name will be used to identify and manage your
                 project
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="code">Project Code *</Label>
+              <Input
+                id="code"
+                name="code"
+                type="text"
+                placeholder="Unique code"
+                className={
+                  actionData?.errors?.code ? "border-destructive" : "w-full"
+                }
+                required
+              />
+              {actionData?.errors?.code && (
+                <p className="text-sm text-destructive">
+                  {actionData.errors.code}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <Label>Members</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Select one or more users for this project
+                  </p>
+                </div>
+                <div className="relative">
+                  <Input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search users..."
+                    className="h-8 w-56 pl-8"
+                  />
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                </div>
+              </div>
+              <div className="rounded-md border">
+                <ScrollArea className="h-[280px] p-3">
+                  <div className="space-y-2">
+                    {filtered.map((u) => (
+                      <label key={u.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          name="memberIds"
+                          value={u.id}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        <span className="text-sm">{u.username}</span>
+                      </label>
+                    ))}
+                    {filtered.length === 0 && (
+                      <div className="text-sm text-muted-foreground">
+                        No users
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
             <div className="flex gap-4 pt-4">
-              <Button
-                type="submit"
-                disabled={isLoading || !projectName.trim()}
-                className="flex items-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4" />
-                    Create Project
-                  </>
-                )}
+              <Button type="submit" className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create Project
               </Button>
 
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate("/projects")}
-                disabled={isLoading}
               >
                 Cancel
               </Button>
             </div>
-          </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

@@ -1,0 +1,17 @@
+server:
+  port: 8888
+spring:
+  application:
+    name: noone-server
+    version: ${version}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    database: postgresql
+    show-sql: true
+  datasource:
+    driver-class-name: org.postgresql.Driver
+  docker:
+    compose:
+      file: noone-server/compose.yaml

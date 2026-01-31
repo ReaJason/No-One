@@ -1,39 +1,38 @@
 import {
-  type ColumnFiltersState,
-  getCoreRowModel,
-  getFacetedMinMaxValues,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type PaginationState,
-  type RowSelectionState,
-  type SortingState,
-  type TableOptions,
-  type TableState,
-  type Updater,
-  useReactTable,
-  type VisibilityState,
+    type ColumnFiltersState,
+    getCoreRowModel,
+    getFacetedMinMaxValues,
+    getFacetedRowModel,
+    getFacetedUniqueValues,
+    getFilteredRowModel,
+    getPaginationRowModel,
+    getSortedRowModel,
+    type PaginationState,
+    type RowSelectionState,
+    type SortingState,
+    type TableOptions,
+    type TableState,
+    type Updater,
+    useReactTable,
+    type VisibilityState,
 } from "@tanstack/react-table";
 import {
-  type Parser,
-  parseAsArrayOf,
-  parseAsInteger,
-  parseAsString,
-  type UseQueryStateOptions,
-  useQueryState,
-  useQueryStates,
+    parseAsArrayOf,
+    parseAsInteger,
+    parseAsString,
+    type Parser,
+    useQueryState,
+    type UseQueryStateOptions,
+    useQueryStates,
 } from "nuqs";
 import * as React from "react";
 
-import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
-import { getSortingStateParser } from "@/lib/parsers";
-import type { ExtendedColumnSort } from "@/types/data-table";
+import {useDebouncedCallback} from "@/hooks/use-debounced-callback";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";
-const SORT_KEY = "sort";
+const SORT_KEY = "sortBy";
+const SORT_ORDER_KEY = "sortOrder";
 const ARRAY_SEPARATOR = ",";
 const DEBOUNCE_MS = 300;
 const THROTTLE_MS = 50;
@@ -47,10 +46,11 @@ interface UseDataTableProps<TData>
       | "manualFiltering"
       | "manualPagination"
       | "manualSorting"
+      | "initialState"
     >,
     Required<Pick<TableOptions<TData>, "pageCount">> {
   initialState?: Omit<Partial<TableState>, "sorting"> & {
-    sorting?: ExtendedColumnSort<TData>[];
+    sorting?: { sortBy?: string; sortOrder?: "asc" | "desc" };
   };
   history?: "push" | "replace";
   debounceMs?: number;
@@ -120,7 +120,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
 
   const pagination: PaginationState = React.useMemo(() => {
     return {
-      pageIndex: page - 1, // zero-based index -> one-based index
+      pageIndex: page - 1,
       pageSize: perPage,
     };
   }, [page, perPage]);
@@ -138,30 +138,41 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     },
     [pagination, setPage, setPerPage],
   );
-
-  const columnIds = React.useMemo(() => {
-    return new Set(
-      columns.map((column) => column.id).filter(Boolean) as string[],
-    );
-  }, [columns]);
-
-  const [sorting, setSorting] = useQueryState(
+  const [sortBy, setSortBy] = useQueryState(
     SORT_KEY,
-    getSortingStateParser<TData>(columnIds)
+    parseAsString
       .withOptions(queryStateOptions)
-      .withDefault(initialState?.sorting ?? []),
+      .withDefault(initialState?.sorting?.sortBy ?? ""),
   );
+  const [sortOrder, setSortOrder] = useQueryState(
+    SORT_ORDER_KEY,
+    parseAsString
+      .withOptions(queryStateOptions)
+      .withDefault(initialState?.sorting?.sortOrder ?? "desc"),
+  );
+
+  const sorting: SortingState = React.useMemo(() => {
+    if (!sortBy) return [];
+    return [{ id: sortBy, desc: sortOrder === "desc" }];
+  }, [sortBy, sortOrder]);
 
   const onSortingChange = React.useCallback(
     (updaterOrValue: Updater<SortingState>) => {
-      if (typeof updaterOrValue === "function") {
-        const newSorting = updaterOrValue(sorting);
-        setSorting(newSorting as ExtendedColumnSort<TData>[]);
+      const newSorting =
+        typeof updaterOrValue === "function"
+          ? updaterOrValue(sorting)
+          : updaterOrValue;
+
+      if (newSorting.length === 0) {
+        setSortBy("");
+        setSortOrder("desc");
       } else {
-        setSorting(updaterOrValue as ExtendedColumnSort<TData>[]);
+        const firstSort = newSorting[0];
+        setSortBy(firstSort.id);
+        setSortOrder(firstSort.desc ? "desc" : "asc");
       }
     },
-    [sorting, setSorting],
+    [sorting, setSortBy, setSortOrder],
   );
 
   const filterableColumns = React.useMemo(() => {
@@ -255,7 +266,10 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const table = useReactTable({
     ...tableProps,
     columns,
-    initialState,
+    initialState: {
+      ...initialState,
+      sorting: sorting,
+    },
     pageCount,
     state: {
       pagination,
