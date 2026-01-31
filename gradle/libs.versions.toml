@@ -1,36 +1,65 @@
 [versions]
 jjwt = "0.13.0"
 asm = "9.9"
+jna = "5.13.0" # 为适配 JDK6+ 这个不可修改
+bcel = "5.2"
+javax-servlet-api = "3.0.1"
+jakarta-servlet-api = "5.0.0"
 javax-websocket-api = "1.1"
-byte-buddy = "1.18.2"
-commons-io = "2.20.0"
-commons-lang3 = "3.18.0"
-commons-codec = "1.19.0"
+jakarta-websocket-api = "2.2.0"
+spring-webmvc = "5.3.24"
+spring-webflux = "5.3.24"
+reactor-netty = "1.1.25"
+jackson = "2.19.0"
+jetbrains-annotations = "26.0.2"
+
+memshell-party = "2.5.1-SNAPSHOT"
+byte-buddy = "1.18.3"
+commons-io = "2.21.0"
+commons-lang3 = "3.20.0"
+commons-codec = "1.20.0"
+logback = "1.5.24"
 okhttp3 = "5.3.2"
 fastjson2 = "2.0.60"
-javax-servlet-api = "3.0.1"
 java-websocket = "1.6.0"
 
-mockito = "5.19.0"
+mockito = "5.20.0"
 hamcrest = "3.0"
-junit-jupiter = "5.13.4"
+junit-jupiter = "5.14.1"
 junit-pioneer = "2.3.0"
-junit-platform = "1.13.4"
-testcontainers = "1.21.3"
+junit-platform = "1.14.1"
+testcontainers = "2.0.3"
 
 [libraries]
+memshell-party-generator = { module = "io.github.reajason:generator", version.ref = "memshell-party" }
+memshell-party-packer = { module = "io.github.reajason:packer", version.ref = "memshell-party" }
+memshell-party-common = { module = "io.github.reajason:memshell-party-common", version.ref = "memshell-party" }
 jjwt-api = { module = "io.jsonwebtoken:jjwt-api", version.ref = "jjwt" }
 jjwt-impl = { module = "io.jsonwebtoken:jjwt-impl", version.ref = "jjwt" }
 jjwt-jackson = { module = "io.jsonwebtoken:jjwt-jackson", version.ref = "jjwt" }
 byte-buddy = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-buddy" }
 asm-commons = { module = "org.ow2.asm:asm-commons", version.ref = "asm" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version.ref = "javax-servlet-api" }
+jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version.ref = "jakarta-servlet-api" }
 javax-websocket-api = { module = "javax.websocket:javax.websocket-api", version.ref = "javax-websocket-api" }
+jakarta-websocket-api = { module = "jakarta.websocket:jakarta.websocket-api", version.ref = "jakarta-websocket-api" }
+jakarta-websocket-client-api = { module = "jakarta.websocket:jakarta.websocket-client-api", version.ref = "jakarta-websocket-api" }
+spring-webmvc = { module = "org.springframework:spring-webmvc", version.ref = "spring-webmvc" }
+spring-webflux = { module = "org.springframework:spring-webflux", version.ref = "spring-webflux" }
+reactor-netty-core = { module = "io.projectreactor.netty:reactor-netty-core", version.ref = "reactor-netty" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+bcel = { module = "org.apache.bcel:bcel", version.ref = "bcel" }
+java-websocket = { module = "org.java-websocket:Java-WebSocket", version.ref = "java-websocket" }
 okhttp3 = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp3" }
 fastjson2 = { module = "com.alibaba.fastjson2:fastjson2", version.ref = "fastjson2" }
+jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
+jackson-annotations = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockito" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
@@ -39,13 +68,14 @@ junit-pioneer = { module = "org.junit-pioneer:junit-pioneer", version.ref = "jun
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporting", version.ref = "junit-platform" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
-testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter", version.ref = "testcontainers" }
 
 [bundles]
+jna = ["jna", "jna-platform"]
 mockito = ["mockito-core", "mockito-junit-jupiter"]
 testcontainers = ["testcontainers", "testcontainers-junit-jupiter"]
 jjwt = ["jjwt-api", "jjwt-impl", "jjwt-jackson"]
 
 [plugins]
-lombok = { id = "io.freefair.lombok", version = "8.14.2" }
-shadow = { id = "com.gradleup.shadow", version = "9.0.2" }
+lombok = { id = "io.freefair.lombok", version = "9.1.0" }
+shadow = { id = "com.gradleup.shadow", version = "9.3.1" }

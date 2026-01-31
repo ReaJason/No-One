@@ -1,4 +1,4 @@
-package com.reajason.noone;
+package com.reajason.noone.core.plugin;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
@@ -7,16 +7,16 @@ import java.net.NetworkInterface;
 import java.util.*;
 
 /**
- * 系统信息收集器
- * 用于获取目标机器的基础信息
+ * System information collector.
+ * Used to retrieve basic information about the target machine.
  */
 public class SystemInfoCollector {
 
     public static Map<String, Object> run(Map<String, Object> args) {
-        Map<String, Object> systemInfo = new HashMap<>();
+        Map<String, Object> systemInfo = new HashMap<String, Object>();
 
         try {
-            // 基本信息
+            // Basic information
             systemInfo.put("osName", System.getProperty("os.name"));
             systemInfo.put("osVersion", System.getProperty("os.version"));
             systemInfo.put("osArch", System.getProperty("os.arch"));
@@ -26,34 +26,34 @@ public class SystemInfoCollector {
             systemInfo.put("userHome", System.getProperty("user.home"));
             systemInfo.put("userDir", System.getProperty("user.dir"));
 
-            // 网络信息
+            // Network information
             systemInfo.put("hostname", getHostname());
             systemInfo.put("ipAddresses", getIpAddresses());
             systemInfo.put("macAddresses", getMacAddresses());
 
-            // JVM信息
+            // JVM information
             systemInfo.put("jvmInfo", getJvmInfo());
 
-            // 环境变量
+            // Environment variables
             systemInfo.put("environment", getEnvironmentVariables());
 
-            // 系统属性
+            // System properties
             systemInfo.put("systemProperties", getSystemProperties());
 
-            // 时间信息
+            // Time information
             systemInfo.put("currentTime", System.currentTimeMillis());
             systemInfo.put("timezone", TimeZone.getDefault().getID());
 
-            // 内存信息
+            // Memory information
             systemInfo.put("memoryInfo", getMemoryInfo());
 
-            // 处理器信息
+            // Processor information
             systemInfo.put("processorInfo", getProcessorInfo());
 
-            // 当前堆栈信息
+            // Current stack trace
             systemInfo.put("curStackTrace", getCurrentThreadStack());
 
-            // 线程 dump
+            // Thread dump
             systemInfo.put("threadDump", getAllThreadsInfo());
 
         } catch (Exception e) {
@@ -64,7 +64,7 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取主机名
+     * Get hostname.
      */
     private static String getHostname() {
         try {
@@ -75,10 +75,10 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取IP地址列表
+     * Get IP address list.
      */
     private static List<String> getIpAddresses() {
-        List<String> ipAddresses = new ArrayList<>();
+        List<String> ipAddresses = new ArrayList<String>();
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while (networkInterfaces.hasMoreElements()) {
@@ -94,16 +94,16 @@ public class SystemInfoCollector {
                 }
             }
         } catch (Exception e) {
-            // 忽略异常
+            // Ignore
         }
         return ipAddresses;
     }
 
     /**
-     * 获取MAC地址列表
+     * Get MAC address list.
      */
     private static List<String> getMacAddresses() {
-        List<String> macAddresses = new ArrayList<>();
+        List<String> macAddresses = new ArrayList<String>();
         try {
             Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
             while (networkInterfaces.hasMoreElements()) {
@@ -120,16 +120,16 @@ public class SystemInfoCollector {
                 }
             }
         } catch (Exception e) {
-            // 忽略异常
+            // Ignore
         }
         return macAddresses;
     }
 
     /**
-     * 获取JVM信息
+     * Get JVM information.
      */
     private static Map<String, Object> getJvmInfo() {
-        Map<String, Object> jvmInfo = new HashMap<>();
+        Map<String, Object> jvmInfo = new HashMap<String, Object>();
         try {
             RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
             jvmInfo.put("startTime", runtimeMXBean.getStartTime());
@@ -146,16 +146,16 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取环境变量
+     * Get environment variables.
      */
     private static Map<String, String> getEnvironmentVariables() {
-        Map<String, String> env = new HashMap<>();
+        Map<String, String> env = new HashMap<String, String>();
         try {
             ProcessBuilder pb = new ProcessBuilder();
             Map<String, String> environment = pb.environment();
             env.putAll(environment);
         } catch (Exception e) {
-            // 如果ProcessBuilder不可用，尝试System.getenv()
+            // If ProcessBuilder is not usable, fallback to System.getenv().
             try {
                 Map<String, String> environment = System.getenv();
                 env.putAll(environment);
@@ -167,10 +167,10 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取系统属性
+     * Get system properties.
      */
     private static Map<String, String> getSystemProperties() {
-        Map<String, String> properties = new HashMap<>();
+        Map<String, String> properties = new HashMap<String, String>();
         try {
             Properties sysProps = System.getProperties();
             for (String key : sysProps.stringPropertyNames()) {
@@ -183,10 +183,10 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取内存信息
+     * Get memory information.
      */
     private static Map<String, Object> getMemoryInfo() {
-        Map<String, Object> memoryInfo = new HashMap<>();
+        Map<String, Object> memoryInfo = new HashMap<String, Object>();
         try {
             Runtime runtime = Runtime.getRuntime();
             memoryInfo.put("totalMemory", runtime.totalMemory());
@@ -200,10 +200,10 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取处理器信息
+     * Get processor information.
      */
     private static Map<String, Object> getProcessorInfo() {
-        Map<String, Object> processorInfo = new HashMap<>();
+        Map<String, Object> processorInfo = new HashMap<String, Object>();
         try {
             processorInfo.put("availableProcessors", Runtime.getRuntime().availableProcessors());
             processorInfo.put("processorArchitecture", System.getProperty("os.arch"));
@@ -215,14 +215,26 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取当前线程堆栈信息
+     * Get current thread stack trace.
      */
     public static List<String> getCurrentThreadStack() {
-        List<String> stackTrace = new ArrayList<>();
+        List<String> stackTrace = new ArrayList<String>();
         try {
             Thread currentThread = Thread.currentThread();
             StackTraceElement[] elements = currentThread.getStackTrace();
-            for (StackTraceElement element : elements) {
+            boolean skip = true;
+            for (int i = 0; i < elements.length; i++) {
+                StackTraceElement element = elements[i];
+                if (skip) {
+                    String className = element.getClassName();
+                    if (className.equals(SystemInfoCollector.class.getName())) {
+                        continue;
+                    }
+                    if (className.startsWith("java") || className.startsWith("sun")) {
+                        continue;
+                    }
+                }
+                skip = false;
                 stackTrace.add(element.toString());
             }
         } catch (Exception e) {
@@ -232,17 +244,17 @@ public class SystemInfoCollector {
     }
 
     /**
-     * 获取所有线程信息
+     * Get all thread info.
      */
     public static List<Map<String, Object>> getAllThreadsInfo() {
-        List<Map<String, Object>> threadsInfo = new ArrayList<>();
+        List<Map<String, Object>> threadsInfo = new ArrayList<Map<String, Object>>();
         try {
             Thread[] threads = new Thread[Thread.activeCount()];
             Thread.enumerate(threads);
 
             for (Thread thread : threads) {
                 if (thread != null) {
-                    Map<String, Object> threadInfo = new HashMap<>();
+                    Map<String, Object> threadInfo = new HashMap<String, Object>();
                     threadInfo.put("id", thread.getId());
                     threadInfo.put("name", thread.getName());
                     threadInfo.put("priority", thread.getPriority());
@@ -253,7 +265,7 @@ public class SystemInfoCollector {
                 }
             }
         } catch (Exception e) {
-            Map<String, Object> errorInfo = new HashMap<>();
+            Map<String, Object> errorInfo = new HashMap<String, Object>();
             errorInfo.put("error", "Failed to get threads info: " + e.getMessage());
             threadsInfo.add(errorInfo);
         }

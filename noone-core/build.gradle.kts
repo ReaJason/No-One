@@ -12,18 +12,15 @@ java {
 }
 
 dependencies {
-    implementation(libs.byte.buddy)
-    implementation(libs.asm.commons)
-    implementation(libs.okhttp3)
-    implementation(libs.fastjson2)
-    compileOnly(libs.javax.servlet.api)
-
+    implementation(libs.memshell.party.generator)
+    implementation(libs.reactor.netty.core)
+    implementation(libs.spring.webmvc)
+    implementation(libs.spring.webflux)
+    implementation(libs.javax.servlet.api)
+    implementation(libs.javax.websocket.api)
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.hamcrest)
     testRuntimeOnly(libs.junit.platform.launcher)
-    testImplementation(libs.bundles.mockito)
 }
-
 
 tasks.test {
     useJUnitPlatform()
