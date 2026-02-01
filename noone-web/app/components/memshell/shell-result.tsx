@@ -92,7 +92,7 @@ const ShellResult = memo(function ShellResult({
     return <QuickUsage />;
   }
 
-  const height = 500;
+  const height = 553;
 
   return (
     <Tabs defaultValue="packResult">

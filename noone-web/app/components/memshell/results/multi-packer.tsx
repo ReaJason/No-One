@@ -15,7 +15,7 @@ export function MultiPackResult({
   allPackResults,
   packMethod,
   shellClassName,
-  height = 450,
+  height = 325,
 }: Readonly<{
   allPackResults: object | undefined;
   packMethod: string;

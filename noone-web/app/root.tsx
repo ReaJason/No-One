@@ -9,6 +9,7 @@ import {
 import type { Route } from "./+types/root";
 import "./app.css";
 import { ThemeProvider } from "next-themes";
+import { TailwindIndicator } from "@/components/tailwind-indicator";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -40,6 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           {children}
+          {import.meta.env.MODE !== "production" && <TailwindIndicator />}
         </ThemeProvider>
         <ScrollRestoration />
         <Scripts />

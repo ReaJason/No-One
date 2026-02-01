@@ -70,7 +70,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       url,
       group: group || undefined,
       projectId,
-      profileId: profileId!,
+      profileId: profileId as number,
       proxyUrl,
       customHeaders,
       connectTimeoutMs,

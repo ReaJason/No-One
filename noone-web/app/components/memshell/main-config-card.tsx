@@ -1,5 +1,5 @@
-import { InfoIcon, ServerIcon } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { ServerIcon } from "lucide-react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { NoOneTabContent } from "@/components/memshell/tabs/noone-tab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
@@ -14,11 +14,6 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   type MainConfig,
   type ServerConfig,
@@ -55,7 +50,7 @@ const MainConfigCard = memo(function MainConfigCard({
   onShellTypeChange,
 }: Readonly<MainConfigCardProps>) {
   const [server, setServer] = useState<string | null>("Tomcat");
-  const [shellTool, setShellTool] = useState<string>(ShellToolType.NoOne);
+  const shellTool = ShellToolType.NoOne;
   const [debug, setDebug] = useState(false);
   const [probe, setProbe] = useState(false);
   const [byPassJavaModule, setByPassJavaModule] = useState(false);
@@ -72,45 +67,12 @@ const MainConfigCard = memo(function MainConfigCard({
   // Optimize: Memoize computed values with minimal dependencies
   const serverOptions = useMemo(() => Object.keys(servers ?? {}), [servers]);
 
-  const shellTools = useMemo(() => {
-    if (!serverToolMap) {
-      return [];
-    }
-    const tools = Object.keys(serverToolMap).map(
-      (tool) => tool as ShellToolType,
-    );
-    return Array.from(new Set([...tools]));
-  }, [serverToolMap]);
-
   const shellTypes = useMemo(() => {
     if (!serverToolMap || !server) {
       return [];
     }
     return serverToolMap[shellTool] ?? [];
-  }, [server, serverToolMap, shellTool]);
-
-  useEffect(() => {
-    if (!mainConfig || !server) {
-      return;
-    }
-    const toolMap = mainConfig[server];
-    if (!toolMap) {
-      return;
-    }
-    const toolKeys = Object.keys(toolMap);
-    if (toolKeys.length === 0) {
-      return;
-    }
-
-    const currentShellTool = shellTool as ShellToolType;
-    const nextShellTool = toolMap[currentShellTool]
-      ? currentShellTool
-      : (toolKeys[0] as ShellToolType);
-
-    if (nextShellTool !== currentShellTool) {
-      setShellTool(nextShellTool);
-    }
-  }, [mainConfig, server, shellTool]);
+  }, [server, serverToolMap]);
 
   // Optimize: Stable callback with useCallback (rerender-functional-setstate)
   const handleServerChange = useCallback(
@@ -122,10 +84,6 @@ const MainConfigCard = memo(function MainConfigCard({
     },
     [onServerChange],
   );
-
-  const handleShellToolChange = useCallback((v: string | null) => {
-    setShellTool(v as string);
-  }, []);
 
   const handleByPassJavaModuleChange = useCallback((value: boolean) => {
     setByPassJavaModule(value);
@@ -144,8 +102,8 @@ const MainConfigCard = memo(function MainConfigCard({
           {!mainConfig ? (
             <LoadingSpinner />
           ) : (
-            <div className="flex flex-col gap-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <Field>
                   <FieldContent>
                     <FieldLabel htmlFor="server">Server</FieldLabel>
@@ -172,36 +130,17 @@ const MainConfigCard = memo(function MainConfigCard({
                   server={server as string}
                   error={errors?.serverVersion}
                 />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                <Field>
-                  <FieldContent>
-                    <FieldLabel htmlFor="shellTool">Shell Tool</FieldLabel>
-                    <input type="hidden" name="shellTool" value={shellTool} />
-                    <Select
-                      value={shellTool}
-                      onValueChange={handleShellToolChange}
-                    >
-                      <SelectTrigger className="w-full" id="shellTool">
-                        <SelectValue placeholder="Select shell tool" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shellTools.map((tool) => (
-                          <SelectItem key={tool} value={tool}>
-                            {tool}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
                 <JREVersionFormField
                   error={errors?.targetJdkVersion}
                   onByPassJavaModuleChange={handleByPassJavaModuleChange}
                   server={server as string}
                 />
               </div>
-              <div className="flex gap-4 mt-4 flex-col lg:grid lg:grid-cols-2 2xl:grid">
+
+              <input type="hidden" name="shellTool" value={shellTool} />
+
+              {/* Options - Responsive grid: 1 col mobile, 2 cols tablet, 4 cols desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input type="hidden" name="debug" value={debug.toString()} />
                 <div className="flex items-center gap-2">
                   <Switch
@@ -209,16 +148,11 @@ const MainConfigCard = memo(function MainConfigCard({
                     checked={debug}
                     onCheckedChange={setDebug}
                   />
-                  <Label htmlFor="debug">Debug</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Enable debug mode</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Label htmlFor="debug" className="cursor-pointer">
+                    Debug
+                  </Label>
                 </div>
+
                 <input type="hidden" name="probe" value={probe.toString()} />
                 <div className="flex items-center gap-2">
                   <Switch
@@ -226,16 +160,11 @@ const MainConfigCard = memo(function MainConfigCard({
                     checked={probe}
                     onCheckedChange={setProbe}
                   />
-                  <Label htmlFor="probe">Probe</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Enable probe mode</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Label htmlFor="probe" className="cursor-pointer">
+                    Probe
+                  </Label>
                 </div>
+
                 <input
                   type="hidden"
                   name="byPassJavaModule"
@@ -247,16 +176,11 @@ const MainConfigCard = memo(function MainConfigCard({
                     checked={byPassJavaModule}
                     onCheckedChange={setByPassJavaModule}
                   />
-                  <Label htmlFor="bypass">Bypass Java Module</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Bypass Java module system</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Label htmlFor="bypass" className="cursor-pointer">
+                    BypassModule
+                  </Label>
                 </div>
+
                 <input
                   type="hidden"
                   name="lambdaSuffix"
@@ -268,15 +192,9 @@ const MainConfigCard = memo(function MainConfigCard({
                     checked={lambdaSuffix}
                     onCheckedChange={setLambdaSuffix}
                   />
-                  <Label htmlFor="lambdaSuffix">Lambda Suffix</Label>
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Add lambda suffix</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <Label htmlFor="lambdaSuffix" className="cursor-pointer">
+                    LambdaSuffix
+                  </Label>
                 </div>
               </div>
             </div>

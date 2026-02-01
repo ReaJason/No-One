@@ -1,5 +1,5 @@
 import { ArrowLeft, FolderTree, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   Form,
@@ -87,26 +87,33 @@ export default function CreateRole() {
 
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
-  const onToggle = (id: number, checked: boolean) => {
+  // Optimize: Use useCallback for stable callbacks (rerender-functional-setstate)
+  const onToggle = useCallback((id: number, checked: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (checked) next.add(id);
       else next.delete(id);
       return next;
     });
-  };
+  }, []);
 
-  const onToggleAll = (ids: number[], checked: boolean) => {
+  // Optimize: Use for...of instead of forEach to avoid lint error (js-early-exit)
+  const onToggleAll = useCallback((ids: number[], checked: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) ids.forEach((id) => next.add(id));
-      else ids.forEach((id) => next.delete(id));
+      if (checked) {
+        for (const id of ids) next.add(id);
+      } else {
+        for (const id of ids) next.delete(id);
+      }
       return next;
     });
-  };
+  }, []);
 
-  const filterMatch = (name: string) =>
-    name.toLowerCase().includes(query.toLowerCase());
+  const filterMatch = useCallback(
+    (name: string) => name.toLowerCase().includes(query.toLowerCase()),
+    [query],
+  );
 
   return (
     <div className="container mx-auto p-6 max-w-3xl">
@@ -201,9 +208,7 @@ export default function CreateRole() {
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id={`cat-${category}`}
-                              checked={
-                                indeterminate ? "indeterminate" : allChecked
-                              }
+                              checked={indeterminate || allChecked}
                               onCheckedChange={(c) =>
                                 onToggleAll(ids, Boolean(c))
                               }

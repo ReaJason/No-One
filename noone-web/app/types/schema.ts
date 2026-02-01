@@ -1,26 +1,26 @@
-import * as yup from "yup";
+import { z } from "zod";
 
-export const memShellFormSchema = yup.object({
-  server: yup.string().required().min(1),
-  serverVersion: yup.string().required().min(1),
-  targetJdkVersion: yup.string().optional(),
-  debug: yup.boolean().optional(),
-  byPassJavaModule: yup.boolean().optional(),
-  staticInitialize: yup.boolean().optional(),
-  shellClassName: yup.string().optional(),
-  shellTool: yup.string().required().min(1),
-  shellType: yup.string().required().min(1),
-  urlPattern: yup.string().optional(),
-  godzillaPass: yup.string().optional(),
-  godzillaKey: yup.string().optional(),
-  headerName: yup.string().optional(),
-  headerValue: yup.string().optional(),
-  injectorClassName: yup.string().optional(),
-  packingMethod: yup.string().required().min(1),
-  shrink: yup.boolean().optional(),
-  lambdaSuffix: yup.boolean().optional(),
-  probe: yup.boolean().optional(),
-  profileId: yup.string().optional(),
+export const memShellFormSchema = z.object({
+  server: z.string().min(1),
+  serverVersion: z.string().min(1),
+  targetJdkVersion: z.string().optional(),
+  debug: z.boolean().optional(),
+  byPassJavaModule: z.boolean().optional(),
+  staticInitialize: z.boolean().optional(),
+  shellClassName: z.string().optional(),
+  shellTool: z.string().min(1),
+  shellType: z.string().min(1),
+  urlPattern: z.string().optional(),
+  godzillaPass: z.string().optional(),
+  godzillaKey: z.string().optional(),
+  headerName: z.string().optional(),
+  headerValue: z.string().optional(),
+  injectorClassName: z.string().optional(),
+  packingMethod: z.string().min(1),
+  shrink: z.boolean().optional(),
+  lambdaSuffix: z.boolean().optional(),
+  probe: z.boolean().optional(),
+  profileId: z.string().optional(),
 });
 
-export type MemShellFormSchema = yup.InferType<typeof memShellFormSchema>;
+export type MemShellFormSchema = z.infer<typeof memShellFormSchema>;

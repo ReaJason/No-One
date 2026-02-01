@@ -1,5 +1,12 @@
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -8,9 +15,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TabsContent } from "@/components/ui/tabs";
+import { notNeedUrlPattern } from "@/lib/utils";
 import type { Profile } from "@/types/profile";
 import { OptionalClassFormField } from "./classname-field";
-import { ShellTypeFormField } from "./shelltype-field";
 
 export function NoOneTabContent({
   shellTypes,
@@ -27,17 +34,32 @@ export function NoOneTabContent({
     label: p.name,
     value: p.id,
   }));
+  const [shellType, setShellType] = useState(shellTypes[0] || " ");
+  const [urlPattern, setUrlPattern] = useState("/*");
+  const _needUrlPattern = !notNeedUrlPattern(shellType);
+
+  // Reset shellType to first option when shellTypes changes (e.g., server change)
+  useEffect(() => {
+    if (shellTypes.length > 0 && !shellTypes.includes(shellType)) {
+      setShellType(shellTypes[0]);
+    }
+  }, [shellTypes, shellType]);
+
+  useEffect(() => {
+    onShellTypeChange?.(shellType);
+  }, [onShellTypeChange, shellType]);
+
+  const handleShellTypeChange = (value: string | null) => {
+    setShellType(value as string);
+    setUrlPattern("/*");
+  };
+  const error = errors?.shellType;
+  const urlPatternError = errors?.urlPattern;
   return (
     <TabsContent value="NoOne">
       <Card>
         <CardContent className="flex flex-col gap-2">
-          <ShellTypeFormField
-            shellTypes={shellTypes}
-            error={errors?.shellType}
-            urlPatternError={errors?.urlPattern}
-            onShellTypeChange={onShellTypeChange}
-          />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className={"flex flex-col gap-2 md:grid md:grid-cols-3"}>
             <Field>
               <FieldContent>
                 <FieldLabel htmlFor="server">Profile</FieldLabel>
@@ -57,6 +79,43 @@ export function NoOneTabContent({
                     ))}
                   </SelectContent>
                 </Select>
+              </FieldContent>
+            </Field>
+            <Field data-invalid={!!error}>
+              <FieldContent>
+                <FieldLabel>Shell MountType</FieldLabel>
+                <input type="hidden" name="shellType" value={shellType} />
+                <Select onValueChange={handleShellTypeChange} value={shellType}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select shell type" />
+                  </SelectTrigger>
+                  <SelectContent key={shellTypes?.join(",")}>
+                    {shellTypes?.length ? (
+                      shellTypes.map((v) => (
+                        <SelectItem key={v} value={v}>
+                          {v}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value=" ">Shell tool not selected</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                {error && <FieldError errors={[{ message: error }]} />}
+              </FieldContent>
+            </Field>
+            <Field data-invalid={!!urlPatternError}>
+              <FieldContent>
+                <FieldLabel>URL Pattern</FieldLabel>
+                <Input
+                  name="urlPattern"
+                  value={urlPattern}
+                  onChange={(e) => setUrlPattern(e.target.value)}
+                  placeholder="Enter URL pattern"
+                />
+                {urlPatternError && (
+                  <FieldError errors={[{ message: urlPatternError }]} />
+                )}
               </FieldContent>
             </Field>
           </div>

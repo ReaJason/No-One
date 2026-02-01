@@ -75,8 +75,11 @@ export default function EditRole() {
   const onToggleAll = (ids: number[], checked: boolean) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) ids.forEach((id) => next.add(id));
-      else ids.forEach((id) => next.delete(id));
+      if (checked) {
+        for (const id of ids) next.add(id);
+      } else {
+        for (const id of ids) next.delete(id);
+      }
       return next;
     });
   };
@@ -178,9 +181,7 @@ export default function EditRole() {
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id={`cat-${category}`}
-                              checked={
-                                indeterminate ? "indeterminate" : allChecked
-                              }
+                              checked={indeterminate || allChecked}
                               onCheckedChange={(c) =>
                                 onToggleAll(ids, Boolean(c))
                               }

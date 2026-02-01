@@ -37,25 +37,22 @@ export const JREVersionFormField = memo(function JREVersionFormField({
   const [value, setValue] = useState("50");
 
   // Optimize: Use effect with primitive dependencies (rerender-dependencies)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: value change by itself
   useEffect(() => {
-    // When server is SpringWebFlux or XXL-JOB, set minimum JRE version to 52 (Java8)
     if (server === "SpringWebFlux" || server?.startsWith("XXL")) {
       const currentVersion = parseInt(value, 10);
       if (currentVersion < 52) {
         setValue("52");
-        // Trigger bypass check for Java 8
         onByPassJavaModuleChange?.(false);
       }
     } else {
-      // For other servers, reset to default Java6 (50) if current version is 52 or higher
-      // Only reset if we're coming from a high-requirement server
       const currentVersion = parseInt(value, 10);
       if (currentVersion >= 52 && value !== "50") {
         setValue("50");
         onByPassJavaModuleChange?.(false);
       }
     }
-  }, [server, onByPassJavaModuleChange, value]);
+  }, [server, onByPassJavaModuleChange]);
 
   const handleChange = (v: string | null) => {
     setValue(v as string);
