@@ -18,116 +18,28 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type {
-  CreateProfileRequest,
-  HttpProtocolConfig,
-  HttpRequestBodyType,
-  HttpResponseBodyType,
-  IdentifierConfig,
-  IdentifierLocation,
-  IdentifierOperator,
-  ProtocolType,
-  WebSocketProtocolConfig,
+import {
+  COMPRESSION_OPTIONS,
+  type CreateProfileRequest,
+  DEFAULT_REQUEST_TEMPLATES,
+  DEFAULT_RESPONSE_TEMPLATES,
+  ENCODING_OPTIONS,
+  ENCRYPTION_OPTIONS,
+  HTTP_IDENTIFIER_LOCATION_OPTIONS,
+  type HttpProtocolConfig,
+  type HttpRequestBodyType,
+  type HttpResponseBodyType,
+  IDENTIFIER_OPERATOR_OPTIONS,
+  type IdentifierConfig,
+  type IdentifierLocation,
+  type IdentifierOperator,
+  type ProtocolType,
+  REQUEST_BODY_TYPE_OPTIONS,
+  REQUEST_METHOD_OPTIONS,
+  RESPONSE_BODY_TYPE_OPTIONS,
+  WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS,
+  type WebSocketProtocolConfig,
 } from "@/types/profile";
-
-const DEFAULT_REQUEST_TEMPLATES: Record<HttpRequestBodyType, string> = {
-  FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
-  TEXT: "hello{{payload}}world",
-  MULTIPART_FORM_DATA: `--{{boundary}}
-Content-Disposition: form-data; name="username"
-
-admin
---{{boundary}}
-Content-Disposition: form-data; name="file"; filename="test.png"
-Content-Type: image/png
-
-<hex>89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE0000000C49444154789C63F8CFC000000301010018DD8D000000000049454E44AE426082</hex>{{payload}}
---{{boundary}}--`,
-  JSON: `{"hello": "{{payload}}"}`,
-  XML: "<hello>{{payload}}</hello>",
-  BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
-};
-
-const DEFAULT_RESPONSE_TEMPLATES: Record<HttpResponseBodyType, string> = {
-  FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
-  TEXT: "hello{{payload}}world",
-  MULTIPART_FORM_DATA: `--{{boundary}}
-Content-Disposition: form-data; name="username"
-
-admin
---{{boundary}}
-Content-Disposition: form-data; name="file"; filename="test.png"
-Content-Type: image/png
-
-<hex>89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE0000000C49444154789C63F8CFC000000301010018DD8D000000000049454E44AE426082</hex>{{payload}}
---{{boundary}}--`,
-  JSON: `{"hello": "{{payload}}"}`,
-  XML: "<hello>{{payload}}</hello>",
-  BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
-};
-
-// Hoist static options outside component to prevent recreation on every render
-const ENCRYPTION_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "XOR", value: "XOR" },
-  { label: "AES", value: "AES" },
-  { label: "TripleDES", value: "TripleDES" },
-];
-
-const COMPRESSION_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "Gzip", value: "Gzip" },
-  { label: "Deflate", value: "Deflate" },
-  { label: "LZ4", value: "LZ4" },
-];
-
-const ENCODING_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "Base64", value: "Base64" },
-  { label: "Hex", value: "Hex" },
-  { label: "BigInteger", value: "BigInteger" },
-];
-
-const IDENTIFIER_OPERATOR_OPTIONS = [
-  { label: "Equals", value: "EQUALS" },
-  { label: "Contains", value: "CONTAINS" },
-  { label: "Starts With", value: "STARTS_WITH" },
-  { label: "Ends With", value: "ENDS_WITH" },
-];
-
-const HTTP_IDENTIFIER_LOCATION_OPTIONS = [
-  { label: "Header", value: "HEADER" },
-  { label: "Cookie", value: "COOKIE" },
-  { label: "Query Parameter", value: "QUERY_PARAM" },
-];
-
-const WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS = [
-  { label: "Handshake Header", value: "HANDSHAKE_HEADER" },
-  { label: "Message Frame", value: "MESSAGE_FRAME" },
-];
-
-const REQUEST_BODY_TYPE_OPTIONS = [
-  { value: "JSON", label: "JSON" },
-  { value: "XML", label: "XML" },
-  { value: "FORM_URLENCODED", label: "Form URL Encoded" },
-  { value: "MULTIPART_FORM_DATA", label: "Multipart Form Data" },
-  { value: "BINARY", label: "Binary" },
-  { value: "TEXT", label: "Text" },
-];
-
-const RESPONSE_BODY_TYPE_OPTIONS = [
-  { value: "JSON", label: "JSON" },
-  { value: "XML", label: "XML" },
-  { value: "BINARY", label: "Binary" },
-  { value: "TEXT", label: "Text" },
-];
-
-const REQUEST_METHOD_OPTIONS = [
-  { value: "POST", label: "POST" },
-  { value: "PUT", label: "PUT" },
-  { value: "DELETE", label: "DELETE" },
-  { value: "PATCH", label: "PATCH" },
-];
 
 export async function loader(_args: LoaderFunctionArgs) {
   return {};

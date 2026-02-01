@@ -24,16 +24,27 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type {
-  HttpProtocolConfig,
-  HttpRequestBodyType,
-  HttpResponseBodyType,
-  IdentifierConfig,
-  IdentifierLocation,
-  IdentifierOperator,
-  Profile,
-  ProtocolType,
-  WebSocketProtocolConfig,
+import {
+  COMPRESSION_OPTIONS,
+  DEFAULT_REQUEST_TEMPLATES,
+  DEFAULT_RESPONSE_TEMPLATES,
+  ENCODING_OPTIONS,
+  ENCRYPTION_OPTIONS,
+  HTTP_IDENTIFIER_LOCATION_OPTIONS,
+  type HttpProtocolConfig,
+  type HttpRequestBodyType,
+  type HttpResponseBodyType,
+  IDENTIFIER_OPERATOR_OPTIONS,
+  type IdentifierConfig,
+  type IdentifierLocation,
+  type IdentifierOperator,
+  type Profile,
+  type ProtocolType,
+  REQUEST_BODY_TYPE_OPTIONS,
+  REQUEST_METHOD_OPTIONS,
+  RESPONSE_BODY_TYPE_OPTIONS,
+  WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS,
+  type WebSocketProtocolConfig,
 } from "@/types/profile";
 
 export async function loader({ params }: LoaderFunctionArgs) {
@@ -227,116 +238,6 @@ export const handle = createBreadcrumb((match) => ({
   to: `/profiles/edit/${match.params.profileId}`,
 }));
 
-// Helper to extract transformation value from profile
-function _getTransformationValue(
-  transformations: string[] | undefined,
-  prefix: string,
-): string {
-  if (!transformations) return "none";
-  const found = transformations.find((t) => t.startsWith(prefix));
-  return found || "none";
-}
-
-const DEFAULT_REQUEST_TEMPLATES: Record<HttpRequestBodyType, string> = {
-  FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
-  TEXT: "hello{{payload}}world",
-  MULTIPART_FORM_DATA: `--{{boundary}}
-Content-Disposition: form-data; name="username"
-
-admin
---{{boundary}}
-Content-Disposition: form-data; name="file"; filename="test.png"
-Content-Type: image/png
-
-<hex>89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE0000000C49444154789C63F8CFC000000301010018DD8D000000000049454E44AE426082</hex>{{payload}}
---{{boundary}}--`,
-  JSON: `{"hello": "{{payload}}"}`,
-  XML: "<hello>{{payload}}</hello>",
-  BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
-};
-
-const DEFAULT_RESPONSE_TEMPLATES: Record<HttpResponseBodyType, string> = {
-  FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
-  TEXT: "hello{{payload}}world",
-  MULTIPART_FORM_DATA: `--{{boundary}}
-Content-Disposition: form-data; name="username"
-
-admin
---{{boundary}}
-Content-Disposition: form-data; name="file"; filename="test.png"
-Content-Type: image/png
-
-<hex>89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE0000000C49444154789C63F8CFC000000301010018DD8D000000000049454E44AE426082</hex>{{payload}}
---{{boundary}}--`,
-  JSON: `{"hello": "{{payload}}"}`,
-  XML: "<hello>{{payload}}</hello>",
-  BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
-};
-
-// Hoist static options outside component to prevent recreation on every render
-const ENCRYPTION_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "XOR", value: "XOR" },
-  { label: "AES", value: "AES" },
-  { label: "TripleDES", value: "TripleDES" },
-];
-
-const COMPRESSION_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "Gzip", value: "Gzip" },
-  { label: "Deflate", value: "Deflate" },
-  { label: "LZ4", value: "LZ4" },
-];
-
-const ENCODING_OPTIONS = [
-  { label: "None", value: "None" },
-  { label: "Base64", value: "Base64" },
-  { label: "Hex", value: "Hex" },
-  { label: "BigInteger", value: "BigInteger" },
-];
-
-const IDENTIFIER_OPERATOR_OPTIONS = [
-  { label: "Equals", value: "EQUALS" },
-  { label: "Contains", value: "CONTAINS" },
-  { label: "Starts With", value: "STARTS_WITH" },
-  { label: "Ends With", value: "ENDS_WITH" },
-  { label: "Regex", value: "REGEX" },
-];
-
-const HTTP_IDENTIFIER_LOCATION_OPTIONS = [
-  { label: "Header", value: "HEADER" },
-  { label: "Cookie", value: "COOKIE" },
-  { label: "Query Parameter", value: "QUERY_PARAM" },
-];
-
-const WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS = [
-  { label: "Handshake Header", value: "HANDSHAKE_HEADER" },
-  { label: "Message Frame", value: "MESSAGE_FRAME" },
-];
-
-const REQUEST_BODY_TYPE_OPTIONS = [
-  { value: "JSON", label: "JSON" },
-  { value: "XML", label: "XML" },
-  { value: "FORM_URLENCODED", label: "Form URL Encoded" },
-  { value: "MULTIPART_FORM_DATA", label: "Multipart Form Data" },
-  { value: "BINARY", label: "Binary" },
-  { value: "TEXT", label: "Text" },
-];
-
-const RESPONSE_BODY_TYPE_OPTIONS = [
-  { value: "JSON", label: "JSON" },
-  { value: "XML", label: "XML" },
-  { value: "BINARY", label: "Binary" },
-  { value: "TEXT", label: "Text" },
-];
-
-const REQUEST_METHOD_OPTIONS = [
-  { value: "POST", label: "POST" },
-  { value: "PUT", label: "PUT" },
-  { value: "DELETE", label: "DELETE" },
-  { value: "PATCH", label: "PATCH" },
-];
-
 export default function EditProfile() {
   const { profile } = useLoaderData() as { profile: Profile };
   const actionData = useActionData() as
@@ -414,22 +315,22 @@ export default function EditProfile() {
   }, [responseBodyType, responseTemplate]);
 
   const [reqCompression, setReqCompression] = useState<string>(
-    profile.requestTransformations[0],
+    profile.requestTransformations[0] || "None",
   );
   const [reqEncryption, setReqEncryption] = useState<string>(
-    profile.requestTransformations[1],
+    profile.requestTransformations[1] || "None",
   );
   const [reqEncoding, setReqEncoding] = useState<string>(
-    profile.requestTransformations[2],
+    profile.requestTransformations[2] || "None",
   );
   const [resCompression, setResCompression] = useState<string>(
-    profile.responseTransformations[0],
+    profile.responseTransformations[0] || "None",
   );
   const [resEncryption, setResEncryption] = useState<string>(
-    profile.responseTransformations[1],
+    profile.responseTransformations[1] || "None",
   );
   const [resEncoding, setResEncoding] = useState<string>(
-    profile.responseTransformations[2],
+    profile.responseTransformations[2] || "None",
   );
 
   const identifierLocationOptions =
@@ -605,117 +506,117 @@ export default function EditProfile() {
               <CardTitle>HTTP Config</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Request & Response Configuration in Two Columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Request Method */}
-                <Field>
-                  <FieldLabel>Request Method</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="requestMethod"
-                    value={method || ""}
-                  />
-                  <Select
-                    value={method}
-                    onValueChange={(v) => setMethod(v ?? undefined)}
-                    items={REQUEST_METHOD_OPTIONS}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {REQUEST_METHOD_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                {/* Request Configuration */}
+                <div className="space-y-4">
+                  <Field>
+                    <FieldLabel>Request Method</FieldLabel>
+                    <input
+                      type="hidden"
+                      name="requestMethod"
+                      value={method || ""}
+                    />
+                    <Select
+                      value={method}
+                      onValueChange={(v) => setMethod(v ?? undefined)}
+                      items={REQUEST_METHOD_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {REQUEST_METHOD_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Request Body Type</FieldLabel>
+                    <input
+                      type="hidden"
+                      name="requestBodyType"
+                      value={requestBodyType}
+                    />
+                    <Select
+                      value={requestBodyType}
+                      onValueChange={(v) =>
+                        setRequestBodyType(v as HttpRequestBodyType)
+                      }
+                      items={REQUEST_BODY_TYPE_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select body type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {REQUEST_BODY_TYPE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
 
-                {/* Response Status Code */}
-                <Field data-invalid={!!actionData?.errors?.responseStatusCode}>
-                  <FieldLabel htmlFor="responseStatusCode">
-                    Response Status Code
-                  </FieldLabel>
-                  <Input
-                    id="responseStatusCode"
-                    name="responseStatusCode"
-                    placeholder="e.g., 200"
-                    defaultValue={
-                      httpConfig?.responseStatusCode !== undefined
-                        ? String(httpConfig.responseStatusCode)
-                        : ""
-                    }
-                  />
-                  <FieldError>
-                    {actionData?.errors?.responseStatusCode}
-                  </FieldError>
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Request Body Type */}
-                <Field>
-                  <FieldLabel>Request Body Type</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="requestBodyType"
-                    value={requestBodyType}
-                  />
-                  <Select
-                    value={requestBodyType}
-                    onValueChange={(v) =>
-                      setRequestBodyType(v as HttpRequestBodyType)
-                    }
-                    items={REQUEST_BODY_TYPE_OPTIONS}
+                {/* Response Configuration */}
+                <div className="space-y-4">
+                  <Field
+                    data-invalid={!!actionData?.errors?.responseStatusCode}
                   >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select body type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {REQUEST_BODY_TYPE_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
-
-                {/* Response Body Type */}
-                <Field>
-                  <FieldLabel>Response Body Type</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="responseBodyType"
-                    value={responseBodyType}
-                  />
-                  <Select
-                    value={responseBodyType}
-                    onValueChange={(v) =>
-                      setResponseBodyType(v as HttpResponseBodyType)
-                    }
-                    items={RESPONSE_BODY_TYPE_OPTIONS}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select body type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {RESPONSE_BODY_TYPE_OPTIONS.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </Field>
+                    <FieldLabel htmlFor="responseStatusCode">
+                      Response Status Code
+                    </FieldLabel>
+                    <Input
+                      id="responseStatusCode"
+                      name="responseStatusCode"
+                      placeholder="e.g., 200"
+                      defaultValue={
+                        httpConfig?.responseStatusCode !== undefined &&
+                        httpConfig?.responseStatusCode !== 0
+                          ? String(httpConfig.responseStatusCode)
+                          : ""
+                      }
+                    />
+                    <FieldError>
+                      {actionData?.errors?.responseStatusCode}
+                    </FieldError>
+                  </Field>
+                  <Field>
+                    <FieldLabel>Response Body Type</FieldLabel>
+                    <input
+                      type="hidden"
+                      name="responseBodyType"
+                      value={responseBodyType}
+                    />
+                    <Select
+                      value={responseBodyType}
+                      onValueChange={(v) =>
+                        setResponseBodyType(v as HttpResponseBodyType)
+                      }
+                      items={RESPONSE_BODY_TYPE_OPTIONS}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select body type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {RESPONSE_BODY_TYPE_OPTIONS.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -892,8 +793,8 @@ export default function EditProfile() {
             <CardTitle>Transformers</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-4">
-              <div className="text-sm font-medium">Request Transformers</div>
+            <div className="space-y-3">
+              <FieldLabel>Request Transformers</FieldLabel>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
@@ -908,7 +809,7 @@ export default function EditProfile() {
                     items={COMPRESSION_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Compression" />
+                      <SelectValue placeholder="Select compression" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -934,7 +835,7 @@ export default function EditProfile() {
                     items={ENCRYPTION_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Encryption" />
+                      <SelectValue placeholder="Select encryption" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -960,7 +861,7 @@ export default function EditProfile() {
                     items={ENCODING_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Encoding" />
+                      <SelectValue placeholder="Select encoding" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -976,8 +877,8 @@ export default function EditProfile() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="text-sm font-medium">Response Transformers</div>
+            <div className="space-y-3">
+              <FieldLabel>Response Transformers</FieldLabel>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
@@ -992,7 +893,7 @@ export default function EditProfile() {
                     items={COMPRESSION_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Compression" />
+                      <SelectValue placeholder="Select compression" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -1018,7 +919,7 @@ export default function EditProfile() {
                     items={ENCRYPTION_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Encryption" />
+                      <SelectValue placeholder="Select encryption" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
@@ -1044,7 +945,7 @@ export default function EditProfile() {
                     items={ENCODING_OPTIONS}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Encoding" />
+                      <SelectValue placeholder="Select encoding" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
