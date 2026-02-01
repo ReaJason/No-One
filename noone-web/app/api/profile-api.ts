@@ -1,7 +1,12 @@
-import {createLoader, parseAsInteger, parseAsString, parseAsStringEnum,} from "nuqs/server";
-import type {CreateProfileRequest, Profile} from "@/types/profile";
-import type {PaginatedResponse} from "./api-client";
-import {apiClient} from "./api-client";
+import {
+  createLoader,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
+import type { CreateProfileRequest, Profile } from "@/types/profile";
+import type { PaginatedResponse } from "./api-client";
+import { apiClient } from "./api-client";
 
 const baseUrl = "/profiles";
 

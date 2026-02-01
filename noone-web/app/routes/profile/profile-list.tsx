@@ -1,18 +1,18 @@
-import {Download, Plus} from "lucide-react";
-import React, {use} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {Link, useLoaderData} from "react-router";
-import type {PaginatedResponse} from "@/api/api-client";
-import {getProfiles, loadProfileSearchParams} from "@/api/profile-api";
-import {DataTable} from "@/components/data-table/data-table";
-import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
-import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
-import {ProfileTableActionBar} from "@/components/profile/profile-action-bar";
-import {profileColumns} from "@/components/profile/profile-columns";
-import {Button} from "@/components/ui/button";
-import {useDataTable} from "@/hooks/use-data-table";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
-import type {Profile} from "@/types/profile";
+import { Download, Plus } from "lucide-react";
+import React, { use } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import type { PaginatedResponse } from "@/api/api-client";
+import { getProfiles, loadProfileSearchParams } from "@/api/profile-api";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { ProfileTableActionBar } from "@/components/profile/profile-action-bar";
+import { profileColumns } from "@/components/profile/profile-columns";
+import { Button } from "@/components/ui/button";
+import { useDataTable } from "@/hooks/use-data-table";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
+import type { Profile } from "@/types/profile";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { name, protocolType, page, perPage, sortBy, sortOrder } =

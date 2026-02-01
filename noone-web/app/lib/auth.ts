@@ -1,6 +1,6 @@
-import {createCookieSessionStorage} from "react-router";
-import type {User} from "@/types/admin";
-import {apiClient} from "../api/api-client";
+import { createCookieSessionStorage } from "react-router";
+import type { User } from "@/types/admin";
+import { apiClient } from "../api/api-client";
 
 export const sessionStorage = createCookieSessionStorage({
   cookie: {

@@ -1,22 +1,35 @@
-import {ArrowLeft, ChevronDown, Edit, Settings, Wifi} from "lucide-react";
-import {useState} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {Form, useActionData, useLoaderData, useNavigate} from "react-router";
-import {toast} from "sonner";
-import {getAllProfiles} from "@/api/profile-api";
-import {getAllProjects} from "@/api/project-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Collapsible, CollapsibleContent, CollapsibleTrigger,} from "@/components/ui/collapsible";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
-import {getShellConnectionById, testShellConfig,} from "@/lib/shell-connection-api";
-import type {Profile} from "@/types/profile";
-import type {Project} from "@/types/project";
-import type {ShellConnection} from "@/types/shell-connection";
+import { ArrowLeft, ChevronDown, Edit, Settings, Wifi } from "lucide-react";
+import { useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Form, useActionData, useLoaderData, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { getAllProfiles } from "@/api/profile-api";
+import { getAllProjects } from "@/api/project-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
+import {
+  getShellConnectionById,
+  testShellConfig,
+} from "@/lib/shell-connection-api";
+import type { Profile } from "@/types/profile";
+import type { Project } from "@/types/project";
+import type { ShellConnection } from "@/types/shell-connection";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;

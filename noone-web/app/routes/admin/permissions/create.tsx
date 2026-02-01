@@ -1,12 +1,12 @@
-import {ArrowLeft, Plus, Shield} from "lucide-react";
-import type {ActionFunctionArgs} from "react-router";
-import {Form, redirect, useActionData, useNavigate} from "react-router";
-import {toast} from "sonner";
-import {createPermission} from "@/api/permission-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
+import { ArrowLeft, Plus, Shield } from "lucide-react";
+import type { ActionFunctionArgs } from "react-router";
+import { Form, redirect, useActionData, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { createPermission } from "@/api/permission-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();

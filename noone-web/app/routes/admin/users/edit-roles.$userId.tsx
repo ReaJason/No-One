@@ -1,13 +1,18 @@
-import {ArrowLeft, User, Users} from "lucide-react";
-import type {LoaderFunctionArgs} from "react-router";
-import {useActionData, useFetcher, useLoaderData, useNavigate,} from "react-router";
-import {getAllRoles} from "@/api/role-api";
-import {getUserById} from "@/api/user-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Label} from "@/components/ui/label";
-import type {Role, User as UserType} from "@/types/admin";
+import { ArrowLeft, User, Users } from "lucide-react";
+import type { LoaderFunctionArgs } from "react-router";
+import {
+  useActionData,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+} from "react-router";
+import { getAllRoles } from "@/api/role-api";
+import { getUserById } from "@/api/user-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import type { Role, User as UserType } from "@/types/admin";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const userId = parseInt(params.userId as string, 10);

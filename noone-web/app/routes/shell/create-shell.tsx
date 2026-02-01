@@ -1,13 +1,19 @@
-import {ArrowLeft, Plus, Wifi} from "lucide-react";
-import {useState} from "react";
-import type {ActionFunctionArgs, LoaderFunctionArgs} from "react-router";
-import {Form, redirect, useActionData, useLoaderData, useNavigate,} from "react-router";
-import {toast} from "sonner";
-import {getAllProfiles} from "@/api/profile-api";
-import {getAllProjects} from "@/api/project-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Checkbox} from "@/components/ui/checkbox";
+import { ArrowLeft, Plus, Wifi } from "lucide-react";
+import { useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import {
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+} from "react-router";
+import { toast } from "sonner";
+import { getAllProfiles } from "@/api/profile-api";
+import { getAllProjects } from "@/api/project-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
   FieldContent,
@@ -18,12 +24,22 @@ import {
   FieldLegend,
   FieldSet,
 } from "@/components/ui/field";
-import {Input} from "@/components/ui/input";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
-import {createShellConnection, testShellConfig,} from "@/lib/shell-connection-api";
-import type {Profile} from "@/types/profile";
-import type {Project} from "@/types/project";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
+import {
+  createShellConnection,
+  testShellConfig,
+} from "@/lib/shell-connection-api";
+import type { Profile } from "@/types/profile";
+import type { Project } from "@/types/project";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);

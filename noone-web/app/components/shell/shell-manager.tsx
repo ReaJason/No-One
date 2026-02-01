@@ -1,11 +1,11 @@
-import {Info, Loader2, RefreshCw, Terminal, X} from "lucide-react";
-import {useCallback, useEffect, useState} from "react";
+import { Info, Loader2, RefreshCw, Terminal, X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import * as shellApi from "@/api/shell-api";
-import {JavaSystemMonitor} from "@/components/system-info";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Tabs, TabsContent, TabsList, TabsTrigger} from "@/components/ui/tabs";
-import type {ShellConnection} from "@/types/shell-connection";
+import { JavaSystemMonitor } from "@/components/system-info";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { ShellConnection } from "@/types/shell-connection";
 
 interface ShellManagerProps {
   shell: ShellConnection;

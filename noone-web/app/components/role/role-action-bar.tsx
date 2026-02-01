@@ -1,13 +1,13 @@
-import type {Table} from "@tanstack/react-table";
-import {Download, Trash2} from "lucide-react";
-import {toast} from "sonner";
+import type { Table } from "@tanstack/react-table";
+import { Download, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import {
-    DataTableActionBar,
-    DataTableActionBarAction,
-    DataTableActionBarSelection,
+  DataTableActionBar,
+  DataTableActionBarAction,
+  DataTableActionBarSelection,
 } from "@/components/data-table/data-table-action-bar";
-import {Separator} from "@/components/ui/separator";
-import type {Role} from "@/types/admin";
+import { Separator } from "@/components/ui/separator";
+import type { Role } from "@/types/admin";
 
 interface RoleTableActionBarProps {
   table: Table<Role>;

@@ -1,32 +1,41 @@
-import type {ColumnDef} from "@tanstack/react-table";
-import {CalendarIcon, Loader, MoreHorizontal, Settings, Text, Trash2, UserCheck, UserX,} from "lucide-react";
-import React, {useMemo, useState} from "react";
-import {Link, useFetcher} from "react-router";
-import {DataTableColumnHeader} from "@/components/data-table/data-table-column-header";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  CalendarIcon,
+  Loader,
+  MoreHorizontal,
+  Settings,
+  Text,
+  Trash2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Checkbox} from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {formatDate} from "@/lib/format";
-import type {Role, User} from "@/types/admin";
+import { formatDate } from "@/lib/format";
+import type { Role, User } from "@/types/admin";
 
 const StatusBadge = React.memo(({ status }: { status: boolean }) => {
   return status === true ? (

@@ -1,19 +1,35 @@
-import {Activity, Calendar, Clock, Filter, Globe, Plus, Search, Server, Terminal,} from "lucide-react";
-import {useMemo, useState} from "react";
-import {useParams} from "react-router";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
 import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
+  Activity,
+  Calendar,
+  Clock,
+  Filter,
+  Globe,
+  Plus,
+  Search,
+  Server,
+  Terminal,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
 } from "@/components/ui/pagination";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ShellConnection {
   id: string;

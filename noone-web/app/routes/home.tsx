@@ -1,11 +1,11 @@
-import {Activity, Cable, Calendar, Folder, TrendingUp} from "lucide-react";
-import {useState} from "react";
-import {Link, type LoaderFunctionArgs} from "react-router";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {authUtils} from "@/lib/auth";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
+import { Activity, Cable, Calendar, Folder, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Link, type LoaderFunctionArgs } from "react-router";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { authUtils } from "@/lib/auth";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 
 interface Project {
   id: string;

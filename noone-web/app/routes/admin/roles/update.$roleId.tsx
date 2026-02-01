@@ -1,7 +1,7 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {toast} from "sonner";
-import {updateRole} from "@/api/role-api";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { toast } from "sonner";
+import { updateRole } from "@/api/role-api";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const roleId = parseInt(params.roleId as string, 10);

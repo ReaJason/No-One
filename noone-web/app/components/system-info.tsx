@@ -1,27 +1,27 @@
 import {
-    Activity,
-    ChevronDown,
-    ChevronRight,
-    Clock,
-    Code,
-    Copy,
-    Database,
-    Eye,
-    Folder,
-    Globe,
-    Network,
-    Search,
-    Server,
-    Settings,
-    Terminal,
-    User,
+  Activity,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Code,
+  Copy,
+  Database,
+  Eye,
+  Folder,
+  Globe,
+  Network,
+  Search,
+  Server,
+  Settings,
+  Terminal,
+  User,
 } from "lucide-react";
-import {useCallback, useMemo, useState} from "react";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Input} from "@/components/ui/input";
-import {ScrollArea} from "@/components/ui/scroll-area";
+import { useCallback, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ApiSystemInfo {
   memoryInfo?: {

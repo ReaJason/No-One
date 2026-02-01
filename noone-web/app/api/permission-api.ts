@@ -1,6 +1,11 @@
-import {createLoader, parseAsInteger, parseAsString, parseAsStringEnum,} from "nuqs/server";
-import type {Permission} from "@/types/admin";
-import {apiClient, type PaginatedResponse} from "./api-client";
+import {
+  createLoader,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
+import type { Permission } from "@/types/admin";
+import { apiClient, type PaginatedResponse } from "./api-client";
 
 export interface PermissionSearchParams {
   name?: string | null;

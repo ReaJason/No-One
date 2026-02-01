@@ -1,6 +1,11 @@
-import {createLoader, parseAsInteger, parseAsString, parseAsStringEnum,} from "nuqs/server";
-import type {Project} from "@/types/project";
-import {apiClient, type PaginatedResponse} from "./api-client";
+import {
+  createLoader,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
+import type { Project } from "@/types/project";
+import { apiClient, type PaginatedResponse } from "./api-client";
 
 const baseUrl = "/projects";
 

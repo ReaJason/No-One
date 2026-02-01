@@ -1,16 +1,21 @@
-import {ArrowLeft, Edit, FolderTree} from "lucide-react";
-import {useMemo, useState} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {useActionData, useFetcher, useLoaderData, useNavigate,} from "react-router";
-import {getAllPermissions} from "@/api/permission-api";
-import {getRoleById} from "@/api/role-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import type {Permission, Role} from "@/types/admin";
+import { ArrowLeft, Edit, FolderTree } from "lucide-react";
+import { useMemo, useState } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import {
+  useActionData,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+} from "react-router";
+import { getAllPermissions } from "@/api/permission-api";
+import { getRoleById } from "@/api/role-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Permission, Role } from "@/types/admin";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const roleId = parseInt(params.roleId as string, 10);

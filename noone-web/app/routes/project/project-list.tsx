@@ -1,17 +1,17 @@
-import {Download, Plus} from "lucide-react";
-import React, {use} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {Link, useLoaderData} from "react-router";
-import type {PaginatedResponse} from "@/api/api-client";
-import {getProjects, loadProjectSearchParams} from "@/api/project-api";
-import {DataTable} from "@/components/data-table/data-table";
-import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
-import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
-import {ProjectTableActionBar} from "@/components/project/project-action-bar";
-import {projectColumns} from "@/components/project/project-columns";
-import {Button} from "@/components/ui/button";
-import {useDataTable} from "@/hooks/use-data-table";
-import type {Project} from "@/types/project";
+import { Download, Plus } from "lucide-react";
+import React, { use } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import type { PaginatedResponse } from "@/api/api-client";
+import { getProjects, loadProjectSearchParams } from "@/api/project-api";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { ProjectTableActionBar } from "@/components/project/project-action-bar";
+import { projectColumns } from "@/components/project/project-columns";
+import { Button } from "@/components/ui/button";
+import { useDataTable } from "@/hooks/use-data-table";
+import type { Project } from "@/types/project";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } =

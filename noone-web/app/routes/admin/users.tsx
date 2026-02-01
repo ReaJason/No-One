@@ -1,20 +1,20 @@
-import {Download, Plus} from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import * as React from "react";
-import {use} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {Link, useLoaderData} from "react-router";
-import type {PaginatedResponse} from "@/api/api-client";
-import {getAllRoles} from "@/api/role-api";
-import {getUsers, loadUserSearchParams} from "@/api/user-api";
-import {DataTable} from "@/components/data-table/data-table";
-import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
-import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
-import {Button} from "@/components/ui/button";
-import {UsersTableActionBar} from "@/components/user/user-action-bar";
-import {useUserColumns} from "@/components/user/user-columns";
-import {useDataTable} from "@/hooks/use-data-table";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
-import type {User} from "@/types/admin";
+import { use } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import type { PaginatedResponse } from "@/api/api-client";
+import { getAllRoles } from "@/api/role-api";
+import { getUsers, loadUserSearchParams } from "@/api/user-api";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { Button } from "@/components/ui/button";
+import { UsersTableActionBar } from "@/components/user/user-action-bar";
+import { useUserColumns } from "@/components/user/user-columns";
+import { useDataTable } from "@/hooks/use-data-table";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
+import type { User } from "@/types/admin";
 
 export const handle = createBreadcrumb(() => ({
   id: "users",

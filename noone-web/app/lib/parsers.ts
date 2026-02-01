@@ -1,9 +1,9 @@
-import {createParser} from "nuqs/server";
-import {z} from "zod";
+import { createParser } from "nuqs/server";
+import { z } from "zod";
 
-import {dataTableConfig} from "@/config/data-table";
+import { dataTableConfig } from "@/config/data-table";
 
-import type {ExtendedColumnFilter} from "@/types/data-table";
+import type { ExtendedColumnFilter } from "@/types/data-table";
 
 // Single sorting parser - no longer needed as we use simple string parsers
 // Keeping this file for filter parsers only

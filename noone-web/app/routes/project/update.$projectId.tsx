@@ -1,8 +1,8 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {toast} from "sonner";
-import {updateProject} from "@/api/project-api";
-import type {Project} from "@/types/project";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { toast } from "sonner";
+import { updateProject } from "@/api/project-api";
+import type { Project } from "@/types/project";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const projectId = params.projectId as string | undefined;

@@ -1,26 +1,33 @@
-import {ArrowLeft, Plus} from "lucide-react";
-import {useEffect, useRef, useState} from "react";
-import type {ActionFunctionArgs, LoaderFunctionArgs} from "react-router";
-import {Form, redirect, useActionData, useNavigate} from "react-router";
-import {toast} from "sonner";
-import {createProfile} from "@/api/profile-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Field, FieldError, FieldLabel} from "@/components/ui/field";
-import {Input} from "@/components/ui/input";
-import {Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
-import {Textarea} from "@/components/ui/textarea";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
+import { ArrowLeft, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { Form, redirect, useActionData, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { createProfile } from "@/api/profile-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import type {
-    CreateProfileRequest,
-    HttpProtocolConfig,
-    HttpRequestBodyType,
-    HttpResponseBodyType,
-    IdentifierConfig,
-    IdentifierLocation,
-    IdentifierOperator,
-    ProtocolType,
-    WebSocketProtocolConfig,
+  CreateProfileRequest,
+  HttpProtocolConfig,
+  HttpRequestBodyType,
+  HttpResponseBodyType,
+  IdentifierConfig,
+  IdentifierLocation,
+  IdentifierOperator,
+  ProtocolType,
+  WebSocketProtocolConfig,
 } from "@/types/profile";
 
 const DEFAULT_REQUEST_TEMPLATES: Record<HttpRequestBodyType, string> = {
@@ -804,14 +811,14 @@ export default function CreateProfile() {
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
                   <input
-                      type="hidden"
-                      name="requestCompression"
-                      value={reqCompression}
+                    type="hidden"
+                    name="requestCompression"
+                    value={reqCompression}
                   />
                   <Select
-                      value={reqCompression}
-                      onValueChange={(v) => setReqCompression(v ?? "none")}
-                      items={COMPRESSION_OPTIONS}
+                    value={reqCompression}
+                    onValueChange={(v) => setReqCompression(v ?? "none")}
+                    items={COMPRESSION_OPTIONS}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select compression" />
@@ -819,9 +826,9 @@ export default function CreateProfile() {
                     <SelectContent>
                       <SelectGroup>
                         {COMPRESSION_OPTIONS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
                         ))}
                       </SelectGroup>
                     </SelectContent>
@@ -888,14 +895,14 @@ export default function CreateProfile() {
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
                   <input
-                      type="hidden"
-                      name="responseCompression"
-                      value={resCompression}
+                    type="hidden"
+                    name="responseCompression"
+                    value={resCompression}
                   />
                   <Select
-                      value={resCompression}
-                      onValueChange={(v) => setResCompression(v ?? "none")}
-                      items={COMPRESSION_OPTIONS}
+                    value={resCompression}
+                    onValueChange={(v) => setResCompression(v ?? "none")}
+                    items={COMPRESSION_OPTIONS}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select compression" />
@@ -903,9 +910,9 @@ export default function CreateProfile() {
                     <SelectContent>
                       <SelectGroup>
                         {COMPRESSION_OPTIONS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
                         ))}
                       </SelectGroup>
                     </SelectContent>

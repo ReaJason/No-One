@@ -1,6 +1,6 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {updateUser} from "@/api/user-api";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { updateUser } from "@/api/user-api";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const userId = parseInt(params.userId as string, 10);

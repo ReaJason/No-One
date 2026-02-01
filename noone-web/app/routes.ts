@@ -1,4 +1,10 @@
-import {index, layout, prefix, route, type RouteConfig,} from "@react-router/dev/routes";
+import {
+  index,
+  layout,
+  prefix,
+  type RouteConfig,
+  route,
+} from "@react-router/dev/routes";
 
 export default [
   route("/shells/:shellId", "routes/shell/shell-manager.tsx"),

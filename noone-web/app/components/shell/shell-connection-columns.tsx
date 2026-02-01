@@ -1,23 +1,35 @@
-import type {ColumnDef} from "@tanstack/react-table";
-import {AlertCircle, Edit, MoreHorizontal, Terminal, Trash2, Wifi, WifiOff,} from "lucide-react";
-import {useNavigate} from "react-router";
-import {toast} from "sonner";
-import {DataTableColumnHeader} from "@/components/data-table/data-table-column-header";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Checkbox} from "@/components/ui/checkbox";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  AlertCircle,
+  Edit,
+  MoreHorizontal,
+  Terminal,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {formatDate} from "@/lib/format";
-import {deleteShellConnection} from "@/lib/shell-connection-api";
-import type {ShellConnection, ShellStatus, ShellType,} from "@/types/shell-connection";
+import { formatDate } from "@/lib/format";
+import { deleteShellConnection } from "@/lib/shell-connection-api";
+import type {
+  ShellConnection,
+  ShellStatus,
+  ShellType,
+} from "@/types/shell-connection";
 
 const shellTypeLabels: Record<ShellType, string> = {
   WEBSHELL: "Webshell",

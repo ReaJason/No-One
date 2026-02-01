@@ -1,6 +1,6 @@
-import type {ReactNode} from "react";
-import type {Params} from "react-router";
-import {useMatches} from "react-router";
+import type { ReactNode } from "react";
+import type { Params } from "react-router";
+import { useMatches } from "react-router";
 
 export interface BreadcrumbDefinition {
   id?: string;

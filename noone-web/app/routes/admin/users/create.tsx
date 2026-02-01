@@ -1,15 +1,21 @@
-import {ArrowLeft, Plus, User} from "lucide-react";
-import type {ActionFunctionArgs} from "react-router";
-import {Form, redirect, useActionData, useLoaderData, useNavigate,} from "react-router";
-import {toast} from "sonner";
-import {getAllRoles} from "@/api/role-api";
-import {createUser} from "@/api/user-api";
-import {Button} from "@/components/ui/button";
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card";
-import {Checkbox} from "@/components/ui/checkbox";
-import {Input} from "@/components/ui/input";
-import {Label} from "@/components/ui/label";
-import type {Role} from "@/types/admin";
+import { ArrowLeft, Plus, User } from "lucide-react";
+import type { ActionFunctionArgs } from "react-router";
+import {
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+} from "react-router";
+import { toast } from "sonner";
+import { getAllRoles } from "@/api/role-api";
+import { createUser } from "@/api/user-api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { Role } from "@/types/admin";
 
 export async function loader() {
   // Load roles for the select dropdown

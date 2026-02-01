@@ -1,32 +1,39 @@
-import type {ColumnDef} from "@tanstack/react-table";
-import {Edit, Loader, MoreHorizontal, Text, Trash2, Users,} from "lucide-react";
-import {useState} from "react";
-import {Link, useFetcher} from "react-router";
-import {DataTableColumnHeader} from "@/components/data-table/data-table-column-header";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
+  Edit,
+  Loader,
+  MoreHorizontal,
+  Text,
+  Trash2,
+  Users,
+} from "lucide-react";
+import { useState } from "react";
+import { Link, useFetcher } from "react-router";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {Checkbox} from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {formatDate} from "@/lib/format";
-import type {Permission} from "@/types/admin";
+import { formatDate } from "@/lib/format";
+import type { Permission } from "@/types/admin";
 
 export const permissionColumns: ColumnDef<Permission>[] = [
   {

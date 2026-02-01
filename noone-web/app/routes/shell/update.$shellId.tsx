@@ -1,7 +1,7 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {toast} from "sonner";
-import {updateShellConnection} from "@/lib/shell-connection-api";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { toast } from "sonner";
+import { updateShellConnection } from "@/lib/shell-connection-api";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const shellId = params.shellId as string | undefined;

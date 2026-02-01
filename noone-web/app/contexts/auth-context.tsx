@@ -1,6 +1,6 @@
-import {useLoaderData} from "react-router";
-import type {AuthState} from "@/lib/auth-context";
-import type {User} from "@/types/admin";
+import { useLoaderData } from "react-router";
+import type { AuthState } from "@/lib/auth-context";
+import type { User } from "@/types/admin";
 
 // 权限验证Hook - 基于loader数据
 export function useAuth(): AuthState {

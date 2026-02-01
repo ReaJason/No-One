@@ -1,6 +1,6 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {deletePermission} from "@/api/permission-api";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { deletePermission } from "@/api/permission-api";
 
 export async function action({ params }: ActionFunctionArgs) {
   const permissionId = parseInt(params.permissionId as string, 10);

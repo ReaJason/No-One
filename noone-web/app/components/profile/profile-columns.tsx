@@ -1,22 +1,22 @@
-import type {ColumnDef} from "@tanstack/react-table";
-import {Edit, MoreHorizontal, Trash2} from "lucide-react";
-import {useNavigate} from "react-router";
-import {toast} from "sonner";
-import {deleteProfile} from "@/api/profile-api";
-import {DataTableColumnHeader} from "@/components/data-table/data-table-column-header";
-import {Button} from "@/components/ui/button";
-import {Checkbox} from "@/components/ui/checkbox";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Edit, MoreHorizontal, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { deleteProfile } from "@/api/profile-api";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {formatDate} from "@/lib/format";
-import type {Profile} from "@/types/profile";
+import { formatDate } from "@/lib/format";
+import type { Profile } from "@/types/profile";
 
 export const profileColumns: ColumnDef<Profile>[] = [
   {

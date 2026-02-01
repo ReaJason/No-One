@@ -1,8 +1,8 @@
 // SSR 兼容的认证状态管理 hook
-import {useEffect, useState} from "react";
-import {useLoaderData} from "react-router";
-import {authUtils} from "@/lib/auth";
-import type {User} from "@/types/admin";
+import { useEffect, useState } from "react";
+import { useLoaderData } from "react-router";
+import { authUtils } from "@/lib/auth";
+import type { User } from "@/types/admin";
 
 // 认证状态类型
 export interface AuthState {

@@ -1,7 +1,7 @@
-import type {ActionFunctionArgs} from "react-router";
-import {redirect} from "react-router";
-import {toast} from "sonner";
-import {updatePermission} from "@/api/permission-api";
+import type { ActionFunctionArgs } from "react-router";
+import { redirect } from "react-router";
+import { toast } from "sonner";
+import { updatePermission } from "@/api/permission-api";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const permissionId = parseInt(params.permissionId as string, 10);

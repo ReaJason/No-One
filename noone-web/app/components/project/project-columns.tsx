@@ -1,22 +1,28 @@
-import type {ColumnDef} from "@tanstack/react-table";
-import {CalendarIcon, Edit, MoreHorizontal, Terminal, Trash2,} from "lucide-react";
-import {useNavigate} from "react-router";
-import {toast} from "sonner";
-import {deleteProject} from "@/api/project-api";
-import {DataTableColumnHeader} from "@/components/data-table/data-table-column-header";
-import {Button} from "@/components/ui/button";
-import {Checkbox} from "@/components/ui/checkbox";
+import type { ColumnDef } from "@tanstack/react-table";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuGroup,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
+  CalendarIcon,
+  Edit,
+  MoreHorizontal,
+  Terminal,
+  Trash2,
+} from "lucide-react";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
+import { deleteProject } from "@/api/project-api";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {formatDate} from "@/lib/format";
-import type {Project} from "@/types/project";
+import { formatDate } from "@/lib/format";
+import type { Project } from "@/types/project";
 
 export const projectColumns: ColumnDef<Project>[] = [
   {

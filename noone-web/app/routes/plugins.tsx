@@ -1,15 +1,15 @@
-import {Download, Plus} from "lucide-react";
-import React, {use} from "react";
-import type {LoaderFunctionArgs} from "react-router";
-import {useLoaderData} from "react-router";
-import {DataTable} from "@/components/data-table/data-table";
-import {DataTableSkeleton} from "@/components/data-table/data-table-skeleton";
-import {DataTableToolbar} from "@/components/data-table/data-table-toolbar";
-import {Badge} from "@/components/ui/badge";
-import {Button} from "@/components/ui/button";
-import {useDataTable} from "@/hooks/use-data-table";
-import {createBreadcrumb} from "@/lib/breadcrumb-utils";
-import {formatDate} from "@/lib/format";
+import { Download, Plus } from "lucide-react";
+import React, { use } from "react";
+import type { LoaderFunctionArgs } from "react-router";
+import { useLoaderData } from "react-router";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useDataTable } from "@/hooks/use-data-table";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
+import { formatDate } from "@/lib/format";
 
 // Mock plugin data
 interface Plugin {

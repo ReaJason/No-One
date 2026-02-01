@@ -1,33 +1,33 @@
 import {
-    ArrowLeft,
-    Cable,
-    Command,
-    Folder,
-    Home,
-    Key,
-    Loader,
-    PlugZap2,
-    Settings,
-    Shield,
-    Sparkles,
-    Sprout,
-    UserCheck,
-    Users,
+  ArrowLeft,
+  Cable,
+  Command,
+  Folder,
+  Home,
+  Key,
+  Loader,
+  PlugZap2,
+  Settings,
+  Shield,
+  Sparkles,
+  Sprout,
+  UserCheck,
+  Users,
 } from "lucide-react";
-import {NavLink, useLocation, useParams} from "react-router";
+import { NavLink, useLocation, useParams } from "react-router";
 import {
-    Sidebar,
-    SidebarContent,
-    SidebarFooter,
-    SidebarGroup,
-    SidebarGroupContent,
-    SidebarGroupLabel,
-    SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import {NavUser} from "./nav-user";
+import { NavUser } from "./nav-user";
 
 interface NavItem {
   title: string;

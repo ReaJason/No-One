@@ -1,4 +1,4 @@
-import type {User} from "@/types/admin";
+import type { User } from "@/types/admin";
 
 export interface Project {
   id: string;

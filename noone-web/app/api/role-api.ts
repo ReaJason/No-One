@@ -1,6 +1,11 @@
-import {createLoader, parseAsInteger, parseAsString, parseAsStringEnum,} from "nuqs/server";
-import type {Role} from "@/types/admin";
-import {apiClient, type PaginatedResponse} from "./api-client";
+import {
+  createLoader,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from "nuqs/server";
+import type { Role } from "@/types/admin";
+import { apiClient, type PaginatedResponse } from "./api-client";
 
 const baseUrl = "/roles";
 

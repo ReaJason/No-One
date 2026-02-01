@@ -1,5 +1,8 @@
-import {apiClient, type PaginatedResponse} from "@/api/api-client";
-import type {ShellConnection, ShellConnectionSearchParams,} from "@/types/shell-connection";
+import { apiClient, type PaginatedResponse } from "@/api/api-client";
+import type {
+  ShellConnection,
+  ShellConnectionSearchParams,
+} from "@/types/shell-connection";
 
 const baseUrl = "/shells";
 

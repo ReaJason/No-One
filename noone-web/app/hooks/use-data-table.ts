@@ -1,33 +1,33 @@
 import {
-    type ColumnFiltersState,
-    getCoreRowModel,
-    getFacetedMinMaxValues,
-    getFacetedRowModel,
-    getFacetedUniqueValues,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    type PaginationState,
-    type RowSelectionState,
-    type SortingState,
-    type TableOptions,
-    type TableState,
-    type Updater,
-    useReactTable,
-    type VisibilityState,
+  type ColumnFiltersState,
+  getCoreRowModel,
+  getFacetedMinMaxValues,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type PaginationState,
+  type RowSelectionState,
+  type SortingState,
+  type TableOptions,
+  type TableState,
+  type Updater,
+  useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import {
-    parseAsArrayOf,
-    parseAsInteger,
-    parseAsString,
-    type Parser,
-    useQueryState,
-    type UseQueryStateOptions,
-    useQueryStates,
+  type Parser,
+  parseAsArrayOf,
+  parseAsInteger,
+  parseAsString,
+  type UseQueryStateOptions,
+  useQueryState,
+  useQueryStates,
 } from "nuqs";
 import * as React from "react";
 
-import {useDebouncedCallback} from "@/hooks/use-debounced-callback";
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";

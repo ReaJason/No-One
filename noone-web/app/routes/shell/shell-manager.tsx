@@ -1,7 +1,7 @@
-import {type LoaderFunctionArgs, useLoaderData} from "react-router";
+import { type LoaderFunctionArgs, useLoaderData } from "react-router";
 import ShellManager from "@/components/shell/shell-manager";
-import {getShellConnectionById} from "@/lib/shell-connection-api";
-import type {ShellConnection} from "@/types/shell-connection";
+import { getShellConnectionById } from "@/lib/shell-connection-api";
+import type { ShellConnection } from "@/types/shell-connection";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;

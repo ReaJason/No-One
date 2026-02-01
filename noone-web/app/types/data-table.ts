@@ -1,6 +1,6 @@
-import type {Row, RowData} from "@tanstack/react-table";
-import type {DataTableConfig} from "@/config/data-table";
-import type {FilterItemSchema} from "@/lib/parsers";
+import type { Row, RowData } from "@tanstack/react-table";
+import type { DataTableConfig } from "@/config/data-table";
+import type { FilterItemSchema } from "@/lib/parsers";
 
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData extends RowData, TValue> {
