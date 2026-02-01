@@ -39,6 +39,7 @@ public class JavaMemShellGenerator {
                 .addShellClass(NETTY_HANDLER, NoOneNettyHandler.class)
                 .addShellClass(VALVE, NoOneValve.class)
                 .addShellClass(JAKARTA_VALVE, NoOneValve.class)
+                .addShellClass(ACTION, NoOneStruct2Action.class)
                 .addShellClass(SPRING_WEBFLUX_WEB_FILTER, NoOneWebFilter.class)
                 .addShellClass(SPRING_WEBMVC_INTERCEPTOR, NoOneInterceptor.class)
                 .addShellClass(SPRING_WEBMVC_JAKARTA_INTERCEPTOR, NoOneInterceptor.class)
