@@ -281,7 +281,7 @@ public class HttpClient implements Client {
             try (Response response = client.newCall(request).execute()) {
                 if (isAcceptedStatusCode(response.code())) {
                     ResponseBody body = response.body();
-                    byte[] bytes = body != null ? body.bytes() : new byte[0];
+                    byte[] bytes = body.bytes();
                     return HttpBodyTemplateEngine.extractResponsePayloadBytes(
                             config.getResponseBodyType(),
                             config.getResponseTemplate(),

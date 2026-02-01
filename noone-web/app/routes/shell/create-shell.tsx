@@ -44,18 +44,28 @@ import type { Project } from "@/types/project";
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const projectIdParam = url.searchParams.get("projectId") ?? "";
+  const shellUrlParam = url.searchParams.get("shellUrl") ?? "";
+  const profileIdParam = url.searchParams.get("profileId") ?? "";
   const parsedProjectId = Number(projectIdParam);
   const [projects, profiles] = await Promise.all([
     getAllProjects(),
     getAllProfiles(),
   ]);
   return {
+    shellUrlParam,
+    profileIdParam,
     projects,
     profiles,
     initialProjectId: Number.isFinite(parsedProjectId)
       ? parsedProjectId
       : undefined,
-  } as { projects: Project[]; profiles: Profile[]; initialProjectId?: number };
+  } as {
+    shellUrlParam: string;
+    profileIdParam: string;
+    projects: Project[];
+    profiles: Profile[];
+    initialProjectId?: number;
+  };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -146,10 +156,18 @@ export const handle = createBreadcrumb(() => ({
 }));
 
 export default function CreateShell() {
-  const { projects, profiles, initialProjectId } = useLoaderData() as {
+  const {
+    projects,
+    profiles,
+    initialProjectId,
+    shellUrlParam,
+    profileIdParam,
+  } = useLoaderData() as {
     projects: Project[];
     profiles: Profile[];
     initialProjectId?: number;
+    shellUrlParam?: string;
+    profileIdParam?: string;
   };
   const profileItems = profiles.map((profile) => ({
     label: `${profile.name} (${profile.protocolType})`,
@@ -167,9 +185,9 @@ export default function CreateShell() {
   const [projectId, setProjectId] = useState<string>(
     initialProjectId ? String(initialProjectId) : "",
   );
-  const [profileId, setProfileId] = useState<string>("");
+  const [profileId, setProfileId] = useState<string>(profileIdParam ?? "");
   const [skipSslVerify, setSkipSslVerify] = useState(false);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(shellUrlParam ?? "");
   const [isTesting, setIsTesting] = useState(false);
 
   const handleTestConnection = async () => {

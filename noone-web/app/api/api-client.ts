@@ -1,5 +1,5 @@
-import {ofetch} from "ofetch";
-import {apiConfig} from "@/config/api";
+import { ofetch } from "ofetch";
+import { apiConfig } from "@/config/api";
 
 export interface ApiResponse<T = any> {
   data: T;
@@ -187,7 +187,7 @@ export class ApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       // 清除 cookie
-      // @ts-expect-error - Necessary for cookie management in SSR
+      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
       document.cookie =
         "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       // 重定向到登录页面
@@ -226,6 +226,15 @@ export class ApiClient {
         setTimeout(() => {
           window.location.href = "/auth/login";
         }, 100);
+      }
+
+      const details = error?.details;
+      if ("error" in details) {
+        return {
+          data: details,
+          success: false,
+          message: details?.error,
+        };
       }
 
       throw error;
@@ -366,7 +375,7 @@ export class ApiClient {
     if (typeof window !== "undefined") {
       localStorage.setItem("auth_token", token);
       // 同时设置 cookie 以支持 SSR
-      // @ts-expect-error - Necessary for cookie management in SSR
+      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
       document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
     }
   }
@@ -375,7 +384,7 @@ export class ApiClient {
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth_token");
       // 清除 cookie
-      // @ts-expect-error - Necessary for cookie management in SSR
+      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
       document.cookie =
         "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     }

@@ -31,13 +31,13 @@ import type {
   ShellType,
 } from "@/types/shell-connection";
 
-const shellTypeLabels: Record<ShellType, string> = {
+const _shellTypeLabels: Record<ShellType, string> = {
   WEBSHELL: "Webshell",
   REVERSE: "Reverse",
   BIND: "Bind",
 };
 
-const shellTypeColors: Record<ShellType, string> = {
+const _shellTypeColors: Record<ShellType, string> = {
   WEBSHELL: "bg-blue-100 text-blue-800 hover:bg-blue-100",
   REVERSE: "bg-green-100 text-green-800 hover:bg-green-100",
   BIND: "bg-purple-100 text-purple-800 hover:bg-purple-100",
@@ -61,8 +61,7 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected()
         }
         onCheckedChange={(value: any) =>
           table.toggleAllPageRowsSelected(!!value)
@@ -136,21 +135,6 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
         </Badge>
       ) : (
         <span className="text-sm text-muted-foreground">No project</span>
-      );
-    },
-  },
-  {
-    id: "shellType",
-    accessorKey: "shellType",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Type" />
-    ),
-    cell: ({ row }) => {
-      const shellType = row.getValue("shellType") as ShellType;
-      return (
-        <Badge className={shellTypeColors[shellType]}>
-          {shellTypeLabels[shellType]}
-        </Badge>
       );
     },
   },

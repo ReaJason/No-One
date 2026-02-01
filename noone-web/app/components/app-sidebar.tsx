@@ -94,11 +94,6 @@ const adminItems: NavItem[] = [
 
 const globalItems: NavItem[] = [
   {
-    title: "Generator",
-    url: `/generator`,
-    icon: Sprout,
-  },
-  {
     title: "Profiles",
     url: "/profiles",
     icon: Sparkles,
@@ -129,11 +124,18 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
   const location = useLocation();
   const projectId = params.projectId;
 
-  const dashboardItem: NavItem = {
-    title: "Dashboard",
-    url: "/",
-    icon: Home,
-  };
+  const topItems: NavItem[] = [
+    {
+      title: "Dashboard",
+      url: "/",
+      icon: Home,
+    },
+    {
+      title: "Generator",
+      url: `/generator`,
+      icon: Sprout,
+    },
+  ];
 
   const projectItems: NavItem[] = projectId
     ? [
@@ -190,7 +192,13 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <NavItemRenderer item={dashboardItem} location={location} />
+              {topItems.map((item) => (
+                <NavItemRenderer
+                  key={item.title}
+                  item={item}
+                  location={location}
+                />
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -241,7 +249,7 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
           </>
         )}
         <SidebarGroup>
-          <SidebarGroupLabel>Global</SidebarGroupLabel>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {[projectsItem, shellsItem].map((item) =>
