@@ -1,14 +1,9 @@
 package com.reajason.noone.core;
 
-import com.reajason.javaweb.buddy.TargetJreVersionVisitorWrapper;
+import com.reajason.noone.Constants;
 import com.reajason.noone.core.client.Client;
-import com.reajason.noone.core.client.HttpClient;
-import com.reajason.noone.core.plugin.SystemInfoCollector;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.SneakyThrows;
-import net.bytebuddy.ByteBuddy;
-import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.ClassReader;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -20,158 +15,17 @@ import java.util.Map;
  * @author ReaJason
  * @since 2025/12/13
  */
-public class JavaManager {
-    private static final String ACTION = "action";
-    private static final String CLASSNAME = "className";
-    private static final String PLUGIN = "plugin";
-    private static final String CLASS_BYTES = "classBytes";
-    private static final String ARGS = "args";
-    private static final String METHOD_NAME = "methodName";
+public class JavaConnection extends ShellConnection {
 
-    private static final String REFRESH = "refresh";
-    private static final String CLASS_DEFINE = "classDefine";
-    private static final String CLASS_RUN = "classRun";
-    private static final String PLUGIN_CACHES = "pluginCaches";
-
-    private static final String ACTION_STATUS = "status";
-    private static final String ACTION_RUN = "run";
-    private static final String ACTION_CLEAN = "clean";
-
-    private static final String CODE = "code";
-    private static final String ERROR = "error";
-    private static final String DATA = "data";
-    private static final int SUCCESS = 0;
-    private static final int FAILURE = 1;
-
-    @Setter
-    @Getter
-    private Client client;
-
-    private Map<String, String> serverPluginCaches = new HashMap<>();
-
-    public JavaManager() {
-        this.client = new HttpClient();
+    public JavaConnection(Client client) {
+        super(client);
     }
 
-    public JavaManager(Client client) {
-        this.client = client;
-    }
-
-    /**
-     * 设置服务器地址
-     *
-     * @param url 服务器地址
-     */
-    public void setUrl(String url) {
-        client.setUrl(url);
-    }
-
-    /**
-     * 获取服务器地址
-     *
-     * @return 服务器地址
-     */
-    public String getUrl() {
-        return client.getUrl();
-    }
-
-    /**
-     * 连接到服务器
-     *
-     * @return 是否连接成功
-     */
-    public boolean connect() {
-        return client.connect();
-    }
-
-    /**
-     * 断开与服务器的连接
-     */
-    public void disconnect() {
-        client.disconnect();
-    }
-
-    /**
-     * 检查是否已连接
-     *
-     * @return 是否已连接
-     */
-    public boolean isConnected() {
-        return client.isConnected();
-    }
-
-    /**
-     * 发送请求到服务器（通用方法）
-     *
-     * @param requestMap 请求参数
-     * @return 响应结果，如果请求失败返回包含错误信息的 Map
-     */
-    private Map<String, Object> sendRequest(Map<String, Object> requestMap) {
-        byte[] bytes = serialize(requestMap);
-        byte[] result = client.send(bytes);
-        if (result != null) {
-            return deserialize(result);
-        }
-
-        Map<String, Object> error = new HashMap<>();
-        error.put(ERROR, "Request failed");
-        return error;
-    }
-
-    /**
-     * 执行插件方法的通用方法
-     *
-     * @param plugin     插件名称
-     * @param className  类名
-     * @param classType  类类型（用于 ByteBuddy redefine）
-     * @param methodName 方法名
-     * @param methodArgs 方法参数
-     * @return 操作结果
-     */
-    private Map<String, Object> executePlugin(String plugin, String className, Class<?> classType,
-                                              String methodName, Map<String, Object> methodArgs) {
-        Map<String, Object> requestMap = new HashMap<>();
-        requestMap.put(ACTION, ACTION_RUN);
-        requestMap.put(PLUGIN, plugin);
-        requestMap.put(METHOD_NAME, methodName);
-        if (methodArgs != null) {
-            requestMap.put(ARGS, methodArgs);
-        }
-
-        // 如果插件未加载，添加类定义
-        if (serverPluginCaches.get(plugin) == null) {
-            byte[] classBytes = new ByteBuddy().redefine(classType)
-                    .visit(new TargetJreVersionVisitorWrapper(Opcodes.V1_8))
-                    .name(className).make().getBytes();
-            requestMap.put(CLASSNAME, className);
-            requestMap.put(CLASS_BYTES, classBytes);
-        }
-
-        Map<String, Object> response = sendRequest(requestMap);
-        if (response != null && SUCCESS == (Integer) response.get(CODE)) {
-            serverPluginCaches.put(plugin, className);
-            return (Map<String, Object>) response.get(DATA);
-        }
-        return response;
-    }
-
-    // ==================== 基础功能 ====================
-
-    public boolean test() {
-        Map<String, Object> requestMap = new HashMap<>();
-        requestMap.put(ACTION, ACTION_STATUS);
-
-        Map<String, Object> response = sendRequest(requestMap);
-        if (response != null && SUCCESS == (Integer) response.get(CODE)) {
-            serverPluginCaches = (Map<String, String>) response.get(PLUGIN_CACHES);
-            return true;
-        }
-        return false;
-    }
-
-    public Map<String, Object> getBasicInfo() {
-        return executePlugin("basicInfo", "BasicInfoCollector",
-                SystemInfoCollector.class, "run", null);
+    @Override
+    public void fillLoadPluginRequestMaps(String pluginName, byte[] pluginCodeBytes, Map<String, Object> requestMap) {
+        String className = new ClassReader(pluginCodeBytes).getClassName().replace("/", ".");
+        requestMap.put(Constants.CLASSNAME, className);
+        requestMap.put(Constants.CLASS_BYTES, pluginCodeBytes);
     }
 
     // ==================== 序列化/反序列化 ====================
@@ -188,6 +42,7 @@ public class JavaManager {
     static final byte MAP = 0x10;
 
     @SneakyThrows
+    @Override
     public byte[] serialize(Map<String, Object> map) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
@@ -196,6 +51,7 @@ public class JavaManager {
     }
 
     @SneakyThrows
+    @Override
     public Map<String, Object> deserialize(byte[] data) {
         ByteArrayInputStream bais = new ByteArrayInputStream(data);
         DataInputStream dis = new DataInputStream(bais);

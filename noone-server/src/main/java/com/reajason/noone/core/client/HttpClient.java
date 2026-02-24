@@ -1,5 +1,11 @@
 package com.reajason.noone.core.client;
 
+import com.reajason.noone.core.exception.RequestInterruptedException;
+import com.reajason.noone.core.exception.RequestSendException;
+import com.reajason.noone.core.exception.RequestSerializeException;
+import com.reajason.noone.core.exception.ResponseDecodeException;
+import com.reajason.noone.core.exception.ResponseStatusException;
+import com.reajason.noone.core.exception.ShellRequestException;
 import com.reajason.noone.core.transform.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -132,30 +138,37 @@ public class HttpClient implements Client {
 
     @Override
     public byte[] send(byte[] payload) {
+        TransformationSpec requestSpec;
+        byte[] transformedRequest;
+        Request request;
         try {
-            TransformationSpec requestSpec = TransformationSpec.parse(config.getRequestTransformations());
-            byte[] transformedRequest = TrafficTransformer.outbound(
+            requestSpec = TransformationSpec.parse(config.getRequestTransformations());
+            transformedRequest = TrafficTransformer.outbound(
                     payload,
                     requestSpec,
                     config.getTransformerPassword()
             );
+            request = buildRequest(transformedRequest, requestSpec);
+        } catch (RuntimeException e) {
+            throw new RequestSerializeException("Failed to prepare HTTP request payload", e);
+        }
 
-            Request request = buildRequest(transformedRequest, requestSpec);
-            byte[] extractedResponsePayload = executeWithRetry(request);
-            if (extractedResponsePayload == null) {
-                return null;
-            }
-
-            TransformationSpec responseSpec = TransformationSpec.parse(config.getResponseTransformations());
-            byte[] transformedResponse = TrafficTransformer.inbound(
+        byte[] extractedResponsePayload = executeWithRetry(request);
+        TransformationSpec responseSpec = TransformationSpec.parse(config.getResponseTransformations());
+        byte[] inbound;
+        try {
+            inbound = TrafficTransformer.inbound(
                     extractedResponsePayload,
                     responseSpec,
                     config.getTransformerPassword()
             );
-            return transformedResponse;
-        } catch (Exception e) {
-            return null;
+        } catch (RuntimeException e) {
+            throw new ResponseDecodeException("Failed to decode response payload", e);
         }
+        if (inbound == null) {
+            throw new ResponseDecodeException("Decoded response payload is null");
+        }
+        return inbound;
     }
 
     private Request buildRequest(byte[] payload, TransformationSpec requestSpec) {
@@ -279,25 +292,36 @@ public class HttpClient implements Client {
 
         while (attempts < maxAttempts) {
             try (Response response = client.newCall(request).execute()) {
-                if (isAcceptedStatusCode(response.code())) {
-                    ResponseBody body = response.body();
-                    byte[] bytes = body.bytes();
-                    return HttpBodyTemplateEngine.extractResponsePayloadBytes(
-                            config.getResponseBodyType(),
-                            config.getResponseTemplate(),
-                            bytes
-                    );
+                Integer expectedResponseStatusCode = config.getExpectedResponseStatusCode();
+                int code = response.code();
+                if (expectedResponseStatusCode != null
+                        && expectedResponseStatusCode > 0
+                        && expectedResponseStatusCode != code) {
+                    throw new ResponseStatusException(expectedResponseStatusCode, code);
                 }
-                attempts++;
+                ResponseBody body = response.body();
+                byte[] bytes = body.bytes();
+                if (bytes == null) {
+                    throw new ResponseDecodeException("HTTP response body bytes are null, status: " + code);
+                }
+                byte[] responseDataBytes = HttpBodyTemplateEngine.extractResponsePayloadBytes(
+                        config.getResponseBodyType(),
+                        config.getResponseTemplate(),
+                        bytes
+                );
+                if (responseDataBytes == null) {
+                    throw new ResponseDecodeException("Failed to extract payload from HTTP response body, status: " + code + ", body: " + new String(bytes));
+                }
+                return responseDataBytes;
+            } catch (ResponseStatusException | ResponseDecodeException e) {
+                throw e;
             } catch (IOException e) {
                 attempts++;
                 if (attempts >= maxAttempts) {
-                    return null;
+                    throw new RequestSendException("HTTP request failed after " + attempts + " attempt(s), due to " + e.getMessage(), attempts, e);
                 }
-            }
-
-            if (attempts >= maxAttempts) {
-                return null;
+            } catch (Exception e) {
+                throw new ShellRequestException("Unexpected HTTP request execution failure", false, e);
             }
 
             try {
@@ -307,17 +331,10 @@ public class HttpClient implements Client {
                 }
             } catch (InterruptedException ie) {
                 Thread.currentThread().interrupt();
-                return null;
+                throw new RequestInterruptedException("HTTP retry was interrupted", ie);
             }
         }
-        return null;
+        throw new RequestSendException("HTTP request failed with unknown transport error", attempts, null);
     }
 
-    private boolean isAcceptedStatusCode(int statusCode) {
-        Integer expected = config.getExpectedResponseStatusCode();
-        if (expected != null && expected > 0) {
-            return statusCode == expected;
-        }
-        return statusCode >= 200 && statusCode < 300;
-    }
 }

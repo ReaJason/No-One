@@ -4,12 +4,18 @@ import com.reajason.noone.core.client.ClientConfig;
 import com.reajason.noone.core.client.HttpClient;
 import com.reajason.noone.core.client.HttpRequestBodyType;
 import com.reajason.noone.core.client.HttpResponseBodyType;
+import com.reajason.noone.core.exception.RequestInterruptedException;
+import com.reajason.noone.core.exception.RequestSendException;
+import com.reajason.noone.core.exception.RequestSerializeException;
+import com.reajason.noone.core.exception.ResponseDecodeException;
+import com.reajason.noone.core.exception.ResponseStatusException;
 import com.reajason.noone.core.transform.TrafficTransformer;
 import com.reajason.noone.core.transform.TransformationSpec;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
@@ -130,7 +136,7 @@ class HttpClientTest {
         try {
             String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/test";
             HttpClient client = new HttpClient(url, config);
-            byte[] responsePayload = client.send("abc");
+            byte[] responsePayload = client.send("abc".getBytes(StandardCharsets.UTF_8));
             assertEquals("resp", new String(responsePayload, StandardCharsets.UTF_8));
         } finally {
             server.stop(0);
@@ -181,6 +187,109 @@ class HttpClientTest {
         assertTrue(req.cookie().contains("b=2"));
     }
 
+    @Test
+    void shouldThrowResponseStatusExceptionWhenStatusCodeDoesNotMatchExpectation() {
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> captureAndSend(
+                        ClientConfig.builder()
+                                .requestMethod("POST")
+                                .expectedResponseStatusCode(201)
+                                .build(),
+                        "payload",
+                        "ok",
+                        500
+                )
+        );
+
+        assertEquals(201, exception.getExpectedStatusCode());
+        assertEquals(500, exception.getActualStatusCode());
+    }
+
+    @Test
+    void shouldThrowResponseDecodeExceptionWhenResponseTemplateDoesNotMatchBody() {
+        assertThrows(
+                ResponseDecodeException.class,
+                () -> captureAndSend(
+                        ClientConfig.builder()
+                                .requestMethod("POST")
+                                .responseBodyType(HttpResponseBodyType.JSON)
+                                .responseTemplate("{\"hello\":\"{{payload}}\"}")
+                                .build(),
+                        "payload",
+                        "{\"world\":\"resp\"}",
+                        200
+                )
+        );
+    }
+
+    @Test
+    void shouldThrowRequestSendExceptionAfterRetryExhausted() throws Exception {
+        int unavailablePort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            unavailablePort = socket.getLocalPort();
+        }
+
+        HttpClient client = new HttpClient(
+                "http://127.0.0.1:" + unavailablePort + "/test",
+                ClientConfig.builder()
+                        .connectTimeoutMs(200)
+                        .readTimeoutMs(200)
+                        .maxRetries(1)
+                        .retryDelayMs(1L)
+                        .build()
+        );
+
+        RequestSendException exception = assertThrows(
+                RequestSendException.class,
+                () -> client.send("payload".getBytes(StandardCharsets.UTF_8))
+        );
+        assertEquals(2, exception.getAttempts());
+    }
+
+    @Test
+    void shouldThrowRequestInterruptedExceptionWhenRetrySleepIsInterrupted() throws Exception {
+        int unavailablePort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            unavailablePort = socket.getLocalPort();
+        }
+
+        HttpClient client = new HttpClient(
+                "http://127.0.0.1:" + unavailablePort + "/test",
+                ClientConfig.builder()
+                        .connectTimeoutMs(200)
+                        .readTimeoutMs(200)
+                        .maxRetries(2)
+                        .retryDelayMs(100L)
+                        .build()
+        );
+
+        Thread.currentThread().interrupt();
+        try {
+            assertThrows(
+                    RequestInterruptedException.class,
+                    () -> client.send("payload".getBytes(StandardCharsets.UTF_8))
+            );
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
+    @Test
+    void shouldThrowRequestSerializeExceptionWhenRequestTransformConfigIsInvalid() {
+        HttpClient client = new HttpClient(
+                "http://127.0.0.1:65530/test",
+                ClientConfig.builder()
+                        .requestTransformations(List.of("gzip"))
+                        .build()
+        );
+
+        assertThrows(
+                RequestSerializeException.class,
+                () -> client.send("payload".getBytes(StandardCharsets.UTF_8))
+        );
+    }
+
     private CapturedRequest capture(ClientConfig config, String payload) throws Exception {
         SendResult result = captureAndSend(config, payload, "ok", 200);
         return result.request();
@@ -216,7 +325,7 @@ class HttpClientTest {
         try {
             String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/test";
             HttpClient client = new HttpClient(url, config);
-            byte[] responsePayload = client.send(payload);
+            byte[] responsePayload = client.send(payload.getBytes(StandardCharsets.UTF_8));
             CapturedRequest request = captured.get(5, TimeUnit.SECONDS);
             return new SendResult(request, responsePayload);
         } finally {

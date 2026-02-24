@@ -2,6 +2,8 @@ package com.reajason.noone.server.shell.dto;
 
 import lombok.Data;
 
+import com.reajason.noone.server.shell.ShellLanguage;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -15,6 +17,7 @@ import java.util.Map;
 public class ShellResponse {
     private Long id;
     private String url;
+    private ShellLanguage language;
     private String shellType;
     private String status;
     private String group;

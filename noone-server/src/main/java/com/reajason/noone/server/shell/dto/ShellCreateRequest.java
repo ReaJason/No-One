@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import com.reajason.noone.server.shell.ShellLanguage;
+
 import java.util.Map;
 
 /**
@@ -16,6 +18,8 @@ import java.util.Map;
 public class ShellCreateRequest {
     @NotBlank(message = "URL cannot be blank")
     private String url;
+
+    private ShellLanguage language;
 
     private String group;
 

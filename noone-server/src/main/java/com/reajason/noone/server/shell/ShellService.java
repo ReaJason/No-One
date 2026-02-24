@@ -1,6 +1,10 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.core.JavaManager;
+import com.reajason.noone.Constants;
+import com.reajason.noone.core.ShellConnection;
+import com.reajason.noone.core.exception.*;
+import com.reajason.noone.server.admin.plugin.Plugin;
+import com.reajason.noone.server.admin.plugin.PluginRepository;
 import com.reajason.noone.server.shell.dto.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +16,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Shell service with JavaManager integration
@@ -30,7 +38,10 @@ public class ShellService {
     private ShellRepository shellRepository;
 
     @Resource
-    private JavaManagerProvider javaManagerProvider;
+    private ShellConnectionPool shellConnectionPool;
+
+    @Resource
+    private PluginRepository pluginRepository;
 
     @Resource
     private ShellStatusUpdater shellStatusUpdater;
@@ -86,7 +97,7 @@ public class ShellService {
         Shell shell = shellRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
         shellRepository.delete(shell);
-        javaManagerProvider.evict(id);
+        shellConnectionPool.evict(id);
         log.info("Deleted shell: {}", id);
     }
 
@@ -127,8 +138,8 @@ public class ShellService {
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
 
         try {
-            JavaManager manager = javaManagerProvider.getOrCreateCached(shell);
-            boolean connected = manager.test();
+            ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+            boolean connected = connection.test();
 
             if (connected) {
                 shell.setStatus(ShellStatus.CONNECTED);
@@ -151,9 +162,10 @@ public class ShellService {
      * Test shell configuration without saving to database.
      * Used by create/edit pages to validate connection before saving.
      */
-    public boolean testConfig(ShellTestConfigRequest request) {
+    public Map<String, Object> testConfig(ShellTestConfigRequest request) {
         Shell tempShell = new Shell();
         tempShell.setUrl(request.getUrl());
+        tempShell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         tempShell.setProfileId(request.getProfileId());
         tempShell.setProxyUrl(request.getProxyUrl());
         tempShell.setCustomHeaders(request.getCustomHeaders());
@@ -162,32 +174,42 @@ public class ShellService {
         tempShell.setSkipSslVerify(request.getSkipSslVerify());
         tempShell.setMaxRetries(request.getMaxRetries());
         tempShell.setRetryDelayMs(request.getRetryDelayMs());
-
         try {
-            JavaManager manager = javaManagerProvider.createUncached(tempShell);
-            return manager.test();
+            ShellConnection connection = shellConnectionPool.createUncached(tempShell);
+            return new HashMap<>() {{
+                put("connected", connection.test());
+            }};
+        } catch (ShellRequestException e) {
+            return failureResponse("Test failed: " + safeMessage(e), e);
+        } catch (ShellResponseException e) {
+            return failureResponse("Test failed: " + safeMessage(e), e);
         } catch (Exception e) {
-            log.error("Config test failed for URL: {}", request.getUrl(), e);
-            return false;
+            return failureResponse("Test failed: " + safeMessage(e), e);
         }
     }
 
-    // ==================== JavaManager Integration Operations ====================
-
-    /**
-     * Get system information
-     */
-    public Map<String, Object> getSystemInfo(Long shellId) {
+    public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
+        Shell shell = getShellEntity(shellId);
+        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
         try {
-            Shell shell = getShellEntity(shellId);
-            JavaManager manager = javaManagerProvider.getOrCreateCached(shell);
-            Map<String, Object> result = manager.getBasicInfo();
-            Map<String, Object> response = handleJavaManagerResult(result);
-            shellStatusUpdater.markConnected(shellId);
+            ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+            if (connection.needLoadPlugin(pluginId)) {
+                Optional<Plugin> systemInfoPlugin = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
+                systemInfoPlugin.ifPresent(plugin -> connection.loadPlugin(plugin.getPluginId(), pluginPayloadBytes(shellLanguage, plugin)));
+            }
+            Map<String, Object> result = connection.runPlugin(pluginId, args);
+            Map<String, Object> response = handleShellConnectionResult(result);
+            if (isSuccess(response.get(Constants.CODE))) {
+                shellStatusUpdater.markConnected(shellId);
+            }
             return response;
-        } catch (Exception e) {
+        } catch (ShellRequestException e) {
             shellStatusUpdater.markError(shellId);
-            throw e;
+            return failureResponse("Dispatch failed: " + safeMessage(e), e);
+        } catch (ShellResponseException e) {
+            return failureResponse("Dispatch failed: " + safeMessage(e), e);
+        } catch (Exception e) {
+            return failureResponse("Dispatch failed: " + safeMessage(e), e);
         }
     }
 
@@ -202,19 +224,68 @@ public class ShellService {
     }
 
     /**
-     * Handle JavaManager result and check for errors
+     * Handle ShellConnection result and check for errors
      */
-    private Map<String, Object> handleJavaManagerResult(Map<String, Object> result) {
+    private Map<String, Object> handleShellConnectionResult(Map<String, Object> result) {
         if (result == null) {
-            throw new RuntimeException("JavaManager returned null result");
+            throw new ResponseDecodeException("ShellConnection returned null result");
         }
 
-        // Check if result contains error
-        if (result.containsKey("error")) {
-            throw new RuntimeException("JavaManager error: " + result.get("error"));
+        // Ensure a failure code exists when error details are present.
+        if (result.containsKey(Constants.ERROR) && !result.containsKey(Constants.CODE)) {
+            Map<String, Object> copy = new HashMap<>(result);
+            copy.put(Constants.CODE, Constants.FAILURE);
+            return copy;
         }
 
         return result;
+    }
+
+    private boolean isSuccess(Object codeObj) {
+        if (!(codeObj instanceof Number code)) {
+            return false;
+        }
+        return code.intValue() == Constants.SUCCESS;
+    }
+
+    private Map<String, Object> failureResponse(String message, Throwable e) {
+        Map<String, Object> response = new HashMap<>();
+        response.put(Constants.CODE, Constants.FAILURE);
+        response.put(Constants.ERROR, message != null ? message : "Unknown error");
+        if (e != null) {
+            response.put("errorType", e.getClass().getName());
+            response.put("errorMessage", safeMessage(e));
+            if (e instanceof ShellCommunicationException shellCommunicationException) {
+                response.put("phase", shellCommunicationException.getPhase().name());
+                response.put("retriable", shellCommunicationException.isRetriable());
+            } else {
+                response.put("phase", CommunicationPhase.INTERNAL.name());
+                response.put("retriable", false);
+            }
+        }
+        return response;
+    }
+
+    private String safeMessage(Throwable t) {
+        if (t == null) {
+            return "Unknown error";
+        }
+        String msg = t.getMessage();
+        if (msg == null || msg.isBlank()) {
+            return t.getClass().getSimpleName();
+        }
+        return msg;
+    }
+
+    private byte[] pluginPayloadBytes(ShellLanguage shellLanguage, Plugin plugin) {
+        if (plugin.getPayload() == null || plugin.getPayload().isBlank()) {
+            throw new IllegalArgumentException("Plugin payload is empty: " + plugin.getPluginId());
+        }
+
+        return switch (shellLanguage) {
+            case JAVA -> Base64.getDecoder().decode(plugin.getPayload());
+            case NODEJS -> plugin.getPayload().getBytes(StandardCharsets.UTF_8);
+        };
     }
 
 }

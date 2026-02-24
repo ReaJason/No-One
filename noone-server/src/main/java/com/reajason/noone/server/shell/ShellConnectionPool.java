@@ -1,6 +1,8 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.core.JavaManager;
+import com.reajason.noone.core.JavaConnection;
+import com.reajason.noone.core.NodeJsConnection;
+import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.client.*;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
@@ -22,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
-public class JavaManagerProvider {
+public class ShellConnectionPool {
 
     private static final String SIG_DELIMITER = "\n";
 
@@ -31,7 +33,7 @@ public class JavaManagerProvider {
 
     private final ConcurrentHashMap<Long, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    public JavaManager getOrCreateCached(Shell shell) {
+    public ShellConnection getOrCreateCached(Shell shell) {
         if (shell.getId() == null) {
             return createUncached(shell);
         }
@@ -44,19 +46,19 @@ public class JavaManagerProvider {
                 return existing;
             }
 
-            JavaManager next = createJavaManager(shell, profile);
+            ShellConnection next = createConnection(shell, profile);
             if (existing != null) {
-                safeDisconnect(existing.manager());
+                safeDisconnect(existing.connection());
             }
             return new CacheEntry(signature, next);
         });
 
-        return entry.manager();
+        return entry.connection();
     }
 
-    public JavaManager createUncached(Shell shell) {
+    public ShellConnection createUncached(Shell shell) {
         Profile profile = loadProfile(shell.getProfileId());
-        return createJavaManager(shell, profile);
+        return createConnection(shell, profile);
     }
 
     public void evict(Long shellId) {
@@ -65,7 +67,7 @@ public class JavaManagerProvider {
         }
         CacheEntry removed = cache.remove(shellId);
         if (removed != null) {
-            safeDisconnect(removed.manager());
+            safeDisconnect(removed.connection());
         }
     }
 
@@ -74,7 +76,7 @@ public class JavaManagerProvider {
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found: " + profileId));
     }
 
-    private JavaManager createJavaManager(Shell shell, Profile profile) {
+    private ShellConnection createConnection(Shell shell, Profile profile) {
         ClientConfig config = buildClientConfig(shell, profile);
 
         Client client;
@@ -84,7 +86,15 @@ public class JavaManagerProvider {
             client = new HttpClient(shell.getUrl(), config);
         }
 
-        return new JavaManager(client);
+        ShellLanguage language = effectiveLanguage(shell);
+        return switch (language) {
+            case JAVA -> new JavaConnection(client);
+            case NODEJS -> new NodeJsConnection(client);
+        };
+    }
+
+    private ShellLanguage effectiveLanguage(Shell shell) {
+        return shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
     }
 
     private ClientConfig buildClientConfig(Shell shell, Profile profile) {
@@ -240,6 +250,7 @@ public class JavaManagerProvider {
     private String signature(Shell shell, Profile profile) {
         StringBuilder sb = new StringBuilder();
         sb.append("url=").append(nullToEmpty(shell.getUrl())).append(SIG_DELIMITER);
+        sb.append("language=").append(effectiveLanguage(shell).getValue()).append(SIG_DELIMITER);
         sb.append("profileId=").append(shell.getProfileId()).append(SIG_DELIMITER);
         sb.append("protocolType=").append(profile.getProtocolType()).append(SIG_DELIMITER);
         sb.append("profileUpdatedAt=").append(nullToEmpty(profile.getUpdatedAt())).append(SIG_DELIMITER);
@@ -268,14 +279,15 @@ public class JavaManagerProvider {
         return value == null ? "" : String.valueOf(value);
     }
 
-    private void safeDisconnect(JavaManager manager) {
+    private void safeDisconnect(ShellConnection connection) {
         try {
-            manager.disconnect();
+            connection.disconnect();
         } catch (Exception e) {
-            log.debug("Failed to disconnect JavaManager", e);
+            log.debug("Failed to disconnect ShellConnection", e);
         }
     }
 
-    private record CacheEntry(String signature, JavaManager manager) {
+    private record CacheEntry(String signature, ShellConnection connection) {
     }
 }
+

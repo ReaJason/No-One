@@ -22,6 +22,7 @@ public class ShellMapper {
     public Shell toEntity(ShellCreateRequest request) {
         Shell shell = new Shell();
         shell.setUrl(request.getUrl());
+        shell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         shell.setGroup(request.getGroup());
         shell.setProjectId(request.getProjectId());
         shell.setStatus(ShellStatus.DISCONNECTED);
@@ -53,6 +54,12 @@ public class ShellMapper {
             shell.setProjectId(request.getProjectId());
         }
 
+        if (request.getLanguage() != null) {
+            shell.setLanguage(request.getLanguage());
+        } else if (shell.getLanguage() == null) {
+            shell.setLanguage(ShellLanguage.JAVA);
+        }
+
         // New fields - profileId is required
         shell.setProfileId(request.getProfileId());
         if (request.getProxyUrl() != null) {
@@ -82,6 +89,7 @@ public class ShellMapper {
         ShellResponse response = new ShellResponse();
         response.setId(shell.getId());
         response.setUrl(shell.getUrl());
+        response.setLanguage(shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA);
         response.setStatus(shell.getStatus().name());
         response.setGroup(shell.getGroup());
         response.setProjectId(shell.getProjectId());

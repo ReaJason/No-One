@@ -128,10 +128,6 @@ public final class HttpBodyTemplateEngine {
             String template,
             byte[] responseBytes
     ) {
-        if (responseBytes == null) {
-            return null;
-        }
-
         HttpResponseBodyType resolvedType = type != null ? type : HttpResponseBodyType.TEXT;
         if (isBlank(template)) {
             return new String(responseBytes, StandardCharsets.UTF_8);
@@ -150,10 +146,6 @@ public final class HttpBodyTemplateEngine {
             String template,
             byte[] responseBytes
     ) {
-        if (responseBytes == null) {
-            return null;
-        }
-
         HttpResponseBodyType resolvedType = type != null ? type : HttpResponseBodyType.TEXT;
         if (isBlank(template)) {
             return responseBytes;

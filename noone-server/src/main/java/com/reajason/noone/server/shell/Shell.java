@@ -32,6 +32,10 @@ public class Shell {
     private String url;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "language")
+    private ShellLanguage language = ShellLanguage.JAVA;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ShellStatus status = ShellStatus.DISCONNECTED;
 
@@ -102,4 +106,3 @@ public class Shell {
     @Column(name = "update_time")
     private LocalDateTime updateTime;
 }
-

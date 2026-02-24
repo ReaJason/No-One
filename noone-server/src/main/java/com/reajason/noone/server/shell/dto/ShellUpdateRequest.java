@@ -3,6 +3,8 @@ package com.reajason.noone.server.shell.dto;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import com.reajason.noone.server.shell.ShellLanguage;
+
 import java.util.Map;
 
 /**
@@ -18,6 +20,8 @@ public class ShellUpdateRequest {
     private String status;
     private String group;
     private Long projectId;
+
+    private ShellLanguage language;
 
     @NotNull(message = "Profile ID cannot be null")
     private Long profileId;
