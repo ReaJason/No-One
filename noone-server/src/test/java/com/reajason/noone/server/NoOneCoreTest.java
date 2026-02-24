@@ -1,7 +1,6 @@
 package com.reajason.noone.server;
 
 import com.reajason.noone.core.NoOneCore;
-import com.reajason.noone.core.plugin.SystemInfoCollector;
 import net.bytebuddy.ByteBuddy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +35,6 @@ class NoOneCoreTest {
         String testClass123 = "TestClass_" + System.currentTimeMillis();
         args.put("className", testClass123);
         args.put("classBytes", createSimpleClassBytes(testClass123));
-        args.put("methodName", "run");
 
         // 执行
         Map<String, Object> result = noOneCore.run(args);
@@ -58,14 +56,12 @@ class NoOneCoreTest {
         String testClass123 = "TestClass_" + System.currentTimeMillis();
         args1.put("className", testClass123);
         args1.put("classBytes", createSimpleClassBytes(testClass123));
-        args1.put("methodName", "run");
         noOneCore.run(args1);
 
         // 第二次调用 - 仅使用 plugin
         Map<String, Object> args2 = new HashMap<>();
         args2.put("action", "run");
         args2.put("plugin", "testClass");
-        args2.put("methodName", "run");
 
         Map<String, Object> result = noOneCore.run(args2);
 
@@ -83,10 +79,9 @@ class NoOneCoreTest {
         String testClass123 = "TestClass_" + System.currentTimeMillis();
         args1.put("className", testClass123);
         args1.put("classBytes", createSimpleClassBytes(testClass123));
-        args1.put("methodName", "run");
         noOneCore.run(args1);
 
-        Class<?> oldClass = NoOneCore.loadedPluginCache.get("testClass");
+        Object oldClass = NoOneCore.loadedPluginCache.get("testClass");
 
         // 使用 refresh 重新加载
         Map<String, Object> args2 = new HashMap<>();
@@ -95,15 +90,14 @@ class NoOneCoreTest {
         String testClass456 = "TestClass456_" + System.currentTimeMillis();
         args2.put("className", testClass456);
         args2.put("classBytes", createSimpleClassBytes(testClass456));
-        args2.put("methodName", "run");
         args2.put("refresh", "true");
 
         Map<String, Object> result = noOneCore.run(args2);
 
         // 验证
         assertTrue((Boolean) result.get("classDefine"), "Should redefine class");
-        Class<?> newClass = NoOneCore.loadedPluginCache.get("testClass");
-        assertNotEquals(oldClass, newClass, "Should load a different class instance");
+        Object newClass = NoOneCore.loadedPluginCache.get("testClass");
+        assertNotEquals(oldClass.toString(), newClass.toString(), "Should load a different class instance");
     }
 
     @Test
@@ -116,7 +110,7 @@ class NoOneCoreTest {
         // 查询状态
         Map<String, Object> status = noOneCore.getStatus();
         @SuppressWarnings("unchecked")
-        Map<String, String> caches = (Map<String, String>) status.get("classCaches");
+        Map<String, String> caches = (Map<String, String>) status.get("pluginCaches");
 
         // 验证
         assertEquals(3, caches.size(), "Should have 3 cached classes");
@@ -171,7 +165,6 @@ class NoOneCoreTest {
         // 缺少 plugin
         args.put("className", "TestClass123");
         args.put("classBytes", createSimpleClassBytes("TestClass123"));
-        args.put("methodName", "run");
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             noOneCore.run(args);
@@ -189,7 +182,6 @@ class NoOneCoreTest {
         args.put("plugin", plugin);
         args.put("className", className);
         args.put("classBytes", createSimpleClassBytes(className));
-        args.put("methodName", "run");
         noOneCore.run(args);
     }
 
@@ -199,7 +191,7 @@ class NoOneCoreTest {
      */
     private byte[] createSimpleClassBytes(String className) {
         return new ByteBuddy()
-                .redefine(SystemInfoCollector.class)
+                .redefine(NoOneCoreTest.class)
                 .name(className)
                 .make()
                 .getBytes();

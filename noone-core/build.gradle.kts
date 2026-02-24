@@ -1,6 +1,5 @@
 plugins {
-    java
-    alias(libs.plugins.lombok)
+    `java-library`
 }
 
 group = "com.reajason.noone"
@@ -18,10 +17,4 @@ dependencies {
     implementation(libs.spring.webflux)
     implementation(libs.javax.servlet.api)
     implementation(libs.javax.websocket.api)
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly(libs.junit.platform.launcher)
-}
-
-tasks.test {
-    useJUnitPlatform()
 }

