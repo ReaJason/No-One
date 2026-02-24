@@ -139,9 +139,9 @@
 
     function decode(buffer, charset) {
         try {
-            return buffer.toString(charset);
+            return new TextDecoder(charset).decode(buffer);
         } catch (_e) {
-            return buffer.toString("utf8");
+            return new TextDecoder("utf-8").decode(buffer);
         }
     }
 
