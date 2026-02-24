@@ -1,11 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  CalendarIcon,
-  Edit,
-  MoreHorizontal,
-  Terminal,
-  Trash2,
-} from "lucide-react";
+import { CalendarIcon, Edit, MoreHorizontal, Terminal, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { deleteProject } from "@/api/project-api";
@@ -30,12 +24,9 @@ export const projectColumns: ColumnDef<Project>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
         }
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -55,9 +46,7 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
     cell: ({ row }) => row.getValue("name") as string,
     meta: {
       label: "Project",
@@ -69,17 +58,13 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "code",
     accessorKey: "code",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Code" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
     cell: ({ row }) => row.getValue("code") as string,
   },
   {
     id: "status",
     accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => row.getValue("status") as string,
     meta: {
       label: "Status",
@@ -95,9 +80,7 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created Time" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
     meta: {
       label: "Created At",
@@ -117,11 +100,7 @@ export const projectColumns: ColumnDef<Project>[] = [
       };
 
       const handleDeleteProject = async () => {
-        if (
-          !confirm(
-            "Are you sure you want to delete this project? This action cannot be undone.",
-          )
-        )
+        if (!confirm("Are you sure you want to delete this project? This action cannot be undone."))
           return;
         try {
           await deleteProject(project.id);
@@ -161,10 +140,7 @@ export const projectColumns: ColumnDef<Project>[] = [
                 View Shells
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDeleteProject}
-                className="text-destructive"
-              >
+              <DropdownMenuItem onClick={handleDeleteProject} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>

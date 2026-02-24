@@ -1,9 +1,4 @@
-import {
-  createLoader,
-  parseAsInteger,
-  parseAsString,
-  parseAsStringEnum,
-} from "nuqs/server";
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { CreateProfileRequest, Profile } from "@/types/profile";
 import type { PaginatedResponse } from "./api-client";
 import { apiClient } from "./api-client";
@@ -38,9 +33,7 @@ export async function getProfileById(id: string): Promise<Profile | null> {
   return (await apiClient.get<Profile>(`${baseUrl}/${id}`)).data;
 }
 
-export async function createProfile(
-  payload: CreateProfileRequest,
-): Promise<Profile> {
+export async function createProfile(payload: CreateProfileRequest): Promise<Profile> {
   return (await apiClient.post<Profile>(baseUrl, payload)).data;
 }
 
@@ -57,7 +50,5 @@ export async function deleteProfile(id: string): Promise<boolean> {
 }
 
 export async function getAllProfiles(): Promise<Profile[]> {
-  return (
-    await apiClient.getPaginated<Profile>(baseUrl, { page: 1, perPage: 1000 })
-  ).content;
+  return (await apiClient.getPaginated<Profile>(baseUrl, { page: 1, perPage: 1000 })).content;
 }

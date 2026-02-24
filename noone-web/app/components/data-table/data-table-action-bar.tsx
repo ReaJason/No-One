@@ -5,15 +5,10 @@ import * as React from "react";
 import * as ReactDOM from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-interface DataTableActionBarProps<TData>
-  extends React.ComponentProps<typeof motion.div> {
+interface DataTableActionBarProps<TData> extends React.ComponentProps<typeof motion.div> {
   table: Table<TData>;
   visible?: boolean;
   container?: Element | DocumentFragment | null;
@@ -44,13 +39,11 @@ function DataTableActionBar<TData>({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [table]);
 
-  const container =
-    containerProp ?? (mounted ? globalThis.document?.body : null);
+  const container = containerProp ?? (mounted ? globalThis.document?.body : null);
 
   if (!container) return null;
 
-  const visible =
-    visibleProp ?? table.getFilteredSelectedRowModel().rows.length > 0;
+  const visible = visibleProp ?? table.getFilteredSelectedRowModel().rows.length > 0;
 
   return ReactDOM.createPortal(
     <AnimatePresence>
@@ -76,8 +69,7 @@ function DataTableActionBar<TData>({
   );
 }
 
-interface DataTableActionBarActionProps
-  extends React.ComponentProps<typeof Button> {
+interface DataTableActionBarActionProps extends React.ComponentProps<typeof Button> {
   tooltip?: string;
   isPending?: boolean;
 }
@@ -126,31 +118,21 @@ interface DataTableActionBarSelectionProps<TData> {
   table: Table<TData>;
 }
 
-function DataTableActionBarSelection<TData>({
-  table,
-}: DataTableActionBarSelectionProps<TData>) {
+function DataTableActionBarSelection<TData>({ table }: DataTableActionBarSelectionProps<TData>) {
   const onClearSelection = React.useCallback(() => {
     table.toggleAllRowsSelected(false);
   }, [table]);
 
   return (
     <div className="flex h-7 items-center rounded-md border pr-1 pl-2.5">
-      <span className="whitespace-nowrap text-xs">
+      <span className="text-xs whitespace-nowrap">
         {table.getFilteredSelectedRowModel().rows.length} selected
       </span>
-      <Separator
-        orientation="vertical"
-        className="mr-1 ml-2 data-[orientation=vertical]:h-4"
-      />
+      <Separator orientation="vertical" className="mr-1 ml-2 data-[orientation=vertical]:h-4" />
       <Tooltip>
         <TooltipTrigger
           render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-5"
-              onClick={onClearSelection}
-            >
+            <Button variant="ghost" size="icon" className="size-5" onClick={onClearSelection}>
               <X className="size-3.5" />
             </Button>
           }
@@ -160,7 +142,7 @@ function DataTableActionBarSelection<TData>({
           className="flex items-center gap-2 border bg-accent px-2 py-1 font-semibold text-foreground dark:bg-zinc-900 [&>span]:hidden"
         >
           <p>Clear selection</p>
-          <kbd className="select-none rounded border bg-background px-1.5 py-px font-mono font-normal text-[0.7rem] text-foreground shadow-xs">
+          <kbd className="rounded border bg-background px-1.5 py-px font-mono text-[0.7rem] font-normal text-foreground shadow-xs select-none">
             <abbr title="Escape" className="no-underline">
               Esc
             </abbr>
@@ -171,8 +153,4 @@ function DataTableActionBarSelection<TData>({
   );
 }
 
-export {
-  DataTableActionBar,
-  DataTableActionBarAction,
-  DataTableActionBarSelection,
-};
+export { DataTableActionBar, DataTableActionBarAction, DataTableActionBarSelection };

@@ -32,12 +32,8 @@ export interface LoginResponse {
 
 export class AuthService {
   private baseUrl = "/auth";
-  async getAuthFromRequest(
-    request: Request,
-  ): Promise<{ token: string | null; user: User | null }> {
-    const session = await sessionStorage.getSession(
-      request.headers.get("Cookie"),
-    );
+  async getAuthFromRequest(request: Request): Promise<{ token: string | null; user: User | null }> {
+    const session = await sessionStorage.getSession(request.headers.get("Cookie"));
     const token = session.get(SESSION_KEYS.AUTH_TOKEN) || null;
     const user = session.get(SESSION_KEYS.USER_INFO) || null;
     return { token, user };
@@ -85,14 +81,9 @@ export class AuthService {
   }
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>(
-      `${this.baseUrl}/login`,
-      credentials,
-    );
+    const response = await apiClient.post<LoginResponse>(`${this.baseUrl}/login`, credentials);
 
-    console.log(
-      `[Auth] Login API called for user: ${response.data.user?.username}`,
-    );
+    console.log(`[Auth] Login API called for user: ${response.data.user?.username}`);
     return response.data;
   }
 
@@ -101,17 +92,10 @@ export class AuthService {
     console.log("[Auth] Logout API called");
   }
 
-  async refreshToken(refreshData: {
-    refreshToken: string;
-  }): Promise<LoginResponse> {
-    const response = await apiClient.post<LoginResponse>(
-      `${this.baseUrl}/refresh`,
-      refreshData,
-    );
+  async refreshToken(refreshData: { refreshToken: string }): Promise<LoginResponse> {
+    const response = await apiClient.post<LoginResponse>(`${this.baseUrl}/refresh`, refreshData);
 
-    console.log(
-      `[Auth] Token refresh API called for user: ${response.data.user?.username}`,
-    );
+    console.log(`[Auth] Token refresh API called for user: ${response.data.user?.username}`);
     return response.data;
   }
 
@@ -120,10 +104,7 @@ export class AuthService {
     return response.data;
   }
 
-  async changePassword(
-    oldPassword: string,
-    newPassword: string,
-  ): Promise<void> {
+  async changePassword(oldPassword: string, newPassword: string): Promise<void> {
     await apiClient.post(`${this.baseUrl}/change-password`, {
       oldPassword,
       newPassword,
@@ -145,18 +126,12 @@ export class AuthService {
 export const auth = new AuthService();
 export const authUtils = {
   getAuthFromRequest: (request: Request) => auth.getAuthFromRequest(request),
-  createAuthResponse: (
-    token: string,
-    user: User,
-    expiresIn?: number,
-    request?: Request,
-  ) => auth.createAuthResponse(token, user, expiresIn, request),
-  createLogoutResponse: (request?: Request) =>
-    auth.createLogoutResponse(request),
+  createAuthResponse: (token: string, user: User, expiresIn?: number, request?: Request) =>
+    auth.createAuthResponse(token, user, expiresIn, request),
+  createLogoutResponse: (request?: Request) => auth.createLogoutResponse(request),
   login: (credentials: LoginRequest) => auth.login(credentials),
   logout: () => auth.logout(),
-  refreshToken: (refreshData: { refreshToken: string }) =>
-    auth.refreshToken(refreshData),
+  refreshToken: (refreshData: { refreshToken: string }) => auth.refreshToken(refreshData),
   getCurrentUser: () => auth.getCurrentUser(),
   changePassword: (oldPassword: string, newPassword: string) =>
     auth.changePassword(oldPassword, newPassword),

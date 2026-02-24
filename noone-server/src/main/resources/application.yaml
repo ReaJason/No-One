@@ -9,7 +9,10 @@ spring:
       ddl-auto: update
     open-in-view: false
     database: postgresql
-    show-sql: true
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
   datasource:
     driver-class-name: org.postgresql.Driver
   docker:

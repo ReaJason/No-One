@@ -8,11 +8,7 @@ import { getAllProjects } from "@/api/project-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,13 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import {
-  getShellConnectionById,
-  testShellConfig,
-} from "@/lib/shell-connection-api";
+import { getShellConnectionById, testShellConfig } from "@/api/shell-connection-api";
 import type { Profile } from "@/types/profile";
 import type { Project } from "@/types/project";
-import type { ShellConnection } from "@/types/shell-connection";
+import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;
@@ -71,10 +64,9 @@ export default function EditShell() {
     shell.projectId ? String(shell.projectId) : "none",
   );
   const [profileId, setProfileId] = useState<string>(String(shell.profileId));
+  const [language, setLanguage] = useState<ShellLanguage>(shell.language ?? "java");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [skipSslVerify, setSkipSslVerify] = useState(
-    shell.skipSslVerify ?? false,
-  );
+  const [skipSslVerify, setSkipSslVerify] = useState(shell.skipSslVerify ?? false);
   const [url, setUrl] = useState(shell.url);
   const [isTesting, setIsTesting] = useState(false);
 
@@ -88,11 +80,11 @@ export default function EditShell() {
     try {
       const formElement = document.querySelector("form") as HTMLFormElement;
       const formData = new FormData(formElement);
+      const languageRaw = (formData.get("language") as string)?.trim();
+      const language = (languageRaw === "nodejs" ? "nodejs" : "java") as ShellLanguage;
 
       let customHeaders: Record<string, string> | undefined;
-      const customHeadersRaw = (
-        formData.get("customHeaders") as string
-      )?.trim();
+      const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
       if (customHeadersRaw) {
         try {
           customHeaders = JSON.parse(customHeadersRaw);
@@ -110,22 +102,18 @@ export default function EditShell() {
 
       const result = await testShellConfig({
         url,
+        language,
         profileId: Number(profileId),
         proxyUrl: (formData.get("proxyUrl") as string)?.trim() || undefined,
         customHeaders,
-        connectTimeoutMs: connectTimeoutMsRaw
-          ? Number(connectTimeoutMsRaw)
-          : undefined,
+        connectTimeoutMs: connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined,
         readTimeoutMs: readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined,
         skipSslVerify: skipSslVerify || undefined,
         maxRetries: maxRetriesRaw ? Number(maxRetriesRaw) : undefined,
         retryDelayMs: retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined,
       });
-
       if (result.connected) {
         toast.success("Connection test successful");
-      } else {
-        toast.error("Connection test failed");
       }
     } catch (error: any) {
       toast.error(error?.message || "Connection test failed");
@@ -135,7 +123,7 @@ export default function EditShell() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto max-w-6xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -147,7 +135,7 @@ export default function EditShell() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Edit Shell</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Update shell: <span className="font-semibold">#{shell.id}</span>
         </p>
       </div>
@@ -160,11 +148,7 @@ export default function EditShell() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Form
-            method="post"
-            action={`/shells/update/${shell.id}`}
-            className="space-y-6"
-          >
+          <Form method="post" action={`/shells/update/${shell.id}`} className="space-y-6">
             {actionData?.errors?.general ? (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {actionData.errors.general}
@@ -183,16 +167,14 @@ export default function EditShell() {
                 required
               />
               {actionData?.errors?.url ? (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.url}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.url}</p>
               ) : null}
             </div>
 
             <div className="space-y-2">
               <Label>Profile *</Label>
               <input type="hidden" name="profileId" value={profileId} />
-              <Select value={profileId} onValueChange={setProfileId}>
+              <Select value={profileId} onValueChange={(value) => setProfileId(value ?? "")}>
                 <SelectTrigger
                   className={`w-full ${actionData?.errors?.profileId ? "border-destructive" : ""}`}
                 >
@@ -207,12 +189,35 @@ export default function EditShell() {
                 </SelectContent>
               </Select>
               {actionData?.errors?.profileId ? (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.profileId}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.profileId}</p>
               ) : null}
               <p className="text-xs text-muted-foreground">
                 Profile determines the request format and protocol settings
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Language *</Label>
+              <input type="hidden" name="language" value={language} />
+              <Select
+                value={language}
+                onValueChange={(value) =>
+                  setLanguage((value === "nodejs" ? "nodejs" : "java") as ShellLanguage)
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select language" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="java">Java</SelectItem>
+                  <SelectItem value="nodejs">NodeJs</SelectItem>
+                </SelectContent>
+              </Select>
+              {actionData?.errors?.language ? (
+                <p className="text-sm text-destructive">{actionData.errors.language}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Language determines plugin runtime and encoding
               </p>
             </div>
 
@@ -229,12 +234,8 @@ export default function EditShell() {
 
             <div className="space-y-2">
               <Label>Project</Label>
-              <input
-                type="hidden"
-                name="projectId"
-                value={projectId === "none" ? "" : projectId}
-              />
-              <Select value={projectId} onValueChange={setProjectId}>
+              <input type="hidden" name="projectId" value={projectId === "none" ? "" : projectId} />
+              <Select value={projectId} onValueChange={(value) => setProjectId(value ?? "none")}>
                 <SelectTrigger className="w-64">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
@@ -248,9 +249,7 @@ export default function EditShell() {
                 </SelectContent>
               </Select>
               {actionData?.errors?.projectId ? (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.projectId}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.projectId}</p>
               ) : null}
             </div>
 
@@ -260,7 +259,7 @@ export default function EditShell() {
                 <Button
                   variant="ghost"
                   type="button"
-                  className="flex items-center gap-2 p-0 h-auto"
+                  className="flex h-auto items-center gap-2 p-0"
                 >
                   <Settings className="h-4 w-4" />
                   <span>Advanced Settings</span>
@@ -290,29 +289,20 @@ export default function EditShell() {
                     id="customHeaders"
                     name="customHeaders"
                     type="text"
-                    defaultValue={
-                      shell.customHeaders
-                        ? JSON.stringify(shell.customHeaders)
-                        : ""
-                    }
+                    defaultValue={shell.customHeaders ? JSON.stringify(shell.customHeaders) : ""}
                     placeholder='{"Cookie": "session=xxx", "Authorization": "Bearer xxx"}'
                   />
                   {actionData?.errors?.customHeaders ? (
-                    <p className="text-sm text-destructive">
-                      {actionData.errors.customHeaders}
-                    </p>
+                    <p className="text-sm text-destructive">{actionData.errors.customHeaders}</p>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
-                    Additional headers to include in requests (merged with
-                    profile headers)
+                    Additional headers to include in requests (merged with profile headers)
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="connectTimeoutMs">
-                      Connect Timeout (ms)
-                    </Label>
+                    <Label htmlFor="connectTimeoutMs">Connect Timeout (ms)</Label>
                     <Input
                       id="connectTimeoutMs"
                       name="connectTimeoutMs"
@@ -359,28 +349,18 @@ export default function EditShell() {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  <input
-                    type="hidden"
-                    name="skipSslVerify"
-                    value={skipSslVerify ? "on" : "off"}
-                  />
+                  <input type="hidden" name="skipSslVerify" value={skipSslVerify ? "on" : "off"} />
                   <Checkbox
                     id="skipSslVerify"
                     checked={skipSslVerify}
-                    onCheckedChange={(checked) =>
-                      setSkipSslVerify(checked === true)
-                    }
+                    onCheckedChange={(checked) => setSkipSslVerify(checked === true)}
                   />
-                  <Label
-                    htmlFor="skipSslVerify"
-                    className="text-sm font-normal"
-                  >
+                  <Label htmlFor="skipSslVerify" className="text-sm font-normal">
                     Skip SSL certificate verification
                   </Label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Enable this for self-signed certificates (not recommended for
-                  production)
+                  Enable this for self-signed certificates (not recommended for production)
                 </p>
               </CollapsibleContent>
             </Collapsible>
@@ -397,16 +377,10 @@ export default function EditShell() {
                 disabled={isTesting || !url || !profileId}
                 className="flex items-center gap-2"
               >
-                <Wifi
-                  className={`h-4 w-4 ${isTesting ? "animate-pulse" : ""}`}
-                />
+                <Wifi className={`h-4 w-4 ${isTesting ? "animate-pulse" : ""}`} />
                 {isTesting ? "Testing..." : "Test Connection"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/shells")}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate("/shells")}>
                 Cancel
               </Button>
             </div>

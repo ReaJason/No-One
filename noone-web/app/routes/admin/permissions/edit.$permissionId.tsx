@@ -1,11 +1,6 @@
 import { ArrowLeft, Edit, Shield } from "lucide-react";
 import type { LoaderFunctionArgs } from "react-router";
-import {
-  useActionData,
-  useFetcher,
-  useLoaderData,
-  useNavigate,
-} from "react-router";
+import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
 import { getPermissionById } from "@/api/permission-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +33,7 @@ export default function EditPermission() {
   const fetcher = useFetcher();
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -50,9 +45,8 @@ export default function EditPermission() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Edit Permission</h1>
-        <p className="text-muted-foreground mt-2">
-          Update permission:{" "}
-          <span className="font-semibold">{permission.name}</span>
+        <p className="mt-2 text-muted-foreground">
+          Update permission: <span className="font-semibold">{permission.name}</span>
         </p>
       </div>
 
@@ -86,9 +80,7 @@ export default function EditPermission() {
                 className={actionData?.errors?.name ? "border-destructive" : ""}
               />
               {actionData?.errors?.name && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.name}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.name}</p>
               )}
             </div>
 
@@ -103,13 +95,10 @@ export default function EditPermission() {
                 className={actionData?.errors?.code ? "border-destructive" : ""}
               />
               {actionData?.errors?.code && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.code}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.code}</p>
               )}
               <p className="text-sm text-muted-foreground">
-                Use format like "module:action" (e.g., user:create,
-                admin:manage)
+                Use format like "module:action" (e.g., user:create, admin:manage)
               </p>
             </div>
 

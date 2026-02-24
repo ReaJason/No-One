@@ -17,8 +17,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const errors: Record<string, string> = {};
   if (!name) errors.name = "Role name is required";
-  if (permissionIds.length === 0)
-    errors.permissionIds = "Select at least one permission";
+  if (permissionIds.length === 0) errors.permissionIds = "Select at least one permission";
   if (Object.keys(errors).length > 0) {
     return { errors, success: false };
   }

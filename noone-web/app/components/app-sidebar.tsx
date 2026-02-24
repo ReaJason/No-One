@@ -58,11 +58,7 @@ function NavItemRenderer({ item, location }: NavItemRendererProps) {
             <NavLink to={item.url} viewTransition>
               {({ isPending }) => (
                 <>
-                  {isPending ? (
-                    <Loader className="animate-spin" />
-                  ) : (
-                    <item.icon />
-                  )}
+                  {isPending ? <Loader className="animate-spin" /> : <item.icon />}
                   <span>{item.title}</span>
                 </>
               )}
@@ -175,7 +171,7 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
           <SidebarMenuItem>
             <a href="/" rel="noopener noreferrer">
               <SidebarMenuButton size="lg">
-                <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <Command className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
@@ -193,11 +189,7 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {topItems.map((item) => (
-                <NavItemRenderer
-                  key={item.title}
-                  item={item}
-                  location={location}
-                />
+                <NavItemRenderer key={item.title} item={item} location={location} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -207,11 +199,7 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
           <SidebarGroupContent>
             <SidebarMenu>
               {adminItems.map((item) => (
-                <NavItemRenderer
-                  key={item.title}
-                  item={item}
-                  location={location}
-                />
+                <NavItemRenderer key={item.title} item={item} location={location} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -222,26 +210,17 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
             <SidebarGroup>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  <NavItemRenderer
-                    item={backToProjectsItem}
-                    location={location}
-                  />
+                  <NavItemRenderer item={backToProjectsItem} location={location} />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
 
             <SidebarGroup>
-              <SidebarGroupLabel>
-                {projectName || `Project ${projectId}`}
-              </SidebarGroupLabel>
+              <SidebarGroupLabel>{projectName || `Project ${projectId}`}</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
                   {projectItems.map((item) => (
-                    <NavItemRenderer
-                      key={item.title}
-                      item={item}
-                      location={location}
-                    />
+                    <NavItemRenderer key={item.title} item={item} location={location} />
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>
@@ -254,19 +233,11 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
             <SidebarMenu>
               {[projectsItem, shellsItem].map((item) =>
                 item.condition?.() ? (
-                  <NavItemRenderer
-                    key={item.title}
-                    item={item}
-                    location={location}
-                  />
+                  <NavItemRenderer key={item.title} item={item} location={location} />
                 ) : null,
               )}
               {globalItems.map((item) => (
-                <NavItemRenderer
-                  key={item.title}
-                  item={item}
-                  location={location}
-                />
+                <NavItemRenderer key={item.title} item={item} location={location} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>

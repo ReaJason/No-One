@@ -1,6 +1,7 @@
 import { apiClient, type PaginatedResponse } from "@/api/api-client";
 import type {
   ShellConnection,
+  ShellLanguage,
   ShellConnectionSearchParams,
 } from "@/types/shell-connection";
 
@@ -8,6 +9,7 @@ const baseUrl = "/shells";
 
 export interface CreateShellConnectionRequest {
   url: string;
+  language: ShellLanguage;
   group?: string;
   projectId?: number;
   profileId: number;
@@ -22,6 +24,7 @@ export interface CreateShellConnectionRequest {
 
 export interface UpdateShellConnectionRequest {
   url?: string;
+  language: ShellLanguage;
   group?: string;
   projectId?: number | null;
   profileId: number;
@@ -63,9 +66,7 @@ export async function getShellConnections(
   return await apiClient.getPaginated<ShellConnection>(baseUrl, params);
 }
 
-export async function getShellConnectionById(
-  id: number | string,
-): Promise<ShellConnection> {
+export async function getShellConnectionById(id: number | string): Promise<ShellConnection> {
   return (await apiClient.get<ShellConnection>(`${baseUrl}/${id}`)).data;
 }
 
@@ -79,18 +80,16 @@ export async function updateShellConnection(
   id: number | string,
   payload: UpdateShellConnectionRequest,
 ): Promise<ShellConnection> {
-  return (await apiClient.put<ShellConnection>(`${baseUrl}/${id}`, payload))
-    .data;
+  return (await apiClient.put<ShellConnection>(`${baseUrl}/${id}`, payload)).data;
 }
 
-export async function deleteShellConnection(
-  id: number | string,
-): Promise<void> {
+export async function deleteShellConnection(id: number | string): Promise<void> {
   await apiClient.delete(`${baseUrl}/${id}`);
 }
 
 export interface TestShellConfigRequest {
   url: string;
+  language: ShellLanguage;
   profileId: number;
   proxyUrl?: string;
   customHeaders?: Record<string, string>;
@@ -104,23 +103,40 @@ export interface TestShellConfigRequest {
 export interface TestShellConfigResponse {
   connected: boolean;
   status: "CONNECTED" | "ERROR";
+  error?: string;
+  errorMessage?: string;
 }
 
 export async function testShellConfig(
   payload: TestShellConfigRequest,
 ): Promise<TestShellConfigResponse> {
-  return (
-    await apiClient.post<TestShellConfigResponse>(
-      `${baseUrl}/test-config`,
-      payload,
-    )
-  ).data;
+  const response = await apiClient.post<TestShellConfigResponse>(`${baseUrl}/test-config`, payload);
+
+  if (!response.success) {
+    throw new Error(resolveErrorMessage(response.data, "Connection test failed"));
+  }
+  if (!isTestShellConfigResponse(response.data)) {
+    throw new Error(resolveErrorMessage(response.data, "Connection test failed"));
+  }
+  return response.data;
 }
 
-export async function testShellConnection(
-  id: number | string,
-): Promise<TestShellConfigResponse> {
-  return (
-    await apiClient.post<TestShellConfigResponse>(`${baseUrl}/${id}/test`)
-  ).data;
+function isTestShellConfigResponse(data: unknown): data is TestShellConfigResponse {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as Partial<TestShellConfigResponse>;
+  return typeof candidate.connected === "boolean" && typeof candidate.status === "string";
+}
+
+function resolveErrorMessage(data: any, fallback: string): string {
+  if (data && typeof data.error === "string" && data.error.trim()) {
+    return data.error.trim();
+  }
+  if (data && typeof data.errorMessage === "string" && data.errorMessage.trim()) {
+    return data.errorMessage.trim();
+  }
+
+  return fallback;
 }

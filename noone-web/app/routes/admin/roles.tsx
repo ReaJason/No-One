@@ -14,8 +14,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 import type { Role } from "@/types/admin";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { name, page, perPage, sortBy, sortOrder } =
-    loadRoleSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } = loadRoleSearchParams(request);
   return {
     roleResponse: getRoles({
       name,
@@ -33,24 +32,22 @@ export default function Roles() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Role Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Role Management</h1>
+          <p className="mt-1 text-muted-foreground">
             Manage system roles and permission configurations
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/admin/roles/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Role
             </Button>
           </Link>
@@ -73,11 +70,7 @@ export default function Roles() {
   );
 }
 
-export function RoleTable({
-  roleResponse,
-}: {
-  roleResponse: Promise<PaginatedResponse<Role>>;
-}) {
+export function RoleTable({ roleResponse }: { roleResponse: Promise<PaginatedResponse<Role>> }) {
   const roleResponseData = use(roleResponse);
   const { table } = useDataTable({
     columns: roleColumns,

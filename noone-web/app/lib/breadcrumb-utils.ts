@@ -40,6 +40,7 @@ const pathToBreadcrumb: Record<string, ReactNode> = {
   "/profiles/create": "Create Profile",
   "/profiles/edit": "Edit Profile",
   "/plugins": "Plugins",
+  "/plugins/create": "Add Plugin",
   "/settings": "Settings",
   "/audit": "Audit",
   "/admin": "Admin",
@@ -61,9 +62,7 @@ const pathToBreadcrumb: Record<string, ReactNode> = {
   "/projects/update": "Update Project",
 };
 
-function asArray(
-  value: BreadcrumbDefinition | BreadcrumbDefinition[] | null | undefined,
-) {
+function asArray(value: BreadcrumbDefinition | BreadcrumbDefinition[] | null | undefined) {
   if (!value) return [] as BreadcrumbDefinition[];
   return Array.isArray(value) ? value : [value];
 }

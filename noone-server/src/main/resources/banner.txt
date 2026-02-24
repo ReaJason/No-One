@@ -11,4 +11,4 @@
     Next Generation Java WebShell Manager
     ═══════════════════════════════════════════════════════
 
-    :: Application ::             ${application.title:NoOne} v${application.version:1.0.0}
+    ::  No One  ::                          v${application.version:1.0.0}

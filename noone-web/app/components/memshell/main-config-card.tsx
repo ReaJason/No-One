@@ -14,11 +14,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs } from "@/components/ui/tabs";
-import {
-  type MainConfig,
-  type ServerConfig,
-  ShellToolType,
-} from "@/types/memshell";
+import { type MainConfig, type ServerConfig, ShellToolType } from "@/types/memshell";
 import type { Profile } from "@/types/profile";
 import { JREVersionFormField } from "./jreversion-field";
 import { ServerVersionFormField } from "./serverversion-field";
@@ -34,7 +30,7 @@ interface MainConfigCardProps {
 
 // Optimize: Extract static JSX outside component (rendering-hoist-jsx)
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-4 gap-4 h-100">
+  <div className="flex h-100 items-center justify-center gap-4 p-4">
     <Spinner />
     <span className="text-sm text-muted-foreground">Loading...</span>
   </div>
@@ -103,15 +99,11 @@ const MainConfigCard = memo(function MainConfigCard({
             <LoadingSpinner />
           ) : (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 <Field>
                   <FieldContent>
                     <FieldLabel htmlFor="server">Server</FieldLabel>
-                    <input
-                      type="hidden"
-                      name="server"
-                      value={server as string}
-                    />
+                    <input type="hidden" name="server" value={server as string} />
                     <Select onValueChange={handleServerChange} value={server}>
                       <SelectTrigger className="w-full" id="server">
                         <SelectValue placeholder="Select server" />
@@ -126,10 +118,7 @@ const MainConfigCard = memo(function MainConfigCard({
                     </Select>
                   </FieldContent>
                 </Field>
-                <ServerVersionFormField
-                  server={server as string}
-                  error={errors?.serverVersion}
-                />
+                <ServerVersionFormField server={server as string} error={errors?.serverVersion} />
                 <JREVersionFormField
                   error={errors?.targetJdkVersion}
                   onByPassJavaModuleChange={handleByPassJavaModuleChange}
@@ -140,14 +129,10 @@ const MainConfigCard = memo(function MainConfigCard({
               <input type="hidden" name="shellTool" value={shellTool} />
 
               {/* Options - Responsive grid: 1 col mobile, 2 cols tablet, 4 cols desktop */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <input type="hidden" name="debug" value={debug.toString()} />
                 <div className="flex items-center gap-2">
-                  <Switch
-                    id="debug"
-                    checked={debug}
-                    onCheckedChange={setDebug}
-                  />
+                  <Switch id="debug" checked={debug} onCheckedChange={setDebug} />
                   <Label htmlFor="debug" className="cursor-pointer">
                     Debug
                   </Label>
@@ -155,21 +140,13 @@ const MainConfigCard = memo(function MainConfigCard({
 
                 <input type="hidden" name="probe" value={probe.toString()} />
                 <div className="flex items-center gap-2">
-                  <Switch
-                    id="probe"
-                    checked={probe}
-                    onCheckedChange={setProbe}
-                  />
+                  <Switch id="probe" checked={probe} onCheckedChange={setProbe} />
                   <Label htmlFor="probe" className="cursor-pointer">
                     Probe
                   </Label>
                 </div>
 
-                <input
-                  type="hidden"
-                  name="byPassJavaModule"
-                  value={byPassJavaModule.toString()}
-                />
+                <input type="hidden" name="byPassJavaModule" value={byPassJavaModule.toString()} />
                 <div className="flex items-center gap-2">
                   <Switch
                     id="bypass"
@@ -181,11 +158,7 @@ const MainConfigCard = memo(function MainConfigCard({
                   </Label>
                 </div>
 
-                <input
-                  type="hidden"
-                  name="lambdaSuffix"
-                  value={lambdaSuffix.toString()}
-                />
+                <input type="hidden" name="lambdaSuffix" value={lambdaSuffix.toString()} />
                 <div className="flex items-center gap-2">
                   <Switch
                     id="lambdaSuffix"

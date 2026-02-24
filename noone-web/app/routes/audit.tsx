@@ -80,13 +80,11 @@ export default function Audit() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>
-          <p className="text-muted-foreground mt-1">
-            View and manage system audit logs
-          </p>
+          <p className="mt-1 text-muted-foreground">View and manage system audit logs</p>
         </div>
       </div>
 
@@ -95,15 +93,7 @@ export default function Audit() {
           <DataTableSkeleton
             columnCount={7}
             filterCount={3}
-            cellWidths={[
-              "10rem",
-              "12rem",
-              "15rem",
-              "12rem",
-              "15rem",
-              "12rem",
-              "6rem",
-            ]}
+            cellWidths={["10rem", "12rem", "15rem", "12rem", "15rem", "12rem", "6rem"]}
             shrinkZero
           />
         }
@@ -165,10 +155,8 @@ export function AuditTable({
           const status = row.getValue("status") as string;
           return (
             <span
-              className={`px-2 py-1 rounded text-xs ${
-                status === "success"
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
+              className={`rounded px-2 py-1 text-xs ${
+                status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
               }`}
             >
               {status}

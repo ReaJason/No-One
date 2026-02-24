@@ -56,16 +56,11 @@ export async function action({ request }: ActionFunctionArgs) {
     (formData.get("identifierLocation") as IdentifierLocation) || undefined;
   const identifierOperator =
     (formData.get("identifierOperator") as IdentifierOperator) || undefined;
-  const identifierName =
-    (formData.get("identifierName") as string) || undefined;
-  const identifierValue =
-    (formData.get("identifierValue") as string) || undefined;
+  const identifierName = (formData.get("identifierName") as string) || undefined;
+  const identifierValue = (formData.get("identifierValue") as string) || undefined;
 
   const identifier: IdentifierConfig | null =
-    identifierLocation ||
-    identifierOperator ||
-    identifierName ||
-    identifierValue
+    identifierLocation || identifierOperator || identifierName || identifierValue
       ? {
           location: identifierLocation,
           operator: identifierOperator,
@@ -76,25 +71,18 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // Build transformations from 3 dropdowns each
   const reqEncryption = (formData.get("requestEncryption") as string) || "none";
-  const reqCompression =
-    (formData.get("requestCompression") as string) || "none";
+  const reqCompression = (formData.get("requestCompression") as string) || "none";
   const reqEncoding = (formData.get("requestEncoding") as string) || "none";
-  const resEncryption =
-    (formData.get("responseEncryption") as string) || "none";
-  const resCompression =
-    (formData.get("responseCompression") as string) || "none";
+  const resEncryption = (formData.get("responseEncryption") as string) || "none";
+  const resCompression = (formData.get("responseCompression") as string) || "none";
   const resEncoding = (formData.get("responseEncoding") as string) || "none";
 
-  const requestTransformations = [
-    reqCompression,
-    reqEncryption,
-    reqEncoding,
-  ].filter((v) => v && v !== "none");
-  const responseTransformations = [
-    resCompression,
-    resEncryption,
-    resEncoding,
-  ].filter((v) => v && v !== "none");
+  const requestTransformations = [reqCompression, reqEncryption, reqEncoding].filter(
+    (v) => v && v !== "none",
+  );
+  const responseTransformations = [resCompression, resEncryption, resEncoding].filter(
+    (v) => v && v !== "none",
+  );
 
   const errors: Record<string, string> = {};
   if (!name) errors.name = "Profile name is required";
@@ -104,29 +92,20 @@ export async function action({ request }: ActionFunctionArgs) {
   let protocolConfig: HttpProtocolConfig | WebSocketProtocolConfig;
 
   if (protocolType === "HTTP") {
-    const requestMethod =
-      (formData.get("requestMethod") as string) || undefined;
-    const requestTemplate =
-      (formData.get("requestTemplate") as string) || undefined;
-    const responseTemplate =
-      (formData.get("responseTemplate") as string) || undefined;
+    const requestMethod = (formData.get("requestMethod") as string) || undefined;
+    const requestTemplate = (formData.get("requestTemplate") as string) || undefined;
+    const responseTemplate = (formData.get("responseTemplate") as string) || undefined;
     const requestBodyType =
-      (formData.get("requestBodyType") as HttpRequestBodyType) ||
-      "FORM_URLENCODED";
-    const responseBodyType =
-      (formData.get("responseBodyType") as HttpResponseBodyType) || "TEXT";
-    const responseStatusCodeRaw =
-      (formData.get("responseStatusCode") as string) || "";
-    const responseStatusCode = responseStatusCodeRaw
-      ? Number(responseStatusCodeRaw)
-      : undefined;
+      (formData.get("requestBodyType") as HttpRequestBodyType) || "FORM_URLENCODED";
+    const responseBodyType = (formData.get("responseBodyType") as HttpResponseBodyType) || "TEXT";
+    const responseStatusCodeRaw = (formData.get("responseStatusCode") as string) || "";
+    const responseStatusCode = responseStatusCodeRaw ? Number(responseStatusCodeRaw) : undefined;
 
     let requestHeaders: Record<string, string> | undefined;
     let responseHeaders: Record<string, string> | undefined;
 
     const requestHeadersJson = (formData.get("requestHeaders") as string) || "";
-    const responseHeadersJson =
-      (formData.get("responseHeaders") as string) || "";
+    const responseHeadersJson = (formData.get("responseHeaders") as string) || "";
 
     if (requestHeadersJson) {
       try {
@@ -146,8 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
       responseStatusCode !== undefined &&
       (!Number.isInteger(responseStatusCode) || responseStatusCode < 0)
     ) {
-      errors.responseStatusCode =
-        "Response status code must be a non-negative integer";
+      errors.responseStatusCode = "Response status code must be a non-negative integer";
     }
 
     protocolConfig = {
@@ -163,17 +141,13 @@ export async function action({ request }: ActionFunctionArgs) {
     };
   } else {
     // WebSocket
-    const messageTemplate =
-      (formData.get("messageTemplate") as string) || undefined;
-    const responseTemplate =
-      (formData.get("wsResponseTemplate") as string) || undefined;
+    const messageTemplate = (formData.get("messageTemplate") as string) || undefined;
+    const responseTemplate = (formData.get("wsResponseTemplate") as string) || undefined;
     const subprotocol = (formData.get("subprotocol") as string) || undefined;
-    const messageFormat =
-      (formData.get("messageFormat") as "TEXT" | "BINARY") || "TEXT";
+    const messageFormat = (formData.get("messageFormat") as "TEXT" | "BINARY") || "TEXT";
 
     let handshakeHeaders: Record<string, string> | undefined;
-    const handshakeHeadersJson =
-      (formData.get("handshakeHeaders") as string) || "";
+    const handshakeHeadersJson = (formData.get("handshakeHeaders") as string) || "";
 
     if (handshakeHeadersJson) {
       try {
@@ -202,12 +176,8 @@ export async function action({ request }: ActionFunctionArgs) {
       protocolType,
       identifier,
       protocolConfig,
-      requestTransformations: requestTransformations.length
-        ? requestTransformations
-        : null,
-      responseTransformations: responseTransformations.length
-        ? responseTransformations
-        : null,
+      requestTransformations: requestTransformations.length ? requestTransformations : null,
+      responseTransformations: responseTransformations.length ? responseTransformations : null,
     };
     await createProfile(payload);
     toast.success("Profile created successfully");
@@ -235,14 +205,10 @@ export default function CreateProfile() {
 
   const [protocolType, setProtocolType] = useState<ProtocolType>("HTTP");
   const [method, setMethod] = useState<string>("POST");
-  const [requestBodyType, setRequestBodyType] =
-    useState<HttpRequestBodyType>("JSON");
-  const [responseBodyType, setResponseBodyType] =
-    useState<HttpResponseBodyType>("JSON");
-  const [identifierLocation, setIdentifierLocation] =
-    useState<string>("HEADER");
-  const [identifierOperator, setIdentifierOperator] =
-    useState<string>("CONTAINS");
+  const [requestBodyType, setRequestBodyType] = useState<HttpRequestBodyType>("JSON");
+  const [responseBodyType, setResponseBodyType] = useState<HttpResponseBodyType>("JSON");
+  const [identifierLocation, setIdentifierLocation] = useState<string>("HEADER");
+  const [identifierOperator, setIdentifierOperator] = useState<string>("CONTAINS");
   const [messageFormat, setMessageFormat] = useState<"TEXT" | "BINARY">("TEXT");
 
   const [requestTemplate, setRequestTemplate] = useState<string>(
@@ -253,8 +219,7 @@ export default function CreateProfile() {
   );
 
   const previousRequestBodyType = useRef<HttpRequestBodyType>(requestBodyType);
-  const previousResponseBodyType =
-    useRef<HttpResponseBodyType>(responseBodyType);
+  const previousResponseBodyType = useRef<HttpResponseBodyType>(responseBodyType);
 
   useEffect(() => {
     const previous = previousRequestBodyType.current;
@@ -268,10 +233,7 @@ export default function CreateProfile() {
   useEffect(() => {
     const previous = previousResponseBodyType.current;
     const previousDefault = DEFAULT_RESPONSE_TEMPLATES[previous];
-    if (
-      responseTemplate.trim() === "" ||
-      responseTemplate === previousDefault
-    ) {
+    if (responseTemplate.trim() === "" || responseTemplate === previousDefault) {
       setResponseTemplate(DEFAULT_RESPONSE_TEMPLATES[responseBodyType]);
     }
     previousResponseBodyType.current = responseBodyType;
@@ -291,7 +253,7 @@ export default function CreateProfile() {
       : WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS;
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto max-w-6xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -303,7 +265,7 @@ export default function CreateProfile() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Create Profile</h1>
-        <p className="text-muted-foreground mt-2">Define a new profile</p>
+        <p className="mt-2 text-muted-foreground">Define a new profile</p>
       </div>
 
       <Form method="post" className="space-y-6">
@@ -319,7 +281,7 @@ export default function CreateProfile() {
             <CardTitle>Basic Info</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <Field data-invalid={!!actionData?.errors?.name}>
                 <FieldLabel htmlFor="name">Name</FieldLabel>
                 <Input
@@ -374,14 +336,10 @@ export default function CreateProfile() {
             <CardTitle>Identifier Config</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Field>
                 <FieldLabel>Location</FieldLabel>
-                <input
-                  type="hidden"
-                  name="identifierLocation"
-                  value={identifierLocation}
-                />
+                <input type="hidden" name="identifierLocation" value={identifierLocation} />
                 <Select
                   value={identifierLocation}
                   onValueChange={(v) => setIdentifierLocation(v ?? "")}
@@ -403,11 +361,7 @@ export default function CreateProfile() {
               </Field>
               <Field>
                 <FieldLabel>Operator</FieldLabel>
-                <input
-                  type="hidden"
-                  name="identifierOperator"
-                  value={identifierOperator}
-                />
+                <input type="hidden" name="identifierOperator" value={identifierOperator} />
                 <Select
                   value={identifierOperator}
                   onValueChange={(v) => setIdentifierOperator(v ?? "")}
@@ -429,19 +383,11 @@ export default function CreateProfile() {
               </Field>
               <Field>
                 <FieldLabel htmlFor="identifierName">Name</FieldLabel>
-                <Input
-                  id="identifierName"
-                  name="identifierName"
-                  placeholder="e.g., X-Profile"
-                />
+                <Input id="identifierName" name="identifierName" placeholder="e.g., X-Profile" />
               </Field>
               <Field>
                 <FieldLabel htmlFor="identifierValue">Value</FieldLabel>
-                <Input
-                  id="identifierValue"
-                  name="identifierValue"
-                  placeholder="e.g., alpha"
-                />
+                <Input id="identifierValue" name="identifierValue" placeholder="e.g., alpha" />
               </Field>
             </div>
           </CardContent>
@@ -454,16 +400,12 @@ export default function CreateProfile() {
               <CardTitle>HTTP Config</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {/* Request Configuration */}
                 <div className="space-y-4">
                   <Field>
                     <FieldLabel>Request Method</FieldLabel>
-                    <input
-                      type="hidden"
-                      name="requestMethod"
-                      value={method || ""}
-                    />
+                    <input type="hidden" name="requestMethod" value={method || ""} />
                     <Select
                       value={method}
                       onValueChange={(v) => setMethod(v as string)}
@@ -485,16 +427,10 @@ export default function CreateProfile() {
                   </Field>
                   <Field>
                     <FieldLabel>Request Body Type</FieldLabel>
-                    <input
-                      type="hidden"
-                      name="requestBodyType"
-                      value={requestBodyType}
-                    />
+                    <input type="hidden" name="requestBodyType" value={requestBodyType} />
                     <Select
                       value={requestBodyType}
-                      onValueChange={(v) =>
-                        setRequestBodyType(v as HttpRequestBodyType)
-                      }
+                      onValueChange={(v) => setRequestBodyType(v as HttpRequestBodyType)}
                       items={REQUEST_BODY_TYPE_OPTIONS}
                     >
                       <SelectTrigger className="w-full">
@@ -515,33 +451,21 @@ export default function CreateProfile() {
 
                 {/* Response Configuration */}
                 <div className="space-y-4">
-                  <Field
-                    data-invalid={!!actionData?.errors?.responseStatusCode}
-                  >
-                    <FieldLabel htmlFor="responseStatusCode">
-                      Response Status Code
-                    </FieldLabel>
+                  <Field data-invalid={!!actionData?.errors?.responseStatusCode}>
+                    <FieldLabel htmlFor="responseStatusCode">Response Status Code</FieldLabel>
                     <Input
                       id="responseStatusCode"
                       name="responseStatusCode"
                       placeholder="e.g., 200"
                     />
-                    <FieldError>
-                      {actionData?.errors?.responseStatusCode}
-                    </FieldError>
+                    <FieldError>{actionData?.errors?.responseStatusCode}</FieldError>
                   </Field>
                   <Field>
                     <FieldLabel>Response Body Type</FieldLabel>
-                    <input
-                      type="hidden"
-                      name="responseBodyType"
-                      value={responseBodyType}
-                    />
+                    <input type="hidden" name="responseBodyType" value={responseBodyType} />
                     <Select
                       value={responseBodyType}
-                      onValueChange={(v) =>
-                        setResponseBodyType(v as HttpResponseBodyType)
-                      }
+                      onValueChange={(v) => setResponseBodyType(v as HttpResponseBodyType)}
                       items={RESPONSE_BODY_TYPE_OPTIONS}
                     >
                       <SelectTrigger className="w-full">
@@ -561,11 +485,9 @@ export default function CreateProfile() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field data-invalid={!!actionData?.errors?.requestHeaders}>
-                  <FieldLabel htmlFor="requestHeaders">
-                    Request Headers (JSON)
-                  </FieldLabel>
+                  <FieldLabel htmlFor="requestHeaders">Request Headers (JSON)</FieldLabel>
                   <Textarea
                     id="requestHeaders"
                     name="requestHeaders"
@@ -576,9 +498,7 @@ export default function CreateProfile() {
                   <FieldError>{actionData?.errors?.requestHeaders}</FieldError>
                 </Field>
                 <Field data-invalid={!!actionData?.errors?.responseHeaders}>
-                  <FieldLabel htmlFor="responseHeaders">
-                    Response Headers (JSON)
-                  </FieldLabel>
+                  <FieldLabel htmlFor="responseHeaders">Response Headers (JSON)</FieldLabel>
                   <Textarea
                     id="responseHeaders"
                     name="responseHeaders"
@@ -590,11 +510,9 @@ export default function CreateProfile() {
                 </Field>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="requestTemplate">
-                    Request Template
-                  </FieldLabel>
+                  <FieldLabel htmlFor="requestTemplate">Request Template</FieldLabel>
                   <Textarea
                     id="requestTemplate"
                     name="requestTemplate"
@@ -606,9 +524,7 @@ export default function CreateProfile() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="responseTemplate">
-                    Response Template
-                  </FieldLabel>
+                  <FieldLabel htmlFor="responseTemplate">Response Template</FieldLabel>
                   <Textarea
                     id="responseTemplate"
                     name="responseTemplate"
@@ -628,27 +544,17 @@ export default function CreateProfile() {
               <CardTitle>WebSocket Config</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field>
                   <FieldLabel htmlFor="subprotocol">Subprotocol</FieldLabel>
-                  <Input
-                    id="subprotocol"
-                    name="subprotocol"
-                    placeholder="e.g., graphql-ws"
-                  />
+                  <Input id="subprotocol" name="subprotocol" placeholder="e.g., graphql-ws" />
                 </Field>
                 <Field>
                   <FieldLabel>Message Format</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="messageFormat"
-                    value={messageFormat}
-                  />
+                  <input type="hidden" name="messageFormat" value={messageFormat} />
                   <Select
                     value={messageFormat}
-                    onValueChange={(v) =>
-                      setMessageFormat(v as "TEXT" | "BINARY")
-                    }
+                    onValueChange={(v) => setMessageFormat(v as "TEXT" | "BINARY")}
                     items={[
                       { value: "TEXT", label: "Text" },
                       { value: "BINARY", label: "Binary" },
@@ -668,9 +574,7 @@ export default function CreateProfile() {
               </div>
 
               <Field data-invalid={!!actionData?.errors?.handshakeHeaders}>
-                <FieldLabel htmlFor="handshakeHeaders">
-                  Handshake Headers (JSON)
-                </FieldLabel>
+                <FieldLabel htmlFor="handshakeHeaders">Handshake Headers (JSON)</FieldLabel>
                 <Textarea
                   id="handshakeHeaders"
                   name="handshakeHeaders"
@@ -681,11 +585,9 @@ export default function CreateProfile() {
                 <FieldError>{actionData?.errors?.handshakeHeaders}</FieldError>
               </Field>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Field>
-                  <FieldLabel htmlFor="messageTemplate">
-                    Message Template
-                  </FieldLabel>
+                  <FieldLabel htmlFor="messageTemplate">Message Template</FieldLabel>
                   <Textarea
                     id="messageTemplate"
                     name="messageTemplate"
@@ -695,9 +597,7 @@ export default function CreateProfile() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="wsResponseTemplate">
-                    Response Template
-                  </FieldLabel>
+                  <FieldLabel htmlFor="wsResponseTemplate">Response Template</FieldLabel>
                   <Textarea
                     id="wsResponseTemplate"
                     name="wsResponseTemplate"
@@ -719,14 +619,10 @@ export default function CreateProfile() {
           <CardContent className="space-y-6">
             <div className="space-y-3">
               <FieldLabel>Request Transformers</FieldLabel>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="requestCompression"
-                    value={reqCompression}
-                  />
+                  <input type="hidden" name="requestCompression" value={reqCompression} />
                   <Select
                     value={reqCompression}
                     onValueChange={(v) => setReqCompression(v ?? "none")}
@@ -748,11 +644,7 @@ export default function CreateProfile() {
                 </Field>
                 <Field>
                   <FieldLabel>Encryption</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="requestEncryption"
-                    value={reqEncryption}
-                  />
+                  <input type="hidden" name="requestEncryption" value={reqEncryption} />
                   <Select
                     value={reqEncryption}
                     onValueChange={(v) => setReqEncryption(v ?? "none")}
@@ -774,11 +666,7 @@ export default function CreateProfile() {
                 </Field>
                 <Field>
                   <FieldLabel>Encoding</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="requestEncoding"
-                    value={reqEncoding}
-                  />
+                  <input type="hidden" name="requestEncoding" value={reqEncoding} />
                   <Select
                     value={reqEncoding}
                     onValueChange={(v) => setReqEncoding(v ?? "none")}
@@ -803,14 +691,10 @@ export default function CreateProfile() {
 
             <div className="space-y-3">
               <FieldLabel>Response Transformers</FieldLabel>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <Field>
                   <FieldLabel>Compression</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="responseCompression"
-                    value={resCompression}
-                  />
+                  <input type="hidden" name="responseCompression" value={resCompression} />
                   <Select
                     value={resCompression}
                     onValueChange={(v) => setResCompression(v ?? "none")}
@@ -832,11 +716,7 @@ export default function CreateProfile() {
                 </Field>
                 <Field>
                   <FieldLabel>Encryption</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="responseEncryption"
-                    value={resEncryption}
-                  />
+                  <input type="hidden" name="responseEncryption" value={resEncryption} />
                   <Select
                     value={resEncryption}
                     onValueChange={(v) => setResEncryption(v ?? "none")}
@@ -858,11 +738,7 @@ export default function CreateProfile() {
                 </Field>
                 <Field>
                   <FieldLabel>Encoding</FieldLabel>
-                  <input
-                    type="hidden"
-                    name="responseEncoding"
-                    value={resEncoding}
-                  />
+                  <input type="hidden" name="responseEncoding" value={resEncoding} />
                   <Select
                     value={resEncoding}
                     onValueChange={(v) => setResEncoding(v ?? "none")}
@@ -892,11 +768,7 @@ export default function CreateProfile() {
             <Plus className="h-4 w-4" />
             Create Profile
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/profiles")}
-          >
+          <Button type="button" variant="outline" onClick={() => navigate("/profiles")}>
             Cancel
           </Button>
         </div>

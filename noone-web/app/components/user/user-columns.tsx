@@ -39,17 +39,11 @@ import type { Role, User } from "@/types/admin";
 
 const StatusBadge = React.memo(({ status }: { status: boolean }) => {
   return status === true ? (
-    <Badge
-      variant="default"
-      className="bg-green-100 text-green-800 hover:bg-green-100"
-    >
+    <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
       Active
     </Badge>
   ) : (
-    <Badge
-      variant="secondary"
-      className="bg-red-100 text-red-800 hover:bg-red-100"
-    >
+    <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">
       Inactive
     </Badge>
   );
@@ -94,10 +88,7 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
               )}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => setIsDeleteOpen(true)}
-              className="text-destructive"
-            >
+            <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -107,32 +98,20 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
       <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
         <AlertDialogContent>
           <fetcher.Form method="post" action={`/admin/users/update/${user.id}`}>
-            <input
-              type="hidden"
-              name="enabled"
-              value={(!user.enabled).toString()}
-            />
+            <input type="hidden" name="enabled" value={(!user.enabled).toString()} />
             <AlertDialogHeader>
               <AlertDialogTitle>
-                Are you sure you want to {user.enabled ? "disable" : "enable"}{" "}
-                this user?
+                Are you sure you want to {user.enabled ? "disable" : "enable"} this user?
               </AlertDialogTitle>
               <AlertDialogDescription>
-                Make sure you want to {user.enabled ? "disable" : "enable"} this
-                user.
+                Make sure you want to {user.enabled ? "disable" : "enable"} this user.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction>
-                <Button
-                  type="submit"
-                  className="text-sm"
-                  disabled={fetcher.state !== "idle"}
-                >
-                  {fetcher.state !== "idle" && (
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  )}
+                <Button type="submit" className="text-sm" disabled={fetcher.state !== "idle"}>
+                  {fetcher.state !== "idle" && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                   Confirm
                 </Button>
               </AlertDialogAction>
@@ -142,27 +121,18 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
       </AlertDialog>
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
-          <deleteFetcher.Form
-            method="post"
-            action={`/admin/users/delete/${user.id}`}
-          >
+          <deleteFetcher.Form method="post" action={`/admin/users/delete/${user.id}`}>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Are you sure you want to delete this user?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete your
-                account and remove your data from our servers.
+                This action cannot be undone. This will permanently delete your account and remove
+                your data from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction>
-                <Button
-                  type="submit"
-                  className="text-sm"
-                  disabled={deleteFetcher.state !== "idle"}
-                >
+                <Button type="submit" className="text-sm" disabled={deleteFetcher.state !== "idle"}>
                   {deleteFetcher.state !== "idle" && (
                     <Loader className="mr-2 h-4 w-4 animate-spin" />
                   )}
@@ -188,9 +158,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
               table.getIsAllPageRowsSelected() ||
               (table.getIsSomePageRowsSelected() && "indeterminate")
             }
-            onCheckedChange={(value: any) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
+            onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
             aria-label="Select all"
             className="translate-y-0.5"
           />
@@ -210,9 +178,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "username",
         accessorKey: "username",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="User" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="User" />,
         cell: ({ cell }) => cell.getValue<string>(),
         meta: {
           label: "User",
@@ -226,9 +192,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "roles",
         accessorKey: "roles",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Role" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
         cell: ({ row }) => {
           const roles = row.getValue("roles") as Role[];
           return (
@@ -254,9 +218,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "enabled",
         accessorKey: "enabled",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Status" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
         cell: ({ row }) => {
           const status = row.getValue("enabled") as boolean;
           return <StatusBadge status={status} />;
@@ -274,9 +236,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "createdAt",
         accessorKey: "createdAt",
-        header: ({ column }) => (
-          <DataTableColumnHeader column={column} title="Created Time" />
-        ),
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
         cell: ({ cell }) => formatDate(cell.getValue<Date>()),
         meta: {
           label: "Created At",

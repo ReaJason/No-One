@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        mavenLocal()
         mavenCentral()
         gradlePluginPortal()
         maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
@@ -11,6 +12,7 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
+        mavenLocal()
         mavenCentral()
         maven("https://packages.jetbrains.team/maven/p/ij/intellij-dependencies")
         maven("https://www.jitpack.io")
@@ -24,3 +26,4 @@ include("noone-vul:vul-webapp")
 include("noone-vul:vul-webapp-jakarta")
 
 include("noone-core")
+include("noone-plugins:java-plugins")

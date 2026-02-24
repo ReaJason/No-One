@@ -1,10 +1,16 @@
 import type * as React from "react";
-import {X} from "lucide-react";
-import type {Column} from "@tanstack/react-table";
+import { X } from "lucide-react";
+import type { Column } from "@tanstack/react-table";
 
-import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DataTableToolbarProps {
   table: any;
@@ -34,9 +40,7 @@ export function DataTableToolbar({
           <Input
             placeholder={searchPlaceholder}
             value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
-              table.getColumn(searchKey)?.setFilterValue(event.target.value)
-            }
+            onChange={(event) => table.getColumn(searchKey)?.setFilterValue(event.target.value)}
             className="h-8 w-[150px] lg:w-[250px]"
           />
         )}

@@ -1,13 +1,7 @@
 // Protocol Types
 export type ProtocolType = "HTTP" | "WEBSOCKET";
 
-export type HttpMethod =
-  | "POST"
-  | "PUT"
-  | "DELETE"
-  | "PATCH"
-  | "HEAD"
-  | "OPTIONS";
+export type HttpMethod = "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 
 export type HttpRequestBodyType =
   | "TEXT"
@@ -129,11 +123,10 @@ Content-Type: image/png
   BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
 };
 
-export const DEFAULT_RESPONSE_TEMPLATES: Record<HttpResponseBodyType, string> =
-  {
-    FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
-    TEXT: "hello{{payload}}world",
-    MULTIPART_FORM_DATA: `--{{boundary}}
+export const DEFAULT_RESPONSE_TEMPLATES: Record<HttpResponseBodyType, string> = {
+  FORM_URLENCODED: "username=admin&action=login&q={{payload}}&token=123456",
+  TEXT: "hello{{payload}}world",
+  MULTIPART_FORM_DATA: `--{{boundary}}
 Content-Disposition: form-data; name="username"
 
 admin
@@ -143,10 +136,10 @@ Content-Type: image/png
 
 <hex>89504E470D0A1A0A0000000D4948445200000001000000010802000000907753DE0000000C49444154789C63F8CFC000000301010018DD8D000000000049454E44AE426082</hex>{{payload}}
 --{{boundary}}--`,
-    JSON: `{"hello": "{{payload}}"}`,
-    XML: "<hello>{{payload}}</hello>",
-    BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
-  };
+  JSON: `{"hello": "{{payload}}"}`,
+  XML: "<hello>{{payload}}</hello>",
+  BINARY: "<base64>aGVsbG8=</base64>{{payload}}",
+};
 
 // Select Options
 export const ENCRYPTION_OPTIONS = [

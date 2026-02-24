@@ -1,13 +1,7 @@
 import { ArrowLeft, Plus, User } from "lucide-react";
+import { useCallback } from "react";
 import type { ActionFunctionArgs } from "react-router";
-import {
-  Form,
-  redirect,
-  useActionData,
-  useLoaderData,
-  useNavigate,
-} from "react-router";
-import { toast } from "sonner";
+import { Form, redirect, useActionData, useLoaderData, useNavigate } from "react-router";
 import { getAllRoles } from "@/api/role-api";
 import { createUser } from "@/api/user-api";
 import { Button } from "@/components/ui/button";
@@ -18,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import type { Role } from "@/types/admin";
 
 export async function loader() {
-  // Load roles for the select dropdown
   const roles = await getAllRoles();
-  return { roles };
+  return {
+    roles: roles.map(({ id, name }) => ({ id, name })),
+  };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -29,7 +24,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const password = formData.get("password") as string;
   const roleIds = formData.getAll("roleIds") as string[];
 
-  // Validation
   const errors: Record<string, string> = {};
 
   if (!username?.trim()) {
@@ -55,13 +49,9 @@ export async function action({ request }: ActionFunctionArgs) {
       enabled: true,
       roleIds,
     };
-    toast.success("User created successfully");
-
     await createUser(userData);
     return redirect("/admin/users");
   } catch (error: any) {
-    console.error("Error creating user:", error);
-    toast.error(error.message || "Failed to create user");
     return {
       errors: { general: error.message || "Failed to create user" },
       success: false,
@@ -70,17 +60,22 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function CreateUser() {
-  const { roles } = useLoaderData() as { roles: Role[] };
+  const { roles } = useLoaderData() as { roles: Pick<Role, "id" | "name">[] };
   const actionData = useActionData() as
     | { errors?: Record<string, string>; success?: boolean }
     | undefined;
   const navigate = useNavigate();
+
+  const handleNavigateToUsers = useCallback(() => {
+    navigate("/admin/users");
+  }, [navigate]);
+
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-6xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
-          onClick={() => navigate("/admin/users")}
+          onClick={handleNavigateToUsers}
           className="mb-4 flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -88,7 +83,7 @@ export default function CreateUser() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Create New User</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Fill in user basic information and assign roles
         </p>
       </div>
@@ -102,11 +97,11 @@ export default function CreateUser() {
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-6">
-            {actionData?.errors?.general && (
+            {actionData?.errors?.general ? (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {actionData.errors.general}
               </div>
-            )}
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="username">Username *</Label>
@@ -116,15 +111,11 @@ export default function CreateUser() {
                 type="text"
                 placeholder="Enter username"
                 required
-                className={
-                  actionData?.errors?.username ? "border-destructive" : ""
-                }
+                className={actionData?.errors?.username ? "border-destructive" : ""}
               />
-              {actionData?.errors?.username && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.username}
-                </p>
-              )}
+              {actionData?.errors?.username ? (
+                <p className="text-sm text-destructive">{actionData.errors.username}</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password *</Label>
@@ -134,15 +125,11 @@ export default function CreateUser() {
                 type="password"
                 placeholder="Enter password"
                 required
-                className={
-                  actionData?.errors?.password ? "border-destructive" : ""
-                }
+                className={actionData?.errors?.password ? "border-destructive" : ""}
               />
-              {actionData?.errors?.password && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.password}
-                </p>
-              )}
+              {actionData?.errors?.password ? (
+                <p className="text-sm text-destructive">{actionData.errors.password}</p>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 Password must be at least 6 characters long
               </p>
@@ -159,20 +146,15 @@ export default function CreateUser() {
                       value={role.id}
                       className="rounded border-gray-300"
                     />
-                    <Label
-                      htmlFor={`role-${role.id}`}
-                      className="text-sm font-normal"
-                    >
+                    <Label htmlFor={`role-${role.id}`} className="text-sm font-normal">
                       {role.name}
                     </Label>
                   </div>
                 ))}
               </div>
-              {actionData?.errors?.roleIds && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.roleIds}
-                </p>
-              )}
+              {actionData?.errors?.roleIds ? (
+                <p className="text-sm text-destructive">{actionData.errors.roleIds}</p>
+              ) : null}
               <p className="text-sm text-muted-foreground">
                 Select one or more roles for this user
               </p>
@@ -184,11 +166,7 @@ export default function CreateUser() {
                 Create User
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/admin/users")}
-              >
+              <Button type="button" variant="outline" onClick={handleNavigateToUsers}>
                 Cancel
               </Button>
             </div>

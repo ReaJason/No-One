@@ -1,9 +1,11 @@
 export type ShellType = "WEBSHELL" | "REVERSE" | "BIND";
 export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
+export type ShellLanguage = "java" | "nodejs";
 
 export interface ShellConnection {
   id: number;
   url: string;
+  language: ShellLanguage;
   shellType: ShellType;
   status: ShellStatus;
   group?: string;

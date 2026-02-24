@@ -1,9 +1,4 @@
-import {
-  createLoader,
-  parseAsInteger,
-  parseAsString,
-  parseAsStringEnum,
-} from "nuqs/server";
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { Project } from "@/types/project";
 import { apiClient, type PaginatedResponse } from "./api-client";
 
@@ -42,9 +37,7 @@ export interface CreateProjectRequest {
   memberIds?: number[];
 }
 
-export async function createProject(
-  projectData: CreateProjectRequest,
-): Promise<Project> {
+export async function createProject(projectData: CreateProjectRequest): Promise<Project> {
   return (await apiClient.post<Project>(baseUrl, projectData)).data;
 }
 
@@ -61,7 +54,5 @@ export async function deleteProject(id: string): Promise<boolean> {
 }
 
 export async function getAllProjects(): Promise<Project[]> {
-  return (
-    await apiClient.getPaginated<Project>(baseUrl, { page: 1, perPage: 1000 })
-  ).content;
+  return (await apiClient.getPaginated<Project>(baseUrl, { page: 1, perPage: 1000 })).content;
 }

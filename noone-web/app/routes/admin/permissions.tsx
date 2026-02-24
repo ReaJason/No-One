@@ -3,10 +3,7 @@ import React, { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import type { PaginatedResponse } from "@/api/api-client";
-import {
-  getPermissions,
-  loadPermissionSearchParams,
-} from "@/api/permission-api";
+import { getPermissions, loadPermissionSearchParams } from "@/api/permission-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -17,8 +14,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 import type { Permission } from "@/types/admin";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { name, page, perPage, sortBy, sortOrder } =
-    loadPermissionSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } = loadPermissionSearchParams(request);
   return {
     permissionResponse: getPermissions({
       name,
@@ -36,24 +32,22 @@ export default function Permissions() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Permission Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Permission Management</h1>
+          <p className="mt-1 text-muted-foreground">
             Manage system permissions and access controls
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/admin/permissions/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Permission
             </Button>
           </Link>
@@ -65,15 +59,7 @@ export default function Permissions() {
           <DataTableSkeleton
             columnCount={7}
             filterCount={4}
-            cellWidths={[
-              "10rem",
-              "25rem",
-              "8rem",
-              "8rem",
-              "12rem",
-              "8rem",
-              "6rem",
-            ]}
+            cellWidths={["10rem", "25rem", "8rem", "8rem", "12rem", "8rem", "6rem"]}
             shrinkZero
           />
         }
@@ -105,10 +91,7 @@ export function PermissionTable({
   });
 
   return (
-    <DataTable
-      table={table}
-      actionBar={<PermissionTableActionBar table={table} />}
-    >
+    <DataTable table={table} actionBar={<PermissionTableActionBar table={table} />}>
       <DataTableToolbar table={table} />
     </DataTable>
   );

@@ -1,9 +1,4 @@
-import {
-  Field,
-  FieldContent,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -24,16 +19,8 @@ export function ServerVersionFormField({
     <Field orientation="vertical" data-invalid={!!error}>
       <FieldContent>
         <FieldLabel htmlFor="serverVersion">Server Version</FieldLabel>
-        <Select
-          items={serverVersionOptions}
-          name="serverVersion"
-          defaultValue="Unknown"
-        >
-          <SelectTrigger
-            className="w-full"
-            id="serverVersion"
-            aria-invalid={!!error}
-          >
+        <Select items={serverVersionOptions} name="serverVersion" defaultValue="Unknown">
+          <SelectTrigger className="w-full" id="serverVersion" aria-invalid={!!error}>
             <SelectValue placeholder="Select version" />
           </SelectTrigger>
           <SelectContent>

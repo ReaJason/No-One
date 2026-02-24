@@ -1,9 +1,4 @@
-import {
-  createLoader,
-  parseAsInteger,
-  parseAsString,
-  parseAsStringEnum,
-} from "nuqs/server";
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { Role } from "@/types/admin";
 import { apiClient, type PaginatedResponse } from "./api-client";
 
@@ -25,9 +20,7 @@ export const loadRoleSearchParams = createLoader({
   sortOrder: parseAsStringEnum(["asc", "desc"]).withDefault("desc"),
 });
 
-export async function getRoles(
-  filters: RoleSearchParams,
-): Promise<PaginatedResponse<Role>> {
+export async function getRoles(filters: RoleSearchParams): Promise<PaginatedResponse<Role>> {
   return apiClient.getPaginated<Role>(baseUrl, filters);
 }
 
@@ -57,7 +50,5 @@ export async function deleteRole(id: number): Promise<boolean> {
 }
 
 export async function getAllRoles(): Promise<Role[]> {
-  return (
-    await apiClient.getPaginated<Role>(baseUrl, { page: 1, perPage: 100 })
-  ).content;
+  return (await apiClient.getPaginated<Role>(baseUrl, { page: 1, perPage: 100 })).content;
 }

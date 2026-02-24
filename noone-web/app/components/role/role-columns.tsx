@@ -22,12 +22,9 @@ export const roleColumns: ColumnDef<Role>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
         }
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -47,17 +44,13 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Role" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
     cell: ({ row }) => {
       const role = row.original;
       return (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-              {role.name}
-            </Badge>
+            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{role.name}</Badge>
           </div>
         </div>
       );
@@ -73,14 +66,12 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "permissions",
     accessorKey: "permissions",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Permissions" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Permissions" />,
     cell: ({ row }) => {
       const permissions = row.getValue("permissions") as Permission[];
       return (
         <div className="flex items-center gap-2">
-          <Key className="w-4 h-4 text-muted-foreground" />
+          <Key className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">{permissions.length}</span>
           <span className="text-sm text-muted-foreground">Permissions</span>
         </div>
@@ -90,9 +81,7 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created Time" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {
@@ -106,11 +95,7 @@ export const roleColumns: ColumnDef<Role>[] = [
       };
 
       const handleDeleteRole = async () => {
-        if (
-          !confirm(
-            "Are you sure you want to delete this role? This action cannot be undone.",
-          )
-        )
+        if (!confirm("Are you sure you want to delete this role? This action cannot be undone."))
           return;
         // TODO: Implement delete role
         console.log("Delete role:", role.id);

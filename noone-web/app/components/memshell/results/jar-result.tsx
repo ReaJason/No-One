@@ -23,11 +23,10 @@ export function JarResult({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="list-decimal list-inside space-y-4 text-sm">
+        <ol className="list-inside list-decimal space-y-4 text-sm">
           <li className="flex items-center justify-between">
             <span>
-              Download {packMethod}Shell.jar (
-              {formatBytes(atob(packResult).length)})
+              Download {packMethod}Shell.jar ({formatBytes(atob(packResult).length)})
             </span>
             <Button
               size="sm"
@@ -47,8 +46,8 @@ export function JarResult({
           </li>
           <Separator />
           <li>
-            Download the jar file and upload it to the public network server, so
-            that it can be accessed through the http link to download
+            Download the jar file and upload it to the public network server, so that it can be
+            accessed through the http link to download
           </li>
           <li>Trigger the injector class loading with RCE vulnerability</li>
         </ol>

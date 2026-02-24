@@ -23,13 +23,8 @@ export const profileColumns: ColumnDef<Profile>[] = [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
+        checked={table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected()}
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -49,9 +44,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
     cell: ({ row }) => row.getValue("name") as string,
     meta: {
       label: "Profile",
@@ -63,9 +56,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "protocolType",
     accessorKey: "protocolType",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="ProtocolType" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="ProtocolType" />,
     cell: ({ row }) => row.getValue("protocolType") as string,
     meta: {
       label: "ProtocolType",
@@ -80,9 +71,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "updatedAt",
     accessorKey: "updatedAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Updated Time" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Updated Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {
@@ -125,10 +114,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
                 Edit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive"
-              >
+              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>

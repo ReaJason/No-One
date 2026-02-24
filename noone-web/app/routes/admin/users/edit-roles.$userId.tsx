@@ -1,11 +1,6 @@
 import { ArrowLeft, User, Users } from "lucide-react";
 import type { LoaderFunctionArgs } from "react-router";
-import {
-  useActionData,
-  useFetcher,
-  useLoaderData,
-  useNavigate,
-} from "react-router";
+import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
 import { getAllRoles } from "@/api/role-api";
 import { getUserById } from "@/api/user-api";
 import { Button } from "@/components/ui/button";
@@ -20,8 +15,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
   if (Number.isNaN(userId)) {
     throw new Response("Invalid user ID", { status: 400 });
   }
-
-  // Load user data and available roles
   const [user, roles] = await Promise.all([getUserById(userId), getAllRoles()]);
 
   if (!user) {
@@ -41,7 +34,7 @@ export default function EditUserRoles() {
   const currentRoleIds = user.roles?.map((role) => role.id);
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -53,9 +46,8 @@ export default function EditUserRoles() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Edit User Roles</h1>
-        <p className="text-muted-foreground mt-2">
-          Update roles for user:{" "}
-          <span className="font-semibold">{user.username}</span>
+        <p className="mt-2 text-muted-foreground">
+          Update roles for user: <span className="font-semibold">{user.username}</span>
         </p>
       </div>
 
@@ -90,19 +82,14 @@ export default function EditUserRoles() {
                       defaultChecked={currentRoleIds?.includes(role.id)}
                       className="rounded border-gray-300"
                     />
-                    <Label
-                      htmlFor={`role-${role.id}`}
-                      className="text-sm font-normal"
-                    >
+                    <Label htmlFor={`role-${role.id}`} className="text-sm font-normal">
                       {role.name}
                     </Label>
                   </div>
                 ))}
               </div>
               {actionData?.errors?.roleIds && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.roleIds}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.roleIds}</p>
               )}
               <p className="text-sm text-muted-foreground">
                 Select one or more roles for this user
@@ -115,11 +102,7 @@ export default function EditUserRoles() {
                 Update Roles
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/admin/users")}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate("/admin/users")}>
                 Cancel
               </Button>
             </div>

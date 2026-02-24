@@ -167,9 +167,7 @@ export class ApiClient {
   private getTokenFromCookies(): string | null {
     if (typeof document !== "undefined") {
       const cookies = document.cookie.split(";");
-      const tokenCookie = cookies.find((cookie) =>
-        cookie.trim().startsWith("auth_token="),
-      );
+      const tokenCookie = cookies.find((cookie) => cookie.trim().startsWith("auth_token="));
       if (tokenCookie) {
         return tokenCookie.split("=")[1];
       }
@@ -188,18 +186,14 @@ export class ApiClient {
       localStorage.removeItem("auth_token");
       // 清除 cookie
       // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
-      document.cookie =
-        "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       // 重定向到登录页面
       window.location.href = "/auth/login";
     }
   }
 
   // 通用请求方法
-  async request<T = any>(
-    url: string,
-    config: RequestConfig = {},
-  ): Promise<ApiResponse<T>> {
+  async request<T = any>(url: string, config: RequestConfig = {}): Promise<ApiResponse<T>> {
     try {
       const response = await this.ofetchInstance(url, {
         method: config.method || "GET",
@@ -385,8 +379,7 @@ export class ApiClient {
       localStorage.removeItem("auth_token");
       // 清除 cookie
       // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
-      document.cookie =
-        "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     }
   }
 

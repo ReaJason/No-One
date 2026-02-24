@@ -10,7 +10,7 @@ import { shellConnectionColumns } from "@/components/shell/shell-connection-colu
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import { getShellConnections } from "@/lib/shell-connection-api";
+import { getShellConnections } from "@/api/shell-connection-api";
 import { loadShellConnectionSearchParams } from "@/lib/shell-connection-search-param";
 import type { ShellConnection } from "@/types/shell-connection";
 
@@ -33,24 +33,20 @@ export default function Shells() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Shell Connections
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage shell connections and remote access
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Shell Connections</h1>
+          <p className="mt-1 text-muted-foreground">Manage shell connections and remote access</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/shells/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add Shell
             </Button>
           </Link>
@@ -78,9 +74,7 @@ export default function Shells() {
           />
         }
       >
-        <ShellConnectionTable
-          shellConnectionResponse={shellConnectionResponse}
-        />
+        <ShellConnectionTable shellConnectionResponse={shellConnectionResponse} />
       </React.Suspense>
     </div>
   );

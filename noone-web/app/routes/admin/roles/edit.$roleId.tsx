@@ -1,12 +1,7 @@
 import { ArrowLeft, Edit, FolderTree } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
-import {
-  useActionData,
-  useFetcher,
-  useLoaderData,
-  useNavigate,
-} from "react-router";
+import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
 import { getAllPermissions } from "@/api/permission-api";
 import { getRoleById } from "@/api/role-api";
 import { Button } from "@/components/ui/button";
@@ -23,10 +18,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response("Invalid role ID", { status: 400 });
   }
 
-  const [role, permissions] = await Promise.all([
-    getRoleById(roleId),
-    getAllPermissions(),
-  ]);
+  const [role, permissions] = await Promise.all([getRoleById(roleId), getAllPermissions()]);
 
   if (!role) {
     throw new Response("Role not found", { status: 404 });
@@ -83,11 +75,10 @@ export default function EditRole() {
       return next;
     });
   };
-  const filterMatch = (name: string) =>
-    name.toLowerCase().includes(query.toLowerCase());
+  const filterMatch = (name: string) => name.toLowerCase().includes(query.toLowerCase());
 
   return (
-    <div className="container mx-auto p-6 max-w-3xl">
+    <div className="container mx-auto max-w-3xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -98,7 +89,7 @@ export default function EditRole() {
           Return to role list
         </Button>
         <h1 className="text-3xl font-bold text-balance">Edit Role</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Update role: <span className="font-semibold">{role.name}</span>
         </p>
       </div>
@@ -133,9 +124,7 @@ export default function EditRole() {
                 className={actionData?.errors?.name ? "border-destructive" : ""}
               />
               {actionData?.errors?.name && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.name}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.name}</p>
               )}
             </div>
 
@@ -144,9 +133,7 @@ export default function EditRole() {
                 <div className="space-y-1">
                   <Label>Permissions</Label>
                   {actionData?.errors?.permissionIds && (
-                    <p className="text-sm text-destructive">
-                      {actionData.errors.permissionIds}
-                    </p>
+                    <p className="text-sm text-destructive">{actionData.errors.permissionIds}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -164,60 +151,39 @@ export default function EditRole() {
                   <div className="space-y-4">
                     {grouped.map(({ category, nodes }) => {
                       const visible = nodes.filter(
-                        (n) =>
-                          !query || filterMatch(n.name) || filterMatch(n.code),
+                        (n) => !query || filterMatch(n.name) || filterMatch(n.code),
                       );
                       if (visible.length === 0) return null;
                       const ids = visible.map((n) => n.id);
-                      const selectedCount = ids.filter((id) =>
-                        selected.has(id),
-                      ).length;
-                      const allChecked =
-                        selectedCount === ids.length && ids.length > 0;
-                      const indeterminate =
-                        selectedCount > 0 && selectedCount < ids.length;
+                      const selectedCount = ids.filter((id) => selected.has(id)).length;
+                      const allChecked = selectedCount === ids.length && ids.length > 0;
+                      const indeterminate = selectedCount > 0 && selectedCount < ids.length;
                       return (
                         <div key={category} className="space-y-2">
                           <div className="flex items-center gap-2">
                             <Checkbox
                               id={`cat-${category}`}
                               checked={indeterminate || allChecked}
-                              onCheckedChange={(c) =>
-                                onToggleAll(ids, Boolean(c))
-                              }
+                              onCheckedChange={(c) => onToggleAll(ids, Boolean(c))}
                             />
-                            <Label
-                              htmlFor={`cat-${category}`}
-                              className="font-medium"
-                            >
+                            <Label htmlFor={`cat-${category}`} className="font-medium">
                               {category}
                             </Label>
                             <span className="text-xs text-muted-foreground">
                               {selectedCount}/{ids.length}
                             </span>
                           </div>
-                          <div className="pl-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div className="grid grid-cols-1 gap-2 pl-6 sm:grid-cols-2">
                             {visible.map((perm) => (
-                              <div
-                                key={perm.id}
-                                className="flex items-center gap-2"
-                              >
+                              <div key={perm.id} className="flex items-center gap-2">
                                 <Checkbox
                                   id={`perm-${perm.id}`}
                                   checked={selected.has(perm.id)}
-                                  onCheckedChange={(c) =>
-                                    onToggle(perm.id, Boolean(c))
-                                  }
+                                  onCheckedChange={(c) => onToggle(perm.id, Boolean(c))}
                                 />
-                                <Label
-                                  htmlFor={`perm-${perm.id}`}
-                                  className="text-sm font-normal"
-                                >
+                                <Label htmlFor={`perm-${perm.id}`} className="text-sm font-normal">
                                   {perm.name}
-                                  <span className="text-muted-foreground">
-                                    {" "}
-                                    ・ {perm.code}
-                                  </span>
+                                  <span className="text-muted-foreground"> ・ {perm.code}</span>
                                 </Label>
                               </div>
                             ))}
@@ -229,29 +195,20 @@ export default function EditRole() {
                 </ScrollArea>
               </div>
               <p className="text-sm text-muted-foreground">
-                Use the group checkbox to select/deselect a whole category.
-                Search narrows the list in real-time.
+                Use the group checkbox to select/deselect a whole category. Search narrows the list
+                in real-time.
               </p>
             </div>
 
             {[...selected].map((id) => (
-              <input
-                key={id}
-                type="hidden"
-                name="permissionIds"
-                value={String(id)}
-              />
+              <input key={id} type="hidden" name="permissionIds" value={String(id)} />
             ))}
             <div className="flex gap-4 pt-4">
               <Button type="submit" className="flex items-center gap-2">
                 <Edit className="h-4 w-4" />
                 Update Role
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/admin/roles")}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate("/admin/roles")}>
                 Cancel
               </Button>
             </div>

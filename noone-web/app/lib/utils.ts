@@ -5,11 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function downloadContent(
-  content: Blob,
-  fileName: string,
-  fileExtension: string,
-) {
+export function downloadContent(content: Blob, fileName: string, fileExtension: string) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(content);
   link.download = `${fileName}${fileExtension}`;
@@ -27,11 +23,7 @@ export function base64ToBytes(base64String: string) {
   return new Uint8Array(byteNumbers);
 }
 
-export function downloadBytes(
-  base64String: string,
-  className?: string,
-  jarName?: string,
-) {
+export function downloadBytes(base64String: string, className?: string, jarName?: string) {
   const byteArray = base64ToBytes(base64String);
   const blob = new Blob([byteArray], {
     type: className ? "application/java-vm" : "application/java-archive",
@@ -48,26 +40,26 @@ export function downloadBytes(
   document.body.removeChild(link);
 }
 
-export function formatBytes(bytes: number) {
-  if (bytes === 0) return "0 Bytes";
-  if (Number.isNaN(bytes) || !Number.isFinite(bytes)) return "N/A";
-
+export const formatBytes = (bytes: number, decimals = 2) => {
+  if (!bytes) return "0 Bytes";
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB"];
-
-  if (bytes < k) {
-    return `${bytes.toFixed(0)} ${sizes[0]}`;
-  }
-
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+};
 
-  if (i >= 2 || bytes / k ** 1 >= 1000) {
-    const mbValue = Number.parseFloat((bytes / k ** 2).toFixed(2));
-    return `${mbValue} ${sizes[2]}`;
-  }
-  const kbValue = Number.parseFloat((bytes / k ** 1).toFixed(1));
-  return `${kbValue} ${sizes[1]}`;
-}
+export const formatUptime = (ms: number) => {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+  return `${seconds}s`;
+};
 
 export function notNeedUrlPattern(shellType: string | undefined) {
   if (shellType === undefined) {

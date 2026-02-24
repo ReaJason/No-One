@@ -56,7 +56,7 @@ export default function CreatePermission() {
   const navigate = useNavigate();
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -67,12 +67,8 @@ export default function CreatePermission() {
           Return to permission list
         </Button>
 
-        <h1 className="text-3xl font-bold text-balance">
-          Create New Permission
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Add a new permission to the system
-        </p>
+        <h1 className="text-3xl font-bold text-balance">Create New Permission</h1>
+        <p className="mt-2 text-muted-foreground">Add a new permission to the system</p>
       </div>
 
       <Card>
@@ -101,9 +97,7 @@ export default function CreatePermission() {
                 className={actionData?.errors?.name ? "border-destructive" : ""}
               />
               {actionData?.errors?.name && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.name}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.name}</p>
               )}
             </div>
 
@@ -118,13 +112,10 @@ export default function CreatePermission() {
                 className={actionData?.errors?.code ? "border-destructive" : ""}
               />
               {actionData?.errors?.code && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.code}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.code}</p>
               )}
               <p className="text-sm text-muted-foreground">
-                Use format like "module:action" (e.g., user:create,
-                admin:manage)
+                Use format like "module:action" (e.g., user:create, admin:manage)
               </p>
             </div>
 

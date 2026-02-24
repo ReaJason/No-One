@@ -15,8 +15,7 @@ import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import type { Profile } from "@/types/profile";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { name, protocolType, page, perPage, sortBy, sortOrder } =
-    loadProfileSearchParams(request);
+  const { name, protocolType, page, perPage, sortBy, sortOrder } = loadProfileSearchParams(request);
   return {
     profileResponse: getProfiles({
       name,
@@ -41,24 +40,22 @@ export default function ProfileList() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-balance">
-            Profile Management
-          </h1>
-          <p className="text-muted-foreground mt-2">
+          <h1 className="text-3xl font-bold text-balance">Profile Management</h1>
+          <p className="mt-2 text-muted-foreground">
             Manage configuration and transformation profiles
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/profiles/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Create Profile
             </Button>
           </Link>
@@ -70,15 +67,7 @@ export default function ProfileList() {
           <DataTableSkeleton
             columnCount={7}
             filterCount={3}
-            cellWidths={[
-              "10rem",
-              "15rem",
-              "12rem",
-              "20rem",
-              "10rem",
-              "8rem",
-              "6rem",
-            ]}
+            cellWidths={["10rem", "15rem", "12rem", "20rem", "10rem", "8rem", "6rem"]}
             shrinkZero
           />
         }
@@ -110,10 +99,7 @@ function ProfileTable({
   });
 
   return (
-    <DataTable
-      table={table}
-      actionBar={<ProfileTableActionBar table={table} />}
-    >
+    <DataTable table={table} actionBar={<ProfileTableActionBar table={table} />}>
       <DataTableToolbar table={table} />
     </DataTable>
   );

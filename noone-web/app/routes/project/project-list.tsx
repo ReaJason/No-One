@@ -14,8 +14,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 import type { Project } from "@/types/project";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { name, page, perPage, sortBy, sortOrder } =
-    loadProjectSearchParams(request);
+  const { name, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
   return {
     projectResponse: getProjects({ name, page, perPage, sortBy, sortOrder }),
   };
@@ -27,22 +26,20 @@ export default function ProjectList() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-balance">
-            Project Management
-          </h1>
-          <p className="text-muted-foreground mt-2">Manage your all projects</p>
+          <h1 className="text-3xl font-bold text-balance">Project Management</h1>
+          <p className="mt-2 text-muted-foreground">Manage your all projects</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/projects/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Create Project
             </Button>
           </Link>
@@ -54,16 +51,7 @@ export default function ProjectList() {
           <DataTableSkeleton
             columnCount={8}
             filterCount={4}
-            cellWidths={[
-              "10rem",
-              "25rem",
-              "12rem",
-              "8rem",
-              "8rem",
-              "8rem",
-              "15rem",
-              "6rem",
-            ]}
+            cellWidths={["10rem", "25rem", "12rem", "8rem", "8rem", "8rem", "15rem", "6rem"]}
             shrinkZero
           />
         }
@@ -95,10 +83,7 @@ export function ProjectTable({
   });
 
   return (
-    <DataTable
-      table={table}
-      actionBar={<ProjectTableActionBar table={table} />}
-    >
+    <DataTable table={table} actionBar={<ProjectTableActionBar table={table} />}>
       <DataTableToolbar table={table} />
     </DataTable>
   );

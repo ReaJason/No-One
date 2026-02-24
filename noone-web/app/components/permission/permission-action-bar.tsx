@@ -13,9 +13,7 @@ interface PermissionTableActionBarProps {
   table: Table<Permission>;
 }
 
-export function PermissionTableActionBar({
-  table,
-}: PermissionTableActionBarProps) {
+export function PermissionTableActionBar({ table }: PermissionTableActionBarProps) {
   const rows = table.getFilteredSelectedRowModel().rows;
   return (
     <DataTableActionBar table={table} visible={rows.length > 0}>

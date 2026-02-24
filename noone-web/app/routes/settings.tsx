@@ -118,10 +118,7 @@ export default function SettingsPage() {
   return (
     <div className="@container/page flex flex-1 flex-col gap-8 p-6">
       <Tabs defaultValue="account" className="gap-6">
-        <div
-          data-slot="dashboard-header"
-          className="flex items-center justify-between"
-        >
+        <div data-slot="dashboard-header" className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="account">Account</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
@@ -133,9 +130,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Account Settings</CardTitle>
-              <CardDescription>
-                Make changes to your account here.
-              </CardDescription>
+              <CardDescription>Make changes to your account here.</CardDescription>
             </CardHeader>
             <CardContent>
               <form id="form-account" className="@container">
@@ -143,24 +138,14 @@ export default function SettingsPage() {
                   <Field>
                     <Label htmlFor="name">Name</Label>
                     <FieldControl>
-                      <Input
-                        id="name"
-                        placeholder="First and last name"
-                        required
-                      />
+                      <Input id="name" placeholder="First and last name" required />
                     </FieldControl>
-                    <FieldDescription>
-                      This is your public display name.
-                    </FieldDescription>
+                    <FieldDescription>This is your public display name.</FieldDescription>
                   </Field>
                   <Field>
                     <Label htmlFor="email">Email</Label>
                     <FieldControl>
-                      <Input
-                        id="email"
-                        placeholder="you@example.com"
-                        required
-                      />
+                      <Input id="email" placeholder="you@example.com" required />
                     </FieldControl>
                   </Field>
                   <Field>
@@ -197,9 +182,7 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Notifications</CardTitle>
-              <CardDescription>
-                Manage how you receive notifications.
-              </CardDescription>
+              <CardDescription>Manage how you receive notifications.</CardDescription>
             </CardHeader>
             <CardContent>
               <form id="form-notifications" className="@container">
@@ -229,25 +212,15 @@ export default function SettingsPage() {
                     <FieldControl className="flex flex-col gap-2">
                       <div className="flex items-center gap-2">
                         <Checkbox id="notification-account" />
-                        <Label htmlFor="notification-account">
-                          Account Activity
-                        </Label>
+                        <Label htmlFor="notification-account">Account Activity</Label>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Checkbox
-                          id="notification-security"
-                          defaultChecked
-                          disabled
-                        />
-                        <Label htmlFor="notification-security">
-                          Security Alerts
-                        </Label>
+                        <Checkbox id="notification-security" defaultChecked disabled />
+                        <Label htmlFor="notification-security">Security Alerts</Label>
                       </div>
                       <div className="flex items-center gap-2">
                         <Checkbox id="notification-marketing" />
-                        <Label htmlFor="notification-marketing">
-                          Marketing & Promotions
-                        </Label>
+                        <Label htmlFor="notification-marketing">Marketing & Promotions</Label>
                       </div>
                     </FieldControl>
                     <FieldDescription>
@@ -258,26 +231,17 @@ export default function SettingsPage() {
               </form>
             </CardContent>
             <CardFooter className="border-t">
-              <Button
-                type="submit"
-                form="form-notifications"
-                variant="secondary"
-              >
+              <Button type="submit" form="form-notifications" variant="secondary">
                 Save changes
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
-        <TabsContent
-          value="security"
-          className="grid gap-6 @3xl/page:grid-cols-2"
-        >
+        <TabsContent value="security" className="grid gap-6 @3xl/page:grid-cols-2">
           <Card className="@3xl/page:col-span-2">
             <CardHeader>
               <CardTitle>Security Settings</CardTitle>
-              <CardDescription>
-                Make changes to your security settings here.
-              </CardDescription>
+              <CardDescription>Make changes to your security settings here.</CardDescription>
             </CardHeader>
             <CardContent className="@container">
               <form id="form-security">
@@ -285,48 +249,30 @@ export default function SettingsPage() {
                   <Field>
                     <Label htmlFor="current-password">Current Password</Label>
                     <FieldControl>
-                      <Input
-                        id="current-password"
-                        placeholder="Current password"
-                        required
-                      />
+                      <Input id="current-password" placeholder="Current password" required />
                     </FieldControl>
-                    <FieldDescription>
-                      This is your current password.
-                    </FieldDescription>
+                    <FieldDescription>This is your current password.</FieldDescription>
                   </Field>
                   <Field>
                     <Label htmlFor="new-password">New Password</Label>
                     <FieldControl>
-                      <Input
-                        id="new-password"
-                        placeholder="New password"
-                        required
-                      />
+                      <Input id="new-password" placeholder="New password" required />
                     </FieldControl>
                   </Field>
                   <Field>
                     <Label htmlFor="confirm-password">Confirm Password</Label>
                     <FieldControl>
-                      <Input
-                        id="confirm-password"
-                        placeholder="Confirm password"
-                      />
+                      <Input id="confirm-password" placeholder="Confirm password" />
                     </FieldControl>
                   </Field>
                   <Field>
                     <FieldControl>
-                      <Switch
-                        id="enable-two-factor-auth"
-                        className="self-start"
-                      />
+                      <Switch id="enable-two-factor-auth" className="self-start" />
                     </FieldControl>
-                    <Label htmlFor="enable-two-factor-auth">
-                      Enable two-factor authentication
-                    </Label>
+                    <Label htmlFor="enable-two-factor-auth">Enable two-factor authentication</Label>
                     <FieldDescription>
-                      This will add an extra layer of security to your account.
-                      Make this an extra long description to test the layout.
+                      This will add an extra layer of security to your account. Make this an extra
+                      long description to test the layout.
                     </FieldDescription>
                   </Field>
                 </FieldGroup>
@@ -341,18 +287,14 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Login History</CardTitle>
-              <CardDescription>
-                Recent login activities on your account.
-              </CardDescription>
+              <CardDescription>Recent login activities on your account.</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead className="hidden @md/page:table-cell">
-                      IP
-                    </TableHead>
+                    <TableHead className="hidden @md/page:table-cell">IP</TableHead>
                     <TableHead>Location</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -366,14 +308,10 @@ export default function SettingsPage() {
                             month: "long",
                             day: "numeric",
                           })}
-                          <span className="flex @md/page:hidden">
-                            {login.ip}
-                          </span>
+                          <span className="flex @md/page:hidden">{login.ip}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden @md/page:table-cell">
-                        {login.ip}
-                      </TableCell>
+                      <TableCell className="hidden @md/page:table-cell">{login.ip}</TableCell>
                       <TableCell>{login.location}</TableCell>
                     </TableRow>
                   ))}
@@ -384,14 +322,10 @@ export default function SettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Active Sessions</CardTitle>
-              <CardDescription>
-                Current active sessions on your account.
-              </CardDescription>
+              <CardDescription>Current active sessions on your account.</CardDescription>
               <CardAction>
                 <Button variant="outline" size="sm">
-                  <span className="hidden @md/card-header:block">
-                    Manage Sessions
-                  </span>
+                  <span className="hidden @md/card-header:block">Manage Sessions</span>
                   <span className="block @md/card-header:hidden">Manage</span>
                 </Button>
               </CardAction>
@@ -449,11 +383,7 @@ function Field({ children, className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function FieldControl({
-  children,
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+function FieldControl({ children, className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="field-control"
@@ -468,16 +398,12 @@ function FieldControl({
   );
 }
 
-function FieldDescription({
-  children,
-  className,
-  ...props
-}: React.ComponentProps<"p">) {
+function FieldDescription({ children, className, ...props }: React.ComponentProps<"p">) {
   return (
     <p
       data-slot="field-description"
       className={cn(
-        "text-muted-foreground text-sm @3xl/field-group:col-start-1 @3xl/field-group:row-start-1 @3xl/field-group:translate-y-6",
+        "text-sm text-muted-foreground @3xl/field-group:col-start-1 @3xl/field-group:row-start-1 @3xl/field-group:translate-y-6",
         className,
       )}
       {...props}

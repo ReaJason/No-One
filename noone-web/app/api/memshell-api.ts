@@ -24,8 +24,5 @@ export async function getMainConfig(): Promise<MainConfig> {
 export async function generate(
   body: MemShellGenerateRequest,
 ): Promise<ApiResponse<MemShellGenerateResponse>> {
-  return await apiClient.post<MemShellGenerateResponse>(
-    `${baseUrl}/generate`,
-    body,
-  );
+  return await apiClient.post<MemShellGenerateResponse>(`${baseUrl}/generate`, body);
 }

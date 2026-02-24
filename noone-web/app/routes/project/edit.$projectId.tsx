@@ -24,10 +24,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   if (!projectId) {
     throw new Response("Invalid project ID", { status: 400 });
   }
-  const [project, users] = await Promise.all([
-    getProjectById(projectId),
-    getAllUsers(),
-  ]);
+  const [project, users] = await Promise.all([getProjectById(projectId), getAllUsers()]);
   if (!project) {
     throw new Response("Project not found", { status: 404 });
   }
@@ -53,7 +50,7 @@ export default function EditProject() {
   }, [users, query]);
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -65,7 +62,7 @@ export default function EditProject() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Edit Project</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="mt-2 text-muted-foreground">
           Update project: <span className="font-semibold">{project.name}</span>
         </p>
       </div>
@@ -78,11 +75,7 @@ export default function EditProject() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Form
-            method="post"
-            action={`/projects/update/${project.id}`}
-            className="space-y-6"
-          >
+          <Form method="post" action={`/projects/update/${project.id}`} className="space-y-6">
             {actionData?.errors?.general && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {actionData.errors.general}
@@ -100,9 +93,7 @@ export default function EditProject() {
                 className={actionData?.errors?.name ? "border-destructive" : ""}
               />
               {actionData?.errors?.name && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.name}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.name}</p>
               )}
             </div>
 
@@ -117,19 +108,14 @@ export default function EditProject() {
                 className={actionData?.errors?.code ? "border-destructive" : ""}
               />
               {actionData?.errors?.code && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.code}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.code}</p>
               )}
             </div>
 
             <div className="space-y-2">
               <Label>Status</Label>
               <input type="hidden" name="status" value={status} />
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as Project["status"])}
-              >
+              <Select value={status} onValueChange={(v) => setStatus(v as Project["status"])}>
                 <SelectTrigger className="w-56">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
@@ -146,9 +132,7 @@ export default function EditProject() {
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <Label>Members</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Manage project members
-                  </p>
+                  <p className="text-sm text-muted-foreground">Manage project members</p>
                 </div>
                 <div className="relative">
                   <Input
@@ -157,7 +141,7 @@ export default function EditProject() {
                     placeholder="Search users..."
                     className="h-8 w-56 pl-8"
                   />
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Search className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
               <div className="rounded-md border">
@@ -169,18 +153,14 @@ export default function EditProject() {
                           type="checkbox"
                           name="memberIds"
                           value={u.id}
-                          defaultChecked={project.members?.some(
-                            (m) => m.id === u.id,
-                          )}
+                          defaultChecked={project.members?.some((m) => m.id === u.id)}
                           className="h-4 w-4 rounded border-gray-300"
                         />
                         <span className="text-sm">{u.username}</span>
                       </label>
                     ))}
                     {filtered.length === 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        No users
-                      </div>
+                      <div className="text-sm text-muted-foreground">No users</div>
                     )}
                   </div>
                 </ScrollArea>
@@ -192,11 +172,7 @@ export default function EditProject() {
                 <Edit className="h-4 w-4" />
                 Update Project
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/projects")}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate("/projects")}>
                 Cancel
               </Button>
             </div>

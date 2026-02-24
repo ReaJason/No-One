@@ -1,13 +1,4 @@
-import {
-  BadgeCheck,
-  Bell,
-  ChevronsUpDown,
-  CreditCard,
-  LogOut,
-  Sparkles,
-  User,
-} from "lucide-react";
-
+import { BadgeCheck, Bell, ChevronsUpDown, CreditCard, LogOut, Sparkles, User } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -25,7 +16,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth, useLogout } from "@/contexts/auth-context";
-
 export function NavUser() {
   const { isMobile } = useSidebar();
   const { user, isAuthenticated } = useAuth();
@@ -38,7 +28,6 @@ export function NavUser() {
       console.error("Logout failed:", error);
     }
   };
-
   // 如果未认证或没有用户信息，显示默认状态
   if (!isAuthenticated || !user) {
     return (

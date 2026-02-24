@@ -1,9 +1,4 @@
-import {
-  createLoader,
-  parseAsInteger,
-  parseAsString,
-  parseAsStringEnum,
-} from "nuqs/server";
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { Permission } from "@/types/admin";
 import { apiClient, type PaginatedResponse } from "./api-client";
 
@@ -40,9 +35,7 @@ export async function getAllPermissions(): Promise<Permission[]> {
   ).content;
 }
 
-export async function getPermissionById(
-  id: number,
-): Promise<Permission | null> {
+export async function getPermissionById(id: number): Promise<Permission | null> {
   return (await apiClient.get<Permission>(`${baseUrl}/${id}`)).data;
 }
 
@@ -56,8 +49,7 @@ export async function updatePermission(
   id: number,
   permissionData: Partial<Permission>,
 ): Promise<Permission | null> {
-  return (await apiClient.put<Permission>(`${baseUrl}/${id}`, permissionData))
-    .data;
+  return (await apiClient.put<Permission>(`${baseUrl}/${id}`, permissionData)).data;
 }
 
 export async function deletePermission(id: number): Promise<boolean> {

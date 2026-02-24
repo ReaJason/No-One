@@ -53,9 +53,7 @@ export function UsersTableActionBar({ table }: UsersTableActionBarProps) {
               </ActionBarItem>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem className="capitalize">
-                {"hello"}
-              </DropdownMenuItem>
+              <DropdownMenuItem className="capitalize">{"hello"}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>

@@ -30,9 +30,7 @@ export const loadUserSearchParams = createLoader({
   sortOrder: parseAsStringEnum(["asc", "desc"]).withDefault("desc"),
 });
 
-export async function getUsers(
-  filters: UserSearchParams,
-): Promise<PaginatedResponse<User>> {
+export async function getUsers(filters: UserSearchParams): Promise<PaginatedResponse<User>> {
   return await apiClient.getPaginated<User>(baseUrl, filters);
 }
 
@@ -41,18 +39,13 @@ export async function getUserById(id: number): Promise<User | null> {
   return response.data;
 }
 
-export async function createUser(
-  userData: Omit<User, "id" | "createdAt">,
-): Promise<User> {
+export async function createUser(userData: Omit<User, "id" | "createdAt">): Promise<User> {
   const response = await apiClient.post<User>(baseUrl, userData);
   console.log(`[UserApiService] Create user: ${response.data.username}`);
   return response.data;
 }
 
-export async function updateUser(
-  id: number,
-  userData: Partial<User>,
-): Promise<User | null> {
+export async function updateUser(id: number, userData: Partial<User>): Promise<User | null> {
   const response = await apiClient.put<User>(`${baseUrl}/${id}`, userData);
   return response.data;
 }
@@ -68,7 +61,5 @@ export async function resetUserPassword(id: number): Promise<boolean> {
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  return (
-    await apiClient.getPaginated<User>(baseUrl, { page: 1, perPage: 1000 })
-  ).content;
+  return (await apiClient.getPaginated<User>(baseUrl, { page: 1, perPage: 1000 })).content;
 }

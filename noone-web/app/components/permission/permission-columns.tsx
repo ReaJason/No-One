@@ -1,12 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  Edit,
-  Loader,
-  MoreHorizontal,
-  Text,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Edit, Loader, MoreHorizontal, Text, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -41,12 +34,9 @@ export const permissionColumns: ColumnDef<Permission>[] = [
     header: ({ table }) => (
       <Checkbox
         checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
         }
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -66,17 +56,13 @@ export const permissionColumns: ColumnDef<Permission>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Name" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
     cell: ({ row }) => {
       const permission = row.original;
       return (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-              {permission.name}
-            </Badge>
+            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{permission.name}</Badge>
           </div>
         </div>
       );
@@ -92,17 +78,13 @@ export const permissionColumns: ColumnDef<Permission>[] = [
   {
     id: "code",
     accessorKey: "code",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Code" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
     cell: ({ cell }) => cell.getValue<string>(),
   },
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created Time" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {
@@ -159,10 +141,7 @@ export const permissionColumns: ColumnDef<Permission>[] = [
           </DropdownMenu>
           <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
             <AlertDialogContent>
-              <fetcher.Form
-                method="post"
-                action={`/admin/permissions/delete/${permission.id}`}
-              >
+              <fetcher.Form method="post" action={`/admin/permissions/delete/${permission.id}`}>
                 <AlertDialogHeader>
                   <AlertDialogTitle>
                     Are you sure you want to delete this permission?
@@ -174,14 +153,8 @@ export const permissionColumns: ColumnDef<Permission>[] = [
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction>
-                    <Button
-                      type="submit"
-                      className="text-sm"
-                      disabled={fetcher.state !== "idle"}
-                    >
-                      {fetcher.state !== "idle" && (
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      )}
+                    <Button type="submit" className="text-sm" disabled={fetcher.state !== "idle"}>
+                      {fetcher.state !== "idle" && <Loader className="mr-2 h-4 w-4 animate-spin" />}
                       Confirm
                     </Button>
                   </AlertDialogAction>

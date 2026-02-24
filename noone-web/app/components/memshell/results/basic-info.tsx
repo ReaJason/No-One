@@ -4,9 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { type MemShellResult } from "@/types/memshell";
 import { CopyableField } from "../copyable-field";
 
-export function BasicInfo({
-  generateResult,
-}: Readonly<{ generateResult?: MemShellResult }>) {
+export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShellResult }>) {
   return (
     <Card>
       <CardHeader>
@@ -18,7 +16,7 @@ export function BasicInfo({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2"></div>
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2"></div>
         <Separator className="my-1" />
         <div className="grid grid-cols-1">
           <CopyableField

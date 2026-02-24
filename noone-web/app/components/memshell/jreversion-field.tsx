@@ -1,10 +1,5 @@
 import { memo, useEffect, useState } from "react";
-import {
-  Field,
-  FieldContent,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -72,11 +67,7 @@ export const JREVersionFormField = memo(function JREVersionFormField({
           onValueChange={handleChange}
           value={value}
         >
-          <SelectTrigger
-            className="w-full"
-            id="targetJdkVersion"
-            aria-invalid={!!error}
-          >
+          <SelectTrigger className="w-full" id="targetJdkVersion" aria-invalid={!!error}>
             <SelectValue placeholder="Select JDK version" />
           </SelectTrigger>
           <SelectContent>

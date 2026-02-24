@@ -11,7 +11,7 @@ export function QuickUsage() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="flex flex-col gap-4 list-decimal list-inside text-sm">
+        <ol className="flex list-inside list-decimal flex-col gap-4 text-sm">
           <li>Select Target Server</li>
           <li>Select Shell Mount Type, Filter, Listener, etc.</li>
           <li>Select NoOne Profile</li>

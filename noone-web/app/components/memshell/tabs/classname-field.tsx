@@ -19,7 +19,7 @@ export function OptionalClassFormField() {
 
   return (
     <Fragment>
-      <div className="pt-2 flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 pt-2">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Shuffle className="h-4 w-4" />
           <span>Random Class Name</span>
@@ -35,9 +35,7 @@ export function OptionalClassFormField() {
         <>
           <input type="hidden" name="shellClassName" value={shellClassName} />
           <Field className="gap-1">
-            <FieldLabel htmlFor="shellClassName">
-              Shell Class Name (optional)
-            </FieldLabel>
+            <FieldLabel htmlFor="shellClassName">Shell Class Name (optional)</FieldLabel>
             <Input
               id="shellClassName"
               value={shellClassName}
@@ -49,15 +47,9 @@ export function OptionalClassFormField() {
       )}
       {!useRandomClassName && (
         <>
-          <input
-            type="hidden"
-            name="injectorClassName"
-            value={injectorClassName}
-          />
+          <input type="hidden" name="injectorClassName" value={injectorClassName} />
           <Field className="gap-1">
-            <FieldLabel htmlFor="injectClassName">
-              Injector Class Name (optional)
-            </FieldLabel>
+            <FieldLabel htmlFor="injectClassName">Injector Class Name (optional)</FieldLabel>
             <Input
               id="injectClassName"
               value={injectorClassName}

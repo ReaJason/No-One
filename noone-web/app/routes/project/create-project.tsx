@@ -67,7 +67,7 @@ export default function CreateProject() {
   }, [users, query]);
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl">
+    <div className="container mx-auto max-w-2xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -79,9 +79,7 @@ export default function CreateProject() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Create New Project</h1>
-        <p className="text-muted-foreground mt-2">
-          Fill in project basic information
-        </p>
+        <p className="mt-2 text-muted-foreground">Fill in project basic information</p>
       </div>
 
       <Card>
@@ -105,19 +103,14 @@ export default function CreateProject() {
                 name="name"
                 type="text"
                 placeholder="Please enter project name"
-                className={
-                  actionData?.errors?.name ? "border-destructive" : "w-full"
-                }
+                className={actionData?.errors?.name ? "border-destructive" : "w-full"}
                 required
               />
               {actionData?.errors?.name && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.name}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.name}</p>
               )}
               <p className="text-sm text-muted-foreground">
-                The project name will be used to identify and manage your
-                project
+                The project name will be used to identify and manage your project
               </p>
             </div>
 
@@ -128,15 +121,11 @@ export default function CreateProject() {
                 name="code"
                 type="text"
                 placeholder="Unique code"
-                className={
-                  actionData?.errors?.code ? "border-destructive" : "w-full"
-                }
+                className={actionData?.errors?.code ? "border-destructive" : "w-full"}
                 required
               />
               {actionData?.errors?.code && (
-                <p className="text-sm text-destructive">
-                  {actionData.errors.code}
-                </p>
+                <p className="text-sm text-destructive">{actionData.errors.code}</p>
               )}
             </div>
 
@@ -155,7 +144,7 @@ export default function CreateProject() {
                     placeholder="Search users..."
                     className="h-8 w-56 pl-8"
                   />
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Search className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
               <div className="rounded-md border">
@@ -173,9 +162,7 @@ export default function CreateProject() {
                       </label>
                     ))}
                     {filtered.length === 0 && (
-                      <div className="text-sm text-muted-foreground">
-                        No users
-                      </div>
+                      <div className="text-sm text-muted-foreground">No users</div>
                     )}
                   </div>
                 </ScrollArea>
@@ -188,11 +175,7 @@ export default function CreateProject() {
                 Create Project
               </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate("/projects")}
-              >
+              <Button type="button" variant="outline" onClick={() => navigate("/projects")}>
                 Cancel
               </Button>
             </div>

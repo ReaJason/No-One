@@ -1,5 +1,6 @@
+console.log(import.meta.env);
 export const apiConfig = {
-  baseURL: "http://localhost:8888/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "",
   useMockData: false,
   timeout: 10000,
   retries: 3,
@@ -8,5 +9,3 @@ export const apiConfig = {
     "Content-Type": "application/json",
   },
 } as const;
-
-export type ApiConfig = typeof apiConfig;

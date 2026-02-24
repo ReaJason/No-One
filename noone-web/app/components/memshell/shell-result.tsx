@@ -142,9 +142,7 @@ const ShellResult = memo(function ShellResult({
               {urlError && <FieldError>{urlError}</FieldError>}
             </Field>
             <DialogFooter>
-              <DialogClose
-                render={<Button variant="outline">Cancel</Button>}
-              ></DialogClose>
+              <DialogClose render={<Button variant="outline">Cancel</Button>}></DialogClose>
               <Button onClick={handleAddShell}>
                 <PlusIcon className="h-4 w-4" />
                 Continue
@@ -156,11 +154,7 @@ const ShellResult = memo(function ShellResult({
       <TabsContent value="shell" className="mt-4">
         <CodeViewer
           showLineNumbers={false}
-          header={
-            <div className="text-xs truncate">
-              {generateResult?.shellClassName}
-            </div>
-          }
+          header={<div className="truncate text-xs">{generateResult?.shellClassName}</div>}
           button={
             <Button
               variant="ghost"
@@ -169,15 +163,10 @@ const ShellResult = memo(function ShellResult({
               className="h-7 w-7 [&_svg]:h-4 [&_svg]:w-4"
               onClick={() => {
                 if (!generateResult?.shellBytesBase64Str) {
-                  toast.warning(
-                    "Shell bytes is empty, please generate shell first",
-                  );
+                  toast.warning("Shell bytes is empty, please generate shell first");
                   return;
                 }
-                downloadBytes(
-                  generateResult?.shellBytesBase64Str,
-                  generateResult?.shellClassName,
-                );
+                downloadBytes(generateResult?.shellBytesBase64Str, generateResult?.shellClassName);
               }}
             >
               <DownloadIcon className="h-4 w-4" />
@@ -193,9 +182,7 @@ const ShellResult = memo(function ShellResult({
         <CodeViewer
           showLineNumbers={false}
           wrapLongLines={true}
-          header={
-            <div className="text-xs">{generateResult?.injectorClassName}</div>
-          }
+          header={<div className="text-xs">{generateResult?.injectorClassName}</div>}
           button={
             <Button
               variant="ghost"
@@ -204,9 +191,7 @@ const ShellResult = memo(function ShellResult({
               className="h-7 w-7 [&_svg]:h-4 [&_svg]:w-4"
               onClick={() => {
                 if (!generateResult?.injectorBytesBase64Str) {
-                  toast.warning(
-                    "Shell bytes is empty, please generate shell first",
-                  );
+                  toast.warning("Shell bytes is empty, please generate shell first");
                   return;
                 }
                 downloadBytes(

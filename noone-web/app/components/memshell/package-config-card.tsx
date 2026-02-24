@@ -15,7 +15,7 @@ interface PackageConfigCardProps {
 
 // Optimize: Extract static JSX outside component (rendering-hoist-jsx)
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-4 gap-4 h-50">
+  <div className="flex h-50 items-center justify-center gap-4 p-4">
     <Spinner />
     <span className="text-sm text-muted-foreground">Loading...</span>
   </div>

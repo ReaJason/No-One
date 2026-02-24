@@ -1,8 +1,4 @@
-import type {
-  InjectorConfig,
-  ShellConfig,
-  ShellToolConfig,
-} from "@/types/memshell";
+import type { InjectorConfig, ShellConfig, ShellToolConfig } from "@/types/memshell";
 import type { MemShellFormSchema } from "@/types/schema";
 
 export function transformToPostData(formValue: MemShellFormSchema) {

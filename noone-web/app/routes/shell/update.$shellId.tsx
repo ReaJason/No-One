@@ -1,7 +1,8 @@
 import type { ActionFunctionArgs } from "react-router";
 import { redirect } from "react-router";
 import { toast } from "sonner";
-import { updateShellConnection } from "@/lib/shell-connection-api";
+import { updateShellConnection } from "@/api/shell-connection-api";
+import type { ShellLanguage } from "@/types/shell-connection";
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const shellId = params.shellId as string | undefined;
@@ -11,6 +12,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const formData = await request.formData();
   const url = (formData.get("url") as string)?.trim();
+  const languageRaw = (formData.get("language") as string)?.trim();
+  const language = (languageRaw === "nodejs" ? "nodejs" : "java") as ShellLanguage;
   const group = (formData.get("group") as string)?.trim();
   const projectIdRaw = (formData.get("projectId") as string)?.trim();
   const profileIdRaw = (formData.get("profileId") as string)?.trim();
@@ -24,15 +27,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   // Advanced settings
   const proxyUrl = (formData.get("proxyUrl") as string)?.trim() || undefined;
-  const connectTimeoutMsRaw = (
-    formData.get("connectTimeoutMs") as string
-  )?.trim();
+  const connectTimeoutMsRaw = (formData.get("connectTimeoutMs") as string)?.trim();
   const readTimeoutMsRaw = (formData.get("readTimeoutMs") as string)?.trim();
   const maxRetriesRaw = (formData.get("maxRetries") as string)?.trim();
   const retryDelayMsRaw = (formData.get("retryDelayMs") as string)?.trim();
-  const connectTimeoutMs = connectTimeoutMsRaw
-    ? Number(connectTimeoutMsRaw)
-    : undefined;
+  const connectTimeoutMs = connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined;
   const readTimeoutMs = readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined;
   const maxRetries = maxRetriesRaw ? Number(maxRetriesRaw) : undefined;
   const retryDelayMs = retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined;
@@ -54,6 +53,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const errors: Record<string, string> = {};
   if (!url) errors.url = "URL is required";
+  if (languageRaw && languageRaw !== "java" && languageRaw !== "nodejs") {
+    errors.language = "Language must be either java or nodejs";
+  }
   if (!profileId || !Number.isFinite(profileId)) {
     errors.profileId = "Profile is required";
   }
@@ -68,6 +70,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   try {
     await updateShellConnection(shellId, {
       url,
+      language,
       group: group || undefined,
       projectId,
       profileId: profileId as number,

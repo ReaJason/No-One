@@ -1,13 +1,5 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import {
-  AlertCircle,
-  Edit,
-  MoreHorizontal,
-  Terminal,
-  Trash2,
-  Wifi,
-  WifiOff,
-} from "lucide-react";
+import { AlertCircle, Edit, MoreHorizontal, Terminal, Trash2, Wifi, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -24,12 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import { deleteShellConnection } from "@/lib/shell-connection-api";
-import type {
-  ShellConnection,
-  ShellStatus,
-  ShellType,
-} from "@/types/shell-connection";
+import { deleteShellConnection } from "@/api/shell-connection-api";
+import type { ShellConnection, ShellStatus, ShellType } from "@/types/shell-connection";
 
 const _shellTypeLabels: Record<ShellType, string> = {
   WEBSHELL: "Webshell",
@@ -60,12 +48,8 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected()
-        }
-        onCheckedChange={(value: any) =>
-          table.toggleAllPageRowsSelected(!!value)
-        }
+        checked={table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected()}
+        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -85,9 +69,7 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "url",
     accessorKey: "url",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="URL" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="URL" />,
     cell: ({ row }) => {
       const url = row.getValue("url") as string;
       return (
@@ -101,9 +83,7 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "group",
     accessorKey: "group",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Group" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Group" />,
     cell: ({ row }) => {
       const group = row.getValue("group") as string | undefined;
       return group ? (
@@ -124,9 +104,7 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "projectId",
     accessorKey: "projectId",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Project" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Project" />,
     cell: ({ row }) => {
       const projectId = row.getValue("projectId") as number | null | undefined;
       return typeof projectId === "number" ? (
@@ -141,18 +119,16 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "status",
     accessorKey: "status",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Status" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
     cell: ({ row }) => {
       const status = row.getValue("status") as ShellStatus;
       const icon =
         status === "CONNECTED" ? (
-          <Wifi className="w-4 h-4 text-green-600" />
+          <Wifi className="h-4 w-4 text-green-600" />
         ) : status === "DISCONNECTED" ? (
-          <WifiOff className="w-4 h-4 text-gray-600" />
+          <WifiOff className="h-4 w-4 text-gray-600" />
         ) : (
-          <AlertCircle className="w-4 h-4 text-red-600" />
+          <AlertCircle className="h-4 w-4 text-red-600" />
         );
 
       return (
@@ -176,15 +152,11 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "connectTime",
     accessorKey: "connectTime",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Last Connected" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Last Connected" />,
     cell: ({ row }) => {
       const connectTime = row.getValue("connectTime") as string | undefined;
       return connectTime ? (
-        <span className="text-sm text-muted-foreground">
-          {formatDate(connectTime)}
-        </span>
+        <span className="text-sm text-muted-foreground">{formatDate(connectTime)}</span>
       ) : (
         <span className="text-sm text-muted-foreground">Never connected</span>
       );
@@ -193,16 +165,10 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
   {
     id: "createTime",
     accessorKey: "createTime",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Created Time" />
-    ),
+    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
     cell: ({ row }) => {
       const createTime = row.getValue("createTime") as string | undefined;
-      return (
-        <span className="text-sm text-muted-foreground">
-          {formatDate(createTime)}
-        </span>
-      );
+      return <span className="text-sm text-muted-foreground">{formatDate(createTime)}</span>;
     },
   },
   {
@@ -258,10 +224,7 @@ export const shellConnectionColumns: ColumnDef<ShellConnection>[] = [
                 Connect
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDeleteShell}
-                className="text-destructive"
-              >
+              <DropdownMenuItem onClick={handleDeleteShell} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </DropdownMenuItem>

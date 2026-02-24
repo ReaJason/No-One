@@ -1,7 +1,10 @@
 import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
+import * as React from "react";
+import { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
-import { useLoaderData } from "react-router";
+import { Link, useLoaderData } from "react-router";
+import type { PaginatedResponse } from "@/api/api-client";
+import { getPlugins, loadPluginSearchParams } from "@/api/plugin-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -10,60 +13,20 @@ import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { formatDate } from "@/lib/format";
+import type { Plugin } from "@/types/plugin";
 
-// Mock plugin data
-interface Plugin {
-  id: string;
-  name: string;
-  description: string;
-  version: string;
-  author: string;
-  status: "active" | "inactive" | "error";
-  category: string;
-  createdAt: string;
-}
-
-const mockPlugins: Plugin[] = [
-  {
-    id: "1",
-    name: "Security Scanner",
-    description: "Advanced security vulnerability scanner",
-    version: "1.2.0",
-    author: "Security Team",
-    status: "active",
-    category: "Security",
-    createdAt: "2024-01-15T08:00:00Z",
-  },
-  {
-    id: "2",
-    name: "Performance Monitor",
-    description: "Real-time performance monitoring tool",
-    version: "2.1.0",
-    author: "DevOps Team",
-    status: "active",
-    category: "Monitoring",
-    createdAt: "2024-01-20T09:00:00Z",
-  },
-  {
-    id: "3",
-    name: "Data Backup",
-    description: "Automated data backup solution",
-    version: "1.0.5",
-    author: "IT Team",
-    status: "inactive",
-    category: "Backup",
-    createdAt: "2024-02-01T10:00:00Z",
-  },
-];
-
-export async function loader(_args: LoaderFunctionArgs) {
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { name, language, type, page, perPage, sortBy, sortOrder } =
+    loadPluginSearchParams(request);
   return {
-    pluginResponse: Promise.resolve({
-      data: mockPlugins,
-      total: mockPlugins.length,
-      page: 1,
-      pageSize: 10,
-      totalPages: 1,
+    pluginResponse: getPlugins({
+      name,
+      language,
+      type,
+      page,
+      perPage,
+      sortBy,
+      sortOrder,
     }),
   };
 }
@@ -76,48 +39,36 @@ export const handle = createBreadcrumb(() => ({
 
 export default function Plugins() {
   const { pluginResponse } = useLoaderData() as {
-    pluginResponse: Promise<{
-      data: Plugin[];
-      total: number;
-      page: number;
-      pageSize: number;
-      totalPages: number;
-    }>;
-  };
-
-  const handleCreatePlugin = () => {
-    console.log("Create plugin");
+    pluginResponse: Promise<PaginatedResponse<Plugin>>;
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Plugin Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage system plugins and extensions
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">Plugin Management</h1>
+          <p className="mt-1 text-muted-foreground">Manage system plugins and extensions</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button onClick={handleCreatePlugin}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Plugin
-          </Button>
+          <Link to="/plugins/create">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Plugin
+            </Button>
+          </Link>
         </div>
       </div>
 
       <React.Suspense
         fallback={
           <DataTableSkeleton
-            columnCount={6}
+            columnCount={5}
             filterCount={2}
-            cellWidths={["20rem", "15rem", "8rem", "12rem", "10rem", "6rem"]}
+            cellWidths={["20rem", "8rem", "8rem", "8rem", "10rem"]}
             shrinkZero
           />
         }
@@ -128,16 +79,25 @@ export default function Plugins() {
   );
 }
 
+function getTypeColor(type: string) {
+  switch (type.toLowerCase()) {
+    case "reconnaissance":
+      return "bg-blue-100 text-blue-800 hover:bg-blue-100";
+    case "exploitation":
+      return "bg-red-100 text-red-800 hover:bg-red-100";
+    case "post-exploitation":
+      return "bg-orange-100 text-orange-800 hover:bg-orange-100";
+    case "utility":
+      return "bg-green-100 text-green-800 hover:bg-green-100";
+    default:
+      return "bg-gray-100 text-gray-800 hover:bg-gray-100";
+  }
+}
+
 export function PluginTable({
   pluginResponse,
 }: {
-  pluginResponse: Promise<{
-    data: Plugin[];
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  }>;
+  pluginResponse: Promise<PaginatedResponse<Plugin>>;
 }) {
   const pluginResponseData = use(pluginResponse);
   const { table } = useDataTable({
@@ -145,19 +105,16 @@ export function PluginTable({
       {
         id: "name",
         accessorKey: "name",
-        header: "Plugin",
+        header: "Name",
         cell: ({ row }) => {
           const plugin = row.original;
           return (
             <div className="space-y-1">
               <div className="font-medium">{plugin.name}</div>
-              <p className="text-sm text-muted-foreground">
-                {plugin.description}
-              </p>
+              <p className="text-sm text-muted-foreground">{plugin.id}</p>
             </div>
           );
         },
-        size: 400,
       },
       {
         id: "version",
@@ -165,47 +122,25 @@ export function PluginTable({
         header: "Version",
       },
       {
-        id: "author",
-        accessorKey: "author",
-        header: "Author",
-      },
-      {
-        id: "category",
-        accessorKey: "category",
-        header: "Category",
+        id: "language",
+        accessorKey: "language",
+        header: "Language",
         cell: ({ row }) => {
-          const category = row.getValue("category") as string;
+          const language = row.getValue("language") as string;
           return (
             <Badge variant="outline" className="text-xs">
-              {category}
+              {language}
             </Badge>
           );
         },
       },
       {
-        id: "status",
-        accessorKey: "status",
-        header: "Status",
+        id: "type",
+        accessorKey: "type",
+        header: "Type",
         cell: ({ row }) => {
-          const status = row.getValue("status") as string;
-          const getStatusColor = (status: string) => {
-            switch (status) {
-              case "active":
-                return "bg-green-100 text-green-800 hover:bg-green-100";
-              case "inactive":
-                return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-              case "error":
-                return "bg-red-100 text-red-800 hover:bg-red-100";
-              default:
-                return "bg-gray-100 text-gray-800 hover:bg-gray-100";
-            }
-          };
-
-          return (
-            <Badge className={getStatusColor(status)}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
-          );
+          const type = row.getValue("type") as string;
+          return <Badge className={getTypeColor(type)}>{type}</Badge>;
         },
       },
       {
@@ -215,7 +150,7 @@ export function PluginTable({
         cell: ({ cell }) => formatDate(cell.getValue<Date>()),
       },
     ],
-    data: pluginResponseData.data,
+    data: pluginResponseData.content,
     pageCount: pluginResponseData.totalPages,
     initialState: {
       pagination: {

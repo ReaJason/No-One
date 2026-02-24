@@ -1,20 +1,9 @@
 import { GalleryVerticalEnd } from "lucide-react";
 import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import {
-  Form,
-  useActionData,
-  useNavigation,
-  useSearchParams,
-} from "react-router";
+import { Form, useActionData, useNavigation, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,9 +45,7 @@ export async function action({ request }: ActionFunctionArgs) {
       response.expiresIn,
       request,
     );
-    console.log(
-      `[Login] User ${response.user.username} logged in successfully`,
-    );
+    console.log(`[Login] User ${response.user.username} logged in successfully`);
     console.log(`[Login] JWT Token set: ${response.token.substring(0, 20)}...`);
     const redirectTo = returnTo || "/";
 
@@ -82,9 +69,7 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [searchParams] = useSearchParams();
   const returnTo = searchParams.get("returnTo");
-  const actionData = useActionData() as
-    | { error?: string; success?: boolean }
-    | undefined;
+  const actionData = useActionData() as { error?: string; success?: boolean } | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
@@ -97,14 +82,10 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         </CardHeader>
         <CardContent>
           <Form method="post">
-            {returnTo && (
-              <input type="hidden" name="returnTo" value={returnTo} />
-            )}
+            {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
             <div className="grid gap-6">
               {actionData?.error && (
-                <div className="text-red-500 text-sm text-center">
-                  {actionData.error}
-                </div>
+                <div className="text-center text-sm text-red-500">{actionData.error}</div>
               )}
               <div className="grid gap-6">
                 <div className="grid gap-3">
@@ -140,23 +121,16 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
                     id="terms"
                     name="agreedToTerms"
                     checked={agreedToTerms}
-                    onCheckedChange={(checked) =>
-                      setAgreedToTerms(checked as boolean)
-                    }
+                    onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
                     required
                     disabled={isSubmitting}
                   />
-                  <div className="text-muted-foreground *:[a]:hover:text-primary text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
-                    I agree to the{" "}
-                    <a href="/auth/terms-of-service">Terms of Service</a> and{" "}
+                  <div className="text-xs text-balance text-muted-foreground *:[a]:underline *:[a]:underline-offset-4 *:[a]:hover:text-primary">
+                    I agree to the <a href="/auth/terms-of-service">Terms of Service</a> and{" "}
                     <a href="/auth/privacy-policy">Privacy Policy</a>.
                   </div>
                 </div>
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={!agreedToTerms || isSubmitting}
-                >
+                <Button type="submit" className="w-full" disabled={!agreedToTerms || isSubmitting}>
                   {isSubmitting ? "Logging in..." : "Login"}
                 </Button>
               </div>
@@ -170,10 +144,10 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
 
 export default function LoginPage() {
   return (
-    <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-6">
         <a href="/" className="flex items-center gap-2 self-center font-medium">
-          <div className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-md">
+          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <GalleryVerticalEnd className="size-4" />
           </div>
           No One

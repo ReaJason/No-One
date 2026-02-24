@@ -8,11 +8,7 @@ export function exportTableToCSV<TData>(
     onlySelected?: boolean;
   } = {},
 ): void {
-  const {
-    filename = "table",
-    excludeColumns = [],
-    onlySelected = false,
-  } = opts;
+  const { filename = "table", excludeColumns = [], onlySelected = false } = opts;
 
   const headers = table
     .getAllLeafColumns()
@@ -21,18 +17,14 @@ export function exportTableToCSV<TData>(
 
   const csvContent = [
     headers.join(","),
-    ...(onlySelected
-      ? table.getFilteredSelectedRowModel().rows
-      : table.getRowModel().rows
-    ).map((row) =>
-      headers
-        .map((header) => {
-          const cellValue = row.getValue(header);
-          return typeof cellValue === "string"
-            ? `"${cellValue.replace(/"/g, '""')}"`
-            : cellValue;
-        })
-        .join(","),
+    ...(onlySelected ? table.getFilteredSelectedRowModel().rows : table.getRowModel().rows).map(
+      (row) =>
+        headers
+          .map((header) => {
+            const cellValue = row.getValue(header);
+            return typeof cellValue === "string" ? `"${cellValue.replace(/"/g, '""')}"` : cellValue;
+          })
+          .join(","),
     ),
   ].join("\n");
 

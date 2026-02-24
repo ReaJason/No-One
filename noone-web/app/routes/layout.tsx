@@ -15,11 +15,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
 
 // 模拟项目数据
@@ -46,16 +42,11 @@ export default function Layout() {
         <header className="flex h-16 shrink-0 items-center justify-between gap-2">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
+            <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink
-                    render={<Link to="/">No One</Link>}
-                  ></BreadcrumbLink>
+                  <BreadcrumbLink render={<Link to="/">No One</Link>}></BreadcrumbLink>
                 </BreadcrumbItem>
                 {breadcrumbs.map((crumb, index) => (
                   <React.Fragment key={crumb.id}>
@@ -65,9 +56,7 @@ export default function Layout() {
                         <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink
-                          render={
-                            <Link to={crumb.to ?? "#"}>{crumb.label}</Link>
-                          }
+                          render={<Link to={crumb.to ?? "#"}>{crumb.label}</Link>}
                         ></BreadcrumbLink>
                       )}
                     </BreadcrumbItem>
@@ -76,7 +65,7 @@ export default function Layout() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <nav className="flex flex-1 items-center md:justify-end pr-4">
+          <nav className="flex flex-1 items-center pr-4 md:justify-end">
             <ModeToggle />
             <Button variant="ghost" size="icon" className="size-8">
               <Link
@@ -90,7 +79,7 @@ export default function Layout() {
             </Button>
           </nav>
         </header>
-        <main className="flex-1 min-h-0 overflow-auto">
+        <main className="min-h-0 flex-1 overflow-auto">
           <NuqsAdapter>
             <Outlet />
           </NuqsAdapter>

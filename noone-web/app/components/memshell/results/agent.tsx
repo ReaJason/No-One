@@ -24,12 +24,9 @@ export function AgentResult({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <ol className="list-decimal list-inside space-y-4 text-sm">
+        <ol className="list-inside list-decimal space-y-4 text-sm">
           <li className="flex items-center justify-between">
-            <span>
-              Download MemShellAgent.jar ({formatBytes(atob(packResult).length)}
-              )
-            </span>
+            <span>Download MemShellAgent.jar ({formatBytes(atob(packResult).length)})</span>
             <Button
               size="sm"
               variant="outline"
@@ -54,9 +51,7 @@ export function AgentResult({
                 variant="outline"
                 className="w-28"
                 type="button"
-                onClick={() =>
-                  window.open("https://github.com/jattach/jattach/releases")
-                }
+                onClick={() => window.open("https://github.com/jattach/jattach/releases")}
               >
                 Download
               </Button>

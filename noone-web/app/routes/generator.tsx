@@ -1,19 +1,9 @@
 import { LoaderCircle, WandSparklesIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs } from "react-router";
-import {
-  Form,
-  useActionData,
-  useLoaderData,
-  useNavigation,
-} from "react-router";
+import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { toast } from "sonner";
-import {
-  generate,
-  getMainConfig,
-  getPackers,
-  getServers,
-} from "@/api/memshell-api";
+import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import { getAllProfiles } from "@/api/profile-api";
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
@@ -54,20 +44,16 @@ const urlPatternIsNeeded = (shellType: string) => {
 };
 
 const isInvalidUrl = (urlPattern: string | undefined) =>
-  urlPattern === "/" ||
-  urlPattern === "/*" ||
-  !urlPattern?.startsWith("/") ||
-  !urlPattern;
+  urlPattern === "/" || urlPattern === "/*" || !urlPattern?.startsWith("/") || !urlPattern;
 
 export async function loader() {
   try {
-    const [serverConfig, mainConfig, packerConfig, profiles] =
-      await Promise.all([
-        getServers(),
-        getMainConfig(),
-        getPackers(),
-        getAllProfiles(),
-      ]);
+    const [serverConfig, mainConfig, packerConfig, profiles] = await Promise.all([
+      getServers(),
+      getMainConfig(),
+      getPackers(),
+      getAllProfiles(),
+    ]);
     return {
       serverConfig,
       mainConfig,
@@ -127,16 +113,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
   // URL pattern validation
   if (urlPatternIsNeeded(data.shellType) && isInvalidUrl(data.urlPattern)) {
-    errors.urlPattern =
-      "Servlet type requires a specific URL Pattern, e.g., /hello_servlet";
+    errors.urlPattern = "Servlet type requires a specific URL Pattern, e.g., /hello_servlet";
   }
 
   // Server version validation
-  if (
-    data.server === "TongWeb" &&
-    data.shellType === "Valve" &&
-    data.serverVersion === "Unknown"
-  ) {
+  if (data.server === "TongWeb" && data.shellType === "Valve" && data.serverVersion === "Unknown") {
     errors.serverVersion = "serverVersion is required";
   }
 
@@ -177,22 +158,17 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function Generator() {
-  const { serverConfig, mainConfig, packerConfig, profiles } =
-    useLoaderData<typeof loader>();
+  const { serverConfig, mainConfig, packerConfig, profiles } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 
   const [selectedServer, setSelectedServer] = useState<string>("Tomcat");
-  const [selectedShellType, setSelectedShellType] = useState<
-    string | undefined
-  >(undefined);
+  const [selectedShellType, setSelectedShellType] = useState<string | undefined>(undefined);
 
   const [generateResult, setGenerateResult] = useState<MemShellResult>();
   const [packResult, setPackResult] = useState<string | undefined>();
-  const [allPackResults, setAllPackResults] = useState<
-    Map<string, string> | undefined
-  >();
+  const [allPackResults, setAllPackResults] = useState<Map<string, string> | undefined>();
   const [packMethod, setPackMethod] = useState<string>("");
 
   // Use ref to track if we've already shown toast for this actionData
@@ -230,11 +206,7 @@ export default function Generator() {
   const submitButton = useMemo(
     () => (
       <Button className="w-full" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? (
-          <LoaderCircle className="animate-spin" />
-        ) : (
-          <WandSparklesIcon />
-        )}
+        {isSubmitting ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
         Generate
       </Button>
     ),
@@ -249,8 +221,8 @@ export default function Generator() {
           <TabsTrigger value="webshell">WebShell</TabsTrigger>
         </TabsList>
         <TabsContent value="memshell">
-          <Form method="post" className="flex flex-col xl:flex-row gap-6">
-            <div className="w-full xl:w-1/2 flex flex-col gap-2">
+          <Form method="post" className="flex flex-col gap-6 xl:flex-row">
+            <div className="flex w-full flex-col gap-2 xl:w-1/2">
               <MainConfigCard
                 servers={serverConfig}
                 mainConfig={mainConfig}
@@ -267,7 +239,7 @@ export default function Generator() {
               />
               {submitButton}
             </div>
-            <div className="w-full xl:w-1/2 flex flex-col gap-2">
+            <div className="flex w-full flex-col gap-2 xl:w-1/2">
               <ShellResult
                 packMethod={packMethod}
                 generateResult={generateResult}
@@ -277,26 +249,21 @@ export default function Generator() {
             </div>
           </Form>
         </TabsContent>
-        <TabsContent
-          value="webshell"
-          className="flex flex-1 items-center justify-center"
-        >
+        <TabsContent value="webshell" className="flex flex-1 items-center justify-center">
           <Card className="w-full max-w-xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <WandSparklesIcon className="size-4 text-muted-foreground" />
                 WebShell
               </CardTitle>
-              <CardDescription>
-                WebShell generator is under active development.
-              </CardDescription>
+              <CardDescription>WebShell generator is under active development.</CardDescription>
               <CardAction>
                 <Badge variant="secondary">Coming soon</Badge>
               </CardAction>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-muted-foreground">Planned capabilities:</div>
-              <ul className="text-muted-foreground list-disc pl-5 space-y-1">
+              <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                 <li>Quick create & connect</li>
                 <li>Traffic profile & obfuscation options</li>
               </ul>

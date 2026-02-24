@@ -1,15 +1,10 @@
-import {
-  index,
-  layout,
-  prefix,
-  type RouteConfig,
-  route,
-} from "@react-router/dev/routes";
+import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
   route("/shells/:shellId", "routes/shell/shell-manager.tsx"),
   route("/auth/login", "routes/auth/login.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),
+  route("/test", "routes/test.tsx"),
   layout("routes/layout.tsx", [
     index("routes/home.tsx"),
     route("/shells", "routes/shells.tsx"),
@@ -22,17 +17,17 @@ export default [
       route("/create", "routes/profile/create-profile.tsx"),
       route("/edit/:profileId", "routes/profile/edit.$profileId.tsx"),
     ]),
-    route("/plugins", "routes/plugins.tsx"),
+    ...prefix("plugins", [
+      index("routes/plugins.tsx"),
+      route("/create", "routes/plugins/create.tsx"),
+    ]),
     route("/settings", "routes/settings.tsx"),
     route("/audit", "routes/audit.tsx"),
     ...prefix("admin", [
       ...prefix("users", [
         index("routes/admin/users.tsx"),
         route("/create", "routes/admin/users/create.tsx"),
-        route(
-          "/edit-roles/:userId",
-          "routes/admin/users/edit-roles.$userId.tsx",
-        ),
+        route("/edit-roles/:userId", "routes/admin/users/edit-roles.$userId.tsx"),
         route("/update/:userId", "routes/admin/users/update.$userId.tsx"),
         route("/delete/:userId", "routes/admin/users/delete.$userId.tsx"),
       ]),
@@ -43,18 +38,9 @@ export default [
       ...prefix("permissions", [
         index("routes/admin/permissions.tsx"),
         route("/create", "routes/admin/permissions/create.tsx"),
-        route(
-          "/edit/:permissionId",
-          "routes/admin/permissions/edit.$permissionId.tsx",
-        ),
-        route(
-          "/update/:permissionId",
-          "routes/admin/permissions/update.$permissionId.tsx",
-        ),
-        route(
-          "/delete/:permissionId",
-          "routes/admin/permissions/delete.$permissionId.tsx",
-        ),
+        route("/edit/:permissionId", "routes/admin/permissions/edit.$permissionId.tsx"),
+        route("/update/:permissionId", "routes/admin/permissions/update.$permissionId.tsx"),
+        route("/delete/:permissionId", "routes/admin/permissions/delete.$permissionId.tsx"),
       ]),
     ]),
     ...prefix("projects", [

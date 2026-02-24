@@ -1,4 +1,4 @@
-package com.reajason.noone.core.plugin;
+package com.reajason.noone.plugin;
 
 import sun.misc.Unsafe;
 

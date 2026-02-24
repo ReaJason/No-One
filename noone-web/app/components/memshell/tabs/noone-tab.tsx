@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import {
-  Field,
-  FieldContent,
-  FieldError,
-  FieldLabel,
-} from "@/components/ui/field";
+import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -63,11 +58,7 @@ export function NoOneTabContent({
             <Field>
               <FieldContent>
                 <FieldLabel htmlFor="server">Profile</FieldLabel>
-                <Select
-                  name="profileId"
-                  items={profileOptions}
-                  defaultValue={profiles[0].id}
-                >
+                <Select name="profileId" items={profileOptions} defaultValue={profiles[0].id}>
                   <SelectTrigger className="w-full" id="profile">
                     <SelectValue placeholder="Select profile" />
                   </SelectTrigger>
@@ -113,9 +104,7 @@ export function NoOneTabContent({
                   onChange={(e) => setUrlPattern(e.target.value)}
                   placeholder="Enter URL pattern"
                 />
-                {urlPatternError && (
-                  <FieldError errors={[{ message: urlPatternError }]} />
-                )}
+                {urlPatternError && <FieldError errors={[{ message: urlPatternError }]} />}
               </FieldContent>
             </Field>
           </div>

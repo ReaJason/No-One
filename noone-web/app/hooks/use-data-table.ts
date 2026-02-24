@@ -38,7 +38,8 @@ const DEBOUNCE_MS = 300;
 const THROTTLE_MS = 50;
 
 interface UseDataTableProps<TData>
-  extends Omit<
+  extends
+    Omit<
       TableOptions<TData>,
       | "state"
       | "pageCount"
@@ -78,9 +79,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     ...tableProps
   } = props;
 
-  const queryStateOptions = React.useMemo<
-    Omit<UseQueryStateOptions<string>, "parse">
-  >(
+  const queryStateOptions = React.useMemo<Omit<UseQueryStateOptions<string>, "parse">>(
     () => ({
       history,
       scroll,
@@ -90,22 +89,15 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       clearOnDefault,
       startTransition,
     }),
-    [
-      history,
-      scroll,
-      shallow,
-      throttleMs,
-      debounceMs,
-      clearOnDefault,
-      startTransition,
-    ],
+    [history, scroll, shallow, throttleMs, debounceMs, clearOnDefault, startTransition],
   );
 
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>(
     initialState?.rowSelection ?? {},
   );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>(initialState?.columnVisibility ?? {});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>(
+    initialState?.columnVisibility ?? {},
+  );
 
   const [page, setPage] = useQueryState(
     PAGE_KEY,
@@ -140,9 +132,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   );
   const [sortBy, setSortBy] = useQueryState(
     SORT_KEY,
-    parseAsString
-      .withOptions(queryStateOptions)
-      .withDefault(initialState?.sorting?.sortBy ?? ""),
+    parseAsString.withOptions(queryStateOptions).withDefault(initialState?.sorting?.sortBy ?? ""),
   );
   const [sortOrder, setSortOrder] = useQueryState(
     SORT_ORDER_KEY,
@@ -159,9 +149,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   const onSortingChange = React.useCallback(
     (updaterOrValue: Updater<SortingState>) => {
       const newSorting =
-        typeof updaterOrValue === "function"
-          ? updaterOrValue(sorting)
-          : updaterOrValue;
+        typeof updaterOrValue === "function" ? updaterOrValue(sorting) : updaterOrValue;
 
       if (newSorting.length === 0) {
         setSortBy("");
@@ -180,52 +168,46 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
   }, [columns]);
 
   const filterParsers = React.useMemo(() => {
-    return filterableColumns.reduce<
-      Record<string, Parser<string> | Parser<string[]>>
-    >((acc, column) => {
-      if (column.meta?.options) {
-        acc[column.id ?? ""] = parseAsArrayOf(
-          parseAsString,
-          ARRAY_SEPARATOR,
-        ).withOptions(queryStateOptions);
-      } else {
-        acc[column.id ?? ""] = parseAsString.withOptions(queryStateOptions);
-      }
-      return acc;
-    }, {});
+    return filterableColumns.reduce<Record<string, Parser<string> | Parser<string[]>>>(
+      (acc, column) => {
+        if (column.meta?.options) {
+          acc[column.id ?? ""] = parseAsArrayOf(parseAsString, ARRAY_SEPARATOR).withOptions(
+            queryStateOptions,
+          );
+        } else {
+          acc[column.id ?? ""] = parseAsString.withOptions(queryStateOptions);
+        }
+        return acc;
+      },
+      {},
+    );
   }, [filterableColumns, queryStateOptions]);
 
   const [filterValues, setFilterValues] = useQueryStates(filterParsers);
 
-  const debouncedSetFilterValues = useDebouncedCallback(
-    (values: typeof filterValues) => {
-      void setPage(1);
-      void setFilterValues(values);
-    },
-    debounceMs,
-  );
+  const debouncedSetFilterValues = useDebouncedCallback((values: typeof filterValues) => {
+    void setPage(1);
+    void setFilterValues(values);
+  }, debounceMs);
 
   const initialColumnFilters: ColumnFiltersState = React.useMemo(() => {
     if (enableAdvancedFilter) return [];
 
-    return Object.entries(filterValues).reduce<ColumnFiltersState>(
-      (filters, [key, value]) => {
-        if (value !== null) {
-          const processedValue = Array.isArray(value)
-            ? value
-            : typeof value === "string" && /[^a-zA-Z0-9]/.test(value)
-              ? value.split(/[^a-zA-Z0-9]+/).filter(Boolean)
-              : [value];
+    return Object.entries(filterValues).reduce<ColumnFiltersState>((filters, [key, value]) => {
+      if (value !== null) {
+        const processedValue = Array.isArray(value)
+          ? value
+          : typeof value === "string" && /[^a-zA-Z0-9]/.test(value)
+            ? value.split(/[^a-zA-Z0-9]+/).filter(Boolean)
+            : [value];
 
-          filters.push({
-            id: key,
-            value: processedValue,
-          });
-        }
-        return filters;
-      },
-      [],
-    );
+        filters.push({
+          id: key,
+          value: processedValue,
+        });
+      }
+      return filters;
+    }, []);
   }, [filterValues, enableAdvancedFilter]);
 
   const [columnFilters, setColumnFilters] =
@@ -236,19 +218,17 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
       if (enableAdvancedFilter) return;
 
       setColumnFilters((prev) => {
-        const next =
-          typeof updaterOrValue === "function"
-            ? updaterOrValue(prev)
-            : updaterOrValue;
+        const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
 
-        const filterUpdates = next.reduce<
-          Record<string, string | string[] | null>
-        >((acc, filter) => {
-          if (filterableColumns.find((column) => column.id === filter.id)) {
-            acc[filter.id] = filter.value as string | string[];
-          }
-          return acc;
-        }, {});
+        const filterUpdates = next.reduce<Record<string, string | string[] | null>>(
+          (acc, filter) => {
+            if (filterableColumns.find((column) => column.id === filter.id)) {
+              acc[filter.id] = filter.value as string | string[];
+            }
+            return acc;
+          },
+          {},
+        );
 
         for (const prevFilter of prev) {
           if (!next.some((filter) => filter.id === prevFilter.id)) {

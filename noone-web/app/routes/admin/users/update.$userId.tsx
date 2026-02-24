@@ -13,10 +13,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const enabled = formData.get("enabled") as boolean | null;
   try {
     await updateUser(userId, { roleIds: roleIdsArray, enabled });
-    console.log("updateUser success");
     return redirect("/admin/users");
   } catch (error: any) {
-    console.error("Error updating user roles:", error);
     return {
       errors: { general: error.message || "Failed to update user" },
       success: false,

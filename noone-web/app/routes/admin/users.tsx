@@ -53,24 +53,20 @@ export default function Users() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="container mx-auto max-w-6xl p-6">
+      <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            User Management
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Manage system user accounts and permissions
-          </p>
+          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+          <p className="mt-1 text-muted-foreground">Manage system user accounts and permissions</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
           <Link to="/admin/users/create">
             <Button>
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               Add User
             </Button>
           </Link>
@@ -82,15 +78,7 @@ export default function Users() {
           <DataTableSkeleton
             columnCount={5}
             filterCount={3}
-            cellWidths={[
-              "10rem",
-              "30rem",
-              "10rem",
-              "10rem",
-              "6rem",
-              "6rem",
-              "6rem",
-            ]}
+            cellWidths={["10rem", "30rem", "10rem", "10rem", "6rem", "6rem", "6rem"]}
             shrinkZero
           />
         }

