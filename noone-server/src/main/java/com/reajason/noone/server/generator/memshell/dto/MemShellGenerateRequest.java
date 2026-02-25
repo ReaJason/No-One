@@ -20,6 +20,7 @@ public class MemShellGenerateRequest {
 
     @Data
     public static class ShellToolConfigDTO {
+        private String shellClassName;
         private Long profileId;
     }
 }

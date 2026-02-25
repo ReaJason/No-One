@@ -40,6 +40,7 @@ public class MemShellGeneratorController {
         ShellConfig shellConfig = request.getShellConfig();
         Optional<Profile> profile = profileRepository.findById(request.getShellToolConfig().getProfileId());
         ShellToolConfig shellToolConfig = new NoOneConfig(profile.get());
+        shellToolConfig.setShellClassName(request.getShellToolConfig().getShellClassName());
         InjectorConfig injectorConfig = request.getInjectorConfig();
         MemShellResult generateResult = javaMemShellGenerator.generate(shellConfig, injectorConfig, shellToolConfig);
         Packer packer = request.getPacker().getInstance();
