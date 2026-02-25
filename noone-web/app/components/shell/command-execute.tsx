@@ -2,9 +2,20 @@ import "@xterm/xterm/css/xterm.css";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as shellApi from "@/api/shell-api";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CommandExecuteProps {
   shellId: number;
+  systemHints?: {
+    osName?: string;
+    cwd?: string;
+  } | null;
 }
 
 interface CommandTemplatePayload {
@@ -43,6 +54,18 @@ interface XtermTheme {
   brightWhite: string;
 }
 
+type OsFamily = "windows" | "unix" | "unknown";
+
+interface TemplatePreset {
+  executable: string;
+  args: string[];
+}
+
+interface CharsetOption {
+  value: string;
+  label: string;
+}
+
 const PROMPT = "$ ";
 const ANSI_RESET = "\x1b[0m";
 const ANSI_RED = "\x1b[31m";
@@ -51,6 +74,18 @@ const ANSI_CYAN = "\x1b[36m";
 const ANSI_DIM = "\x1b[2m";
 const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;?]*[ -/]*[@-~]/;
 const DEFAULT_TEMPLATE_ARGS = "{{cmd}}";
+const AUTO_CHARSET_VALUE = "__AUTO__";
+const CHARSET_OPTIONS: CharsetOption[] = [
+  { value: AUTO_CHARSET_VALUE, label: "Auto (plugin default)" },
+  { value: "UTF-8", label: "UTF-8" },
+  { value: "GBK", label: "GBK" },
+  { value: "GB18030", label: "GB18030" },
+  { value: "Big5", label: "Big5" },
+  { value: "Shift_JIS", label: "Shift_JIS" },
+  { value: "EUC-KR", label: "EUC-KR" },
+  { value: "ISO-8859-1", label: "ISO-8859-1" },
+  { value: "Windows-1252", label: "Windows-1252" },
+];
 
 const XTERM_THEME_GITHUB_LIGHT_COLORBLIND: XtermTheme = {
   foreground: "#24292f",
@@ -102,7 +137,44 @@ const getXtermTheme = (mode: "light" | "dark"): XtermTheme => {
     : XTERM_THEME_GITHUB_DARK_COLORBLIND;
 };
 
-export default function CommandExecute({ shellId }: CommandExecuteProps) {
+const detectOsFamily = (osName?: string): OsFamily => {
+  const normalized = osName?.trim().toLowerCase() ?? "";
+  if (!normalized) return "unknown";
+  if (normalized.includes("win")) return "windows";
+  if (
+    normalized.includes("linux") ||
+    normalized.includes("mac") ||
+    normalized.includes("darwin") ||
+    normalized.includes("os x")
+  ) {
+    return "unix";
+  }
+  return "unknown";
+};
+
+const getDefaultCharsetByOs = (osFamily: OsFamily): string => {
+  if (osFamily === "windows") return "GBK";
+  if (osFamily === "unix") return "UTF-8";
+  return "";
+};
+
+const getDefaultTemplateByOs = (osFamily: OsFamily): TemplatePreset | null => {
+  if (osFamily === "windows") {
+    return {
+      executable: "cmd.exe",
+      args: ["/c", "{{cmd}}"],
+    };
+  }
+  if (osFamily === "unix") {
+    return {
+      executable: "/bin/sh",
+      args: ["-c", "{{cmd}}"],
+    };
+  }
+  return null;
+};
+
+export default function CommandExecute({ shellId, systemHints }: CommandExecuteProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<{
     write: (data: string) => void;
@@ -117,9 +189,11 @@ export default function CommandExecute({ shellId }: CommandExecuteProps) {
   const inputBufferRef = useRef("");
   const commandHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef(0);
-  const configLoadedRef = useRef(false);
+  const systemDefaultsAppliedShellIdsRef = useRef<Set<number>>(new Set());
+  const loadedStorageKeyRef = useRef<string | null>(null);
   const { resolvedTheme, theme } = useTheme();
 
+  const [configLoaded, setConfigLoaded] = useState(false);
   const [cwdInput, setCwdInput] = useState("");
   const [charset, setCharset] = useState("");
   const [templateExecutable, setTemplateExecutable] = useState("");
@@ -229,9 +303,12 @@ export default function CommandExecute({ shellId }: CommandExecuteProps) {
     if (typeof window === "undefined") {
       return;
     }
+    loadedStorageKeyRef.current = null;
+    setConfigLoaded(false);
     const raw = window.localStorage.getItem(storageKey);
     if (!raw) {
-      configLoadedRef.current = true;
+      loadedStorageKeyRef.current = storageKey;
+      setConfigLoaded(true);
       return;
     }
     try {
@@ -254,12 +331,17 @@ export default function CommandExecute({ shellId }: CommandExecuteProps) {
     } catch {
       // Ignore invalid local storage payload and keep defaults.
     } finally {
-      configLoadedRef.current = true;
+      loadedStorageKeyRef.current = storageKey;
+      setConfigLoaded(true);
     }
   }, [storageKey]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !configLoadedRef.current) {
+    if (
+      typeof window === "undefined" ||
+      !configLoaded ||
+      loadedStorageKeyRef.current !== storageKey
+    ) {
       return;
     }
     const payload: PersistedCommandConfig = {
@@ -270,7 +352,37 @@ export default function CommandExecute({ shellId }: CommandExecuteProps) {
       env: templateEnv,
     };
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
-  }, [charset, cwdInput, storageKey, templateArgs, templateEnv, templateExecutable]);
+  }, [charset, configLoaded, cwdInput, storageKey, templateArgs, templateEnv, templateExecutable]);
+
+  useEffect(() => {
+    if (!configLoaded) {
+      return;
+    }
+    if (systemDefaultsAppliedShellIdsRef.current.has(shellId)) {
+      return;
+    }
+
+    const osFamily = detectOsFamily(systemHints?.osName);
+    const defaultCharset = getDefaultCharsetByOs(osFamily);
+    const defaultTemplate = getDefaultTemplateByOs(osFamily);
+    const defaultCwd = (systemHints?.cwd ?? "").trim();
+
+    if (!defaultCwd && !defaultCharset && !defaultTemplate) {
+      return;
+    }
+
+    if (defaultCwd) {
+      setCwdInput(defaultCwd);
+    }
+    if (defaultCharset) {
+      setCharset(defaultCharset);
+    }
+    if (defaultTemplate) {
+      applyTemplatePreset(defaultTemplate.executable, defaultTemplate.args);
+    }
+
+    systemDefaultsAppliedShellIdsRef.current.add(shellId);
+  }, [applyTemplatePreset, configLoaded, shellId, systemHints]);
 
   const runCommand = useCallback(
     async (cmd: string) => {
@@ -582,12 +694,27 @@ export default function CommandExecute({ shellId }: CommandExecuteProps) {
           </label>
           <label className="flex flex-col gap-1 text-xs ">
             Charset (optional)
-            <input
-              className="rounded border px-2 py-1 font-mono text-xs "
-              value={charset}
-              onChange={(event) => setCharset(event.target.value)}
-              placeholder="auto detect"
-            />
+            <Select
+              value={charset || AUTO_CHARSET_VALUE}
+              onValueChange={(value) => {
+                if (!value || value === AUTO_CHARSET_VALUE) {
+                  setCharset("");
+                  return;
+                }
+                setCharset(value);
+              }}
+            >
+              <SelectTrigger className="w-full font-mono text-xs">
+                <SelectValue placeholder="Select charset" />
+              </SelectTrigger>
+              <SelectContent>
+                {CHARSET_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         </div>
 

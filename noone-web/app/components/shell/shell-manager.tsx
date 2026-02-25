@@ -114,7 +114,15 @@ export default function ShellManager({ shell, section }: ShellManagerProps) {
 
   const renderContent = () => {
     if (section === "command") {
-      return <CommandExecute shellId={shell.id} />;
+      return (
+        <CommandExecute
+          shellId={shell.id}
+          systemHints={{
+            osName: systemInfo?.data?.os?.name,
+            cwd: systemInfo?.data?.process?.cwd,
+          }}
+        />
+      );
     }
 
     if (section === "extensions") {
