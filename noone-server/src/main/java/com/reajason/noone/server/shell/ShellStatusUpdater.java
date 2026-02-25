@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -23,6 +24,18 @@ public class ShellStatusUpdater {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markError(Long shellId) {
         updateStatus(shellId, ShellStatus.ERROR, null);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateBasicInfo(Long shellId, Map<String, String> basicInfo) {
+        try {
+            Shell shell = shellRepository.findById(shellId)
+                    .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
+            shell.setBasicInfo(basicInfo);
+            shellRepository.save(shell);
+        } catch (Exception e) {
+            log.warn("Failed to update basic info: shellId={}", shellId, e);
+        }
     }
 
     private void updateStatus(Long shellId, ShellStatus status, LocalDateTime connectTime) {

@@ -1,23 +1,26 @@
 import { Download, Plus } from "lucide-react";
-import React, { use } from "react";
+import React, { use, useMemo } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
 import type { PaginatedResponse } from "@/api/api-client";
+import { getAllProjects } from "@/api/project-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
-import { shellConnectionColumns } from "@/components/shell/shell-connection-columns";
+import { getShellColumns } from "@/components/shell/shell-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { getShellConnections } from "@/api/shell-connection-api";
 import { loadShellConnectionSearchParams } from "@/lib/shell-connection-search-param";
 import type { ShellConnection } from "@/types/shell-connection";
+import type { Project } from "@/types/project";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const params = await loadShellConnectionSearchParams(request);
   return {
     shellConnectionResponse: getShellConnections(params),
+    projectsResponse: getAllProjects(),
   };
 }
 
@@ -27,9 +30,10 @@ export const handle = createBreadcrumb(() => ({
   to: "/shells",
 }));
 
-export default function Shells() {
-  const { shellConnectionResponse } = useLoaderData() as {
+export default function ShellList() {
+  const { shellConnectionResponse, projectsResponse } = useLoaderData() as {
     shellConnectionResponse: Promise<PaginatedResponse<ShellConnection>>;
+    projectsResponse: Promise<Project[]>;
   };
 
   return (
@@ -56,25 +60,26 @@ export default function Shells() {
       <React.Suspense
         fallback={
           <DataTableSkeleton
-            columnCount={9}
+            columnCount={8}
             filterCount={2}
             cellWidths={[
-              "10rem",
-              "28rem",
-              "8rem",
+              "3rem",
+              "20rem",
               "8rem",
               "10rem",
               "12rem",
-              "15rem",
-              "12rem",
               "10rem",
-              "6rem",
+              "10rem",
+              "3rem",
             ]}
             shrinkZero
           />
         }
       >
-        <ShellConnectionTable shellConnectionResponse={shellConnectionResponse} />
+        <ShellConnectionTable
+          shellConnectionResponse={shellConnectionResponse}
+          projectsResponse={projectsResponse}
+        />
       </React.Suspense>
     </div>
   );
@@ -82,12 +87,31 @@ export default function Shells() {
 
 export function ShellConnectionTable({
   shellConnectionResponse,
+  projectsResponse,
 }: {
   shellConnectionResponse: Promise<PaginatedResponse<ShellConnection>>;
+  projectsResponse: Promise<Project[]>;
 }) {
   const shellConnectionResponseData = use(shellConnectionResponse);
+  const projects = use(projectsResponse);
+
+  const { projectMap, projectOptions } = useMemo(() => {
+    const map = new Map<number, string>();
+    const options: Array<{ label: string; value: string }> = [];
+    for (const project of projects) {
+      map.set(Number(project.id), project.name);
+      options.push({ label: project.name, value: project.id });
+    }
+    return { projectMap: map, projectOptions: options };
+  }, [projects]);
+
+  const columns = useMemo(
+    () => getShellColumns({ projectMap, projectOptions }),
+    [projectMap, projectOptions],
+  );
+
   const { table } = useDataTable({
-    columns: shellConnectionColumns,
+    columns,
     data: shellConnectionResponseData.content,
     pageCount: shellConnectionResponseData.totalPages,
     initialState: {

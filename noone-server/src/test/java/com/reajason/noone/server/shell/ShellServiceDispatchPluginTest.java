@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -114,14 +115,24 @@ class ShellServiceDispatchPluginTest {
         when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.needLoadPlugin("system-info")).thenReturn(false);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("os", Map.of("name", "Windows Server 2016", "arch", "amd64"));
+        data.put("runtime", Map.of("type", "jdk", "version", "1.8.0_291"));
         when(connection.runPlugin(eq("system-info"), any()))
-                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of("os", "linux")));
+                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, data));
 
         Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
         verify(shellStatusUpdater).markConnected(shellId);
         verify(shellStatusUpdater, never()).markError(anyLong());
+        verify(shellStatusUpdater).updateBasicInfo(eq(shellId), eq(Map.of(
+                "os", "windows",
+                "arch", "x64",
+                "runtimeType", "jdk",
+                "runtimeVersion", "1.8.0_291"
+        )));
     }
 
     @Test
@@ -243,6 +254,44 @@ class ShellServiceDispatchPluginTest {
         assertEquals("RESPONSE", response.get("phase"));
         verify(shellStatusUpdater, never()).markError(anyLong());
         verify(shellStatusUpdater, never()).markConnected(anyLong());
+    }
+
+    @Test
+    void shouldNotCallUpdateBasicInfoForNonSystemInfoPlugin() {
+        Long shellId = 11L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.needLoadPlugin("command-execute")).thenReturn(false);
+        when(connection.runPlugin(eq("command-execute"), any()))
+                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of("output", "root")));
+
+        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
+
+        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
+        verify(shellStatusUpdater).markConnected(shellId);
+        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
+    }
+
+    @Test
+    void shouldStillSucceedWhenSystemInfoDataHasUnexpectedStructure() {
+        Long shellId = 12L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.needLoadPlugin("system-info")).thenReturn(false);
+        // data is a string instead of expected nested map
+        when(connection.runPlugin(eq("system-info"), any()))
+                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "unexpected-string"));
+
+        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+
+        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
+        verify(shellStatusUpdater).markConnected(shellId);
+        // updateBasicInfo should not be called because data is not a Map
+        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
     }
 
     private Shell shell(Long id) {

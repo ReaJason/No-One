@@ -95,6 +95,14 @@ public class Shell {
     @Column(name = "retry_delay_ms")
     private Long retryDelayMs;
 
+    /**
+     * Normalized system info collected from the system-info plugin.
+     * Keys: os, arch, runtimeType, runtimeVersion.
+     */
+    @Column(name = "basic_info", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, String> basicInfo;
+
     @CreatedDate
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;

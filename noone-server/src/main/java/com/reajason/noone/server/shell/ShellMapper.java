@@ -106,6 +106,7 @@ public class ShellMapper {
         response.setSkipSslVerify(shell.getSkipSslVerify());
         response.setMaxRetries(shell.getMaxRetries());
         response.setRetryDelayMs(shell.getRetryDelayMs());
+        response.setBasicInfo(shell.getBasicInfo());
 
         // Fetch profile name for display
         if (shell.getProfileId() != null) {

@@ -41,7 +41,6 @@ export async function getShellConnections(
   filters: ShellConnectionSearchParams = {},
 ): Promise<PaginatedResponse<ShellConnection>> {
   const {
-    group,
     status,
     projectId,
     page = 1,
@@ -57,7 +56,6 @@ export async function getShellConnections(
     sortOrder,
   };
 
-  if (group) params.group = group;
   if (status) params.status = String(status).toUpperCase();
   if (typeof projectId === "number" && Number.isFinite(projectId)) {
     params.projectId = projectId;

@@ -26,10 +26,12 @@ export interface ShellConnection {
   skipSslVerify?: boolean;
   maxRetries?: number;
   retryDelayMs?: number;
+
+  // Normalized system info
+  basicInfo?: Record<string, string>;
 }
 
 export interface ShellConnectionSearchParams {
-  group?: string;
   status?: ShellStatus | string;
   projectId?: number;
   page?: number;

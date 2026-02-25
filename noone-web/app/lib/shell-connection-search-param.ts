@@ -11,7 +11,6 @@ export async function loadShellConnectionSearchParams(
   const parsedProjectId = Number(projectIdParam);
 
   return {
-    group: searchParams.get("group") ?? "",
     status: statusParam ? statusParam.split(",")[0] : "",
     projectId: Number.isFinite(parsedProjectId) ? parsedProjectId : undefined,
     page: Number(searchParams.get("page")) || 1,

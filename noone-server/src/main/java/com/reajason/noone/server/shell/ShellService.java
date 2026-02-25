@@ -201,6 +201,9 @@ public class ShellService {
             Map<String, Object> response = handleShellConnectionResult(result);
             if (isSuccess(response.get(Constants.CODE))) {
                 shellStatusUpdater.markConnected(shellId);
+                if ("system-info".equals(pluginId)) {
+                    tryExtractBasicInfo(shellId, response);
+                }
             }
             return response;
         } catch (ShellRequestException e) {
@@ -214,6 +217,37 @@ public class ShellService {
     }
 
     // ==================== Helper Methods ====================
+
+    @SuppressWarnings("unchecked")
+    private void tryExtractBasicInfo(Long shellId, Map<String, Object> response) {
+        try {
+            Object dataObj = response.get(Constants.DATA);
+            if (!(dataObj instanceof Map)) {
+                return;
+            }
+            Map<String, Object> data = (Map<String, Object>) dataObj;
+
+            String rawOsName = SystemInfoNormalizer.extractString(data, "os", "name");
+            String rawArch = SystemInfoNormalizer.extractString(data, "os", "arch");
+            String runtimeType = SystemInfoNormalizer.extractString(data, "runtime", "type");
+            String runtimeVersion = SystemInfoNormalizer.extractString(data, "runtime", "version");
+
+            String os = SystemInfoNormalizer.normalizeOsName(rawOsName);
+            String arch = SystemInfoNormalizer.normalizeArch(rawArch, os);
+
+            Map<String, String> basicInfo = new HashMap<>();
+            if (os != null) basicInfo.put("os", os);
+            if (arch != null) basicInfo.put("arch", arch);
+            if (runtimeType != null) basicInfo.put("runtimeType", runtimeType);
+            if (runtimeVersion != null) basicInfo.put("runtimeVersion", runtimeVersion);
+
+            if (!basicInfo.isEmpty()) {
+                shellStatusUpdater.updateBasicInfo(shellId, basicInfo);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to extract basic info from system-info response: shellId={}", shellId, e);
+        }
+    }
 
     /**
      * Get shell entity and verify it exists
