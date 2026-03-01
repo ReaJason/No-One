@@ -78,12 +78,14 @@ public class SystemInfoCollector {
         File[] roots = File.listRoots();
         List<Map<String, Object>> fileSystemInfo = new ArrayList<Map<String, Object>>();
         for (File root : roots) {
-            Map<String, Object> fsInfo = new HashMap<String, Object>();
-            fsInfo.put("path", root.getAbsolutePath());
-            fsInfo.put("total_space", root.getTotalSpace());
-            fsInfo.put("free_space", root.getFreeSpace());
-            fsInfo.put("usable_space", root.getUsableSpace());
-            fileSystemInfo.add(fsInfo);
+            if(root.exists()) {
+                Map<String, Object> fsInfo = new HashMap<String, Object>();
+                fsInfo.put("path", root.getAbsolutePath());
+                fsInfo.put("total_space", root.getTotalSpace());
+                fsInfo.put("free_space", root.getFreeSpace());
+                fsInfo.put("usable_space", root.getUsableSpace());
+                fileSystemInfo.add(fsInfo);
+            }
         }
         return fileSystemInfo;
     }
