@@ -60,6 +60,7 @@ public class SystemInfoCollector {
         info.put("user", System.getProperty("user.name"));
         info.put("cwd", System.getProperty("user.dir"));
         info.put("tmp_dir", System.getProperty("java.io.tmpdir"));
+        info.put("user_home", System.getProperty("user.home"));
         info.put("argv", runtimeMXBean.getInputArguments());
         return info;
     }

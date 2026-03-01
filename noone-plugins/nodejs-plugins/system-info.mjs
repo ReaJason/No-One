@@ -90,6 +90,7 @@
             info.argv = process.argv;
             info.cwd = process.cwd();
             info.tmp_dir = os.tmpdir();
+            info.user_home = os.homedir();
             info.user = os.userInfo().username;
         } catch (e) {
             info.error = e.message;
