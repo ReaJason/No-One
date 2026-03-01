@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
+import {Shield} from "lucide-react";
 
 // 模拟项目数据
 const mockProjects = {
@@ -65,7 +66,13 @@ export default function Layout() {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <nav className="flex flex-1 items-center pr-4 md:justify-end">
+          <nav className="flex flex-1 items-center pr-4 md:justify-end gap-1">
+            <div className="flex items-center justify-center px-4 py-2 rounded-full border h-8 transition-colors dark:bg-red-900/20 dark:border-red-800 dark:text-red-300 bg-red-50 border-red-200 text-red-700">
+              <Shield className="w-4 h-4 mr-2" />
+              <span className="text-sm">
+                  For Security Research & Authorized Testing Only
+              </span>
+            </div>
             <ModeToggle />
             <Button variant="ghost" size="icon" className="size-8">
               <Link
