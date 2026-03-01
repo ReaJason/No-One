@@ -6,6 +6,8 @@ import com.reajason.noone.core.exception.*;
 import com.reajason.noone.server.admin.plugin.Plugin;
 import com.reajason.noone.server.admin.plugin.PluginRepository;
 import com.reajason.noone.server.shell.dto.*;
+import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
+import com.reajason.noone.server.shell.oplog.ShellOperationType;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -16,12 +18,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Shell service with JavaManager integration
@@ -48,6 +48,9 @@ public class ShellService {
 
     @Resource
     private ShellMapper shellMapper;
+
+    @Resource
+    private ShellOperationLogService shellOperationLogService;
 
     // ==================== Shell Management Operations ====================
 
@@ -137,6 +140,7 @@ public class ShellService {
         Shell shell = shellRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
 
+        long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
             boolean connected = connection.test();
@@ -149,11 +153,20 @@ public class ShellService {
             }
             shellRepository.save(shell);
 
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(id, ShellOperationType.TEST, null, null,
+                    null, Map.of("connected", connected), connected, null, durationMs);
+
             return connected;
         } catch (Exception e) {
             shell.setStatus(ShellStatus.ERROR);
             shellRepository.save(shell);
             log.error("Connection test failed for shell: {}", id, e);
+
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(id, ShellOperationType.TEST, null, null,
+                    null, null, false, safeMessage(e), durationMs);
+
             return false;
         }
     }
@@ -191,6 +204,11 @@ public class ShellService {
     public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
         Shell shell = getShellEntity(shellId);
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
+        String action = args != null ? (String) args.get("action") : null;
+        if (action == null) {
+            action = args != null ? ((String) args.get("op")) : null;
+        }
+        long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
             if (connection.needLoadPlugin(pluginId)) {
@@ -199,20 +217,48 @@ public class ShellService {
             }
             Map<String, Object> result = connection.runPlugin(pluginId, args);
             Map<String, Object> response = handleShellConnectionResult(result);
+            if ("file-manager".equals(pluginId)) {
+                response = normalizeFileManagerBinaryPayload(response);
+            }
             if (isSuccess(response.get(Constants.CODE))) {
                 shellStatusUpdater.markConnected(shellId);
                 if ("system-info".equals(pluginId)) {
                     tryExtractBasicInfo(shellId, response);
                 }
             }
+
+            long durationMs = System.currentTimeMillis() - start;
+            boolean success = isSuccess(response.get(Constants.CODE));
+            String errorMsg = success ? null : String.valueOf(response.getOrDefault(Constants.ERROR, ""));
+            shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
+                    args, response, success, errorMsg, durationMs);
+
             return response;
         } catch (ShellRequestException e) {
             shellStatusUpdater.markError(shellId);
-            return failureResponse("Dispatch failed: " + safeMessage(e), e);
+            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
+
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
+                    args, response, false, safeMessage(e), durationMs);
+
+            return response;
         } catch (ShellResponseException e) {
-            return failureResponse("Dispatch failed: " + safeMessage(e), e);
+            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
+
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
+                    args, response, false, safeMessage(e), durationMs);
+
+            return response;
         } catch (Exception e) {
-            return failureResponse("Dispatch failed: " + safeMessage(e), e);
+            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
+
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
+                    args, response, false, safeMessage(e), durationMs);
+
+            return response;
         }
     }
 
@@ -273,6 +319,54 @@ public class ShellService {
         }
 
         return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeFileManagerBinaryPayload(Map<String, Object> response) {
+        Object converted = convertBinaryToJsonSafeValue(response);
+        if (converted instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return response;
+    }
+
+    private Object convertBinaryToJsonSafeValue(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof byte[] bytes) {
+            List<Integer> numbers = new ArrayList<>(bytes.length);
+            for (byte b : bytes) {
+                numbers.add(b & 0xff);
+            }
+            return numbers;
+        }
+        if (raw instanceof Map<?, ?> map) {
+            Map<String, Object> copied = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                copied.put(String.valueOf(entry.getKey()), convertBinaryToJsonSafeValue(entry.getValue()));
+            }
+            return copied;
+        }
+        if (raw instanceof Iterable<?> iterable) {
+            List<Object> copied = new ArrayList<>();
+            for (Object item : iterable) {
+                copied.add(convertBinaryToJsonSafeValue(item));
+            }
+            return copied;
+        }
+        if (raw.getClass().isArray()) {
+            int length = Array.getLength(raw);
+            List<Object> copied = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                copied.add(convertBinaryToJsonSafeValue(Array.get(raw, i)));
+            }
+            return copied;
+        }
+        return raw;
     }
 
     private boolean isSuccess(Object codeObj) {

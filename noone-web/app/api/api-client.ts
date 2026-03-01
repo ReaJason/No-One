@@ -47,9 +47,30 @@ export interface RequestConfig {
   headers?: Record<string, string>;
   params?: Record<string, any>;
   body?: any;
+  signal?: AbortSignal;
   timeout?: number;
   retries?: number;
   retryDelay?: number;
+}
+
+export function isAbortError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+  const candidate = error as {
+    name?: string;
+    code?: string;
+    message?: string;
+    cause?: { name?: string; code?: string; message?: string };
+  };
+  if (candidate.name === "AbortError" || candidate.code === "ABORT_ERR") {
+    return true;
+  }
+  if (candidate.cause?.name === "AbortError" || candidate.cause?.code === "ABORT_ERR") {
+    return true;
+  }
+  const message = (candidate.message || candidate.cause?.message || "").toLowerCase();
+  return message.includes("aborted") || message.includes("aborterror") || message.includes("cancelled") || message.includes("canceled");
 }
 
 const DEFAULT_CONFIG: ApiClientConfig = {
@@ -127,7 +148,7 @@ export class ApiClient {
     });
 
     const error: ApiError = {
-      message: response._data?.error || response.statusText || "Unknown error",
+      message: response._data?.message || response._data?.error || response.statusText || "Unknown error",
       code: response.status,
       details: response._data,
     };
@@ -138,16 +159,24 @@ export class ApiClient {
         this.handleUnauthorized();
         break;
       case 403:
-        error.message = "Access denied";
+        if (!response._data?.message && !response._data?.error) {
+          error.message = "Access denied";
+        }
         break;
       case 404:
-        error.message = "Resource not found";
+        if (!response._data?.message && !response._data?.error) {
+          error.message = "Resource not found";
+        }
         break;
       case 422:
-        error.message = "Validation error";
+        if (!response._data?.message && !response._data?.error) {
+          error.message = "Validation error";
+        }
         break;
       case 500:
-        error.message = "Internal server error";
+        if (!response._data?.message && !response._data?.error) {
+          error.message = "Internal server error";
+        }
         break;
     }
 
@@ -200,6 +229,7 @@ export class ApiClient {
         headers: config.headers,
         params: config.params,
         body: config.body,
+        signal: config.signal,
         timeout: config.timeout,
         retry: config.retries,
         retryDelay: config.retryDelay,
@@ -212,6 +242,9 @@ export class ApiClient {
       };
     } catch (error: any) {
       console.error(`[API] Request failed for ${url}:`, error);
+      if (isAbortError(error)) {
+        throw error;
+      }
 
       // 处理403错误，重定向到登录页面
       if (error?.status === 403 || error?.statusCode === 403) {
@@ -223,7 +256,7 @@ export class ApiClient {
       }
 
       const details = error?.details;
-      if ("error" in details) {
+      if (details && typeof details === "object" && "error" in details) {
         return {
           data: details,
           success: false,
@@ -347,6 +380,7 @@ export class ApiClient {
       const response = await this.ofetchInstance(url, {
         ...config,
         method: "GET",
+        signal: config.signal,
         responseType: "blob",
       });
 

@@ -55,6 +55,7 @@ type SystemInfoProcess = {
   uptime_ms?: number;
   cwd?: string;
   tmp_dir?: string;
+  user_home?: string;
   argv?: string[] | string;
 };
 
@@ -329,6 +330,7 @@ const ProcessWidget = memo(function ProcessWidget({
   const runtimeType = runtime.type ?? "-";
   const runtimeVersion = runtime.version ?? "-";
   const user = process.user ?? "-";
+  const userHome = process.user_home ?? "-";
   const pid = process.pid ?? "-";
   const uptimeMs = process.uptime_ms ?? 0;
   const cwd = process.cwd ?? "-";
@@ -397,6 +399,10 @@ const ProcessWidget = memo(function ProcessWidget({
             <p className="mb-1 text-[10px] font-bold text-zinc-400 uppercase">Temp Directory</p>
             <p className="font-mono text-xs break-all text-zinc-700 dark:text-zinc-300">{tmpDir}</p>
           </div>
+        </div>
+        <div className="rounded-md border p-2.5">
+          <p className="mb-1 text-[10px] font-bold text-zinc-400 uppercase">User Home</p>
+          <p className="font-mono text-xs break-all text-zinc-700 dark:text-zinc-300">{userHome}</p>
         </div>
         <div className="rounded-md border p-2.5">
           <p className="mb-1 text-[10px] font-bold text-zinc-400 uppercase">Arguments</p>

@@ -140,15 +140,15 @@ const getXtermTheme = (mode: "light" | "dark"): XtermTheme => {
 const detectOsFamily = (osName?: string): OsFamily => {
   const normalized = osName?.trim().toLowerCase() ?? "";
   if (!normalized) return "unknown";
-  if (normalized.includes("win")) return "windows";
   if (
-    normalized.includes("linux") ||
-    normalized.includes("mac") ||
-    normalized.includes("darwin") ||
-    normalized.includes("os x")
+      normalized.includes("linux") ||
+      normalized.includes("mac") ||
+      normalized.includes("darwin") ||
+      normalized.includes("os x")
   ) {
     return "unix";
   }
+  if (normalized.includes("win")) return "windows";
   return "unknown";
 };
 

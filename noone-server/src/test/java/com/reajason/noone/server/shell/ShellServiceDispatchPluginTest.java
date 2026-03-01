@@ -14,10 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -291,6 +293,35 @@ class ShellServiceDispatchPluginTest {
         assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
         verify(shellStatusUpdater).markConnected(shellId);
         // updateBasicInfo should not be called because data is not a Map
+        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void shouldConvertFileManagerByteArrayResponseToIntegerList() {
+        Long shellId = 13L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.needLoadPlugin("file-manager")).thenReturn(false);
+        when(connection.runPlugin(eq("file-manager"), any())).thenReturn(Map.of(
+                Constants.CODE, Constants.SUCCESS,
+                Constants.DATA, Map.of(
+                        "bytes", new byte[]{0, 1, (byte) 255},
+                        "chunks", List.of(Map.of("bytes", new byte[]{2, 3}))
+                )
+        ));
+
+        Map<String, Object> response = shellService.dispatchPlugin(shellId, "file-manager", Map.of("op", "read-all"));
+
+        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
+        Map<String, Object> data = (Map<String, Object>) response.get(Constants.DATA);
+        assertInstanceOf(List.class, data.get("bytes"));
+        assertEquals(List.of(0, 1, 255), data.get("bytes"));
+        List<Map<String, Object>> chunks = (List<Map<String, Object>>) data.get("chunks");
+        assertEquals(List.of(2, 3), chunks.get(0).get("bytes"));
+        verify(shellStatusUpdater).markConnected(shellId);
         verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
     }
 

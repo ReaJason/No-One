@@ -1,5 +1,5 @@
 import { Separator } from "@radix-ui/react-separator";
-import { ArrowLeft, Info, Puzzle, Terminal } from "lucide-react";
+import { ArrowLeft, ClipboardList, Files, Info, Puzzle, Terminal } from "lucide-react";
 import type { ComponentType } from "react";
 import { Link, type LoaderFunctionArgs, useLoaderData, useSearchParams } from "react-router";
 import { Toaster } from "sonner";
@@ -40,8 +40,10 @@ export async function loader({ params }: LoaderFunctionArgs) {
 
 const shellSections = [
   { id: "info", title: "Basic Info", icon: Info },
+  { id: "files", title: "Files", icon: Files },
   { id: "command", title: "Command Execute", icon: Terminal },
   { id: "extensions", title: "Extensions", icon: Puzzle },
+  { id: "operations", title: "Operations", icon: ClipboardList },
 ] as const satisfies ReadonlyArray<{
   id: ShellManagerSection;
   title: string;

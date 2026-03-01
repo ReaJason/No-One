@@ -2,15 +2,18 @@ import { Puzzle, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import * as pluginApi from "@/api/plugin-api";
 import * as shellApi from "@/api/shell-api";
+import * as opLogApi from "@/api/shell-operation-log-api";
 import CommandExecute from "@/components/shell/command-execute";
+import FileManager from "@/components/shell/file-manager";
 import PluginCatalog from "@/components/shell/plugin-catalog";
 import PluginTabPanel, { type PluginTabState } from "@/components/shell/plugin-tab-panel";
+import ShellOperationLogList from "@/components/shell/shell-operation-log-list";
+import SystemDashboard from "@/components/shell/system-info";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Plugin } from "@/types/plugin";
 import type { ShellConnection } from "@/types/shell-connection";
-import SystemDashboard from "@/components/shell/system-info";
 
-export type ShellManagerSection = "info" | "command" | "extensions";
+export type ShellManagerSection = "info" | "files" | "command" | "extensions" | "operations";
 
 interface ShellManagerProps {
   shell: ShellConnection;
@@ -21,7 +24,6 @@ export default function ShellManager({ shell, section }: ShellManagerProps) {
   const [systemInfo, setSystemInfo] = useState<any>(null);
   const [loading, setLoading] = useState({
     systemInfo: false,
-    files: false,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -33,10 +35,22 @@ export default function ShellManager({ shell, section }: ShellManagerProps) {
   const [openPlugins, setOpenPlugins] = useState<Plugin[]>([]);
   const [pluginStates, setPluginStates] = useState<Record<string, PluginTabState>>({});
 
-  const loadSystemInfo = useCallback(async () => {
+  const loadSystemInfo = useCallback(async (forceRefresh = false) => {
     setLoading((prev) => ({ ...prev, systemInfo: true }));
     setError(null);
     try {
+      // Try to use cached result from latest operation log
+      if (!forceRefresh) {
+        try {
+          const cached = await opLogApi.getLatestShellOperation(shell.id, "system-info");
+          if (cached?.result) {
+            setSystemInfo(cached.result);
+            return;
+          }
+        } catch {
+          // Fall through to fresh request
+        }
+      }
       const data = await shellApi.dispatchPlugin({
         id: shell.id,
         pluginId: "system-info",
@@ -50,30 +64,32 @@ export default function ShellManager({ shell, section }: ShellManagerProps) {
     }
   }, [shell.id]);
 
-  // Load system info on mount
   useEffect(() => {
-    loadSystemInfo();
-  }, [loadSystemInfo]);
+    if ((section === "info" || section === "command") && systemInfo == null) {
+      loadSystemInfo();
+    }
+  }, [loadSystemInfo, section, systemInfo]);
 
   const handleRefreshSystemInfo = useCallback(() => {
-    loadSystemInfo();
+    loadSystemInfo(true);
   }, [loadSystemInfo]);
 
-  // Load extension plugins on mount
   useEffect(() => {
+    if (section !== "extensions" || extensionPlugins.length > 0) {
+      return;
+    }
     pluginApi
       .getPlugins({ type: "Extension", language: shell.language })
       .then((res) => {
         setExtensionPlugins(res.content);
       })
       .catch(() => {});
-  }, []);
+  }, [extensionPlugins.length, section, shell.language]);
 
   // Plugin tab management
   const openPlugin = useCallback((plugin: Plugin) => {
     setOpenPlugins((prev) => {
       if (prev.some((p) => p.id === plugin.id)) {
-        // Already open — just switch to it
         setExtensionSubTab(`plugin-${plugin.id}`);
         return prev;
       }
@@ -123,6 +139,14 @@ export default function ShellManager({ shell, section }: ShellManagerProps) {
           }}
         />
       );
+    }
+
+    if (section === "files") {
+      return <FileManager shellId={shell.id} shellUrl={shell.url} />;
+    }
+
+    if (section === "operations") {
+      return <ShellOperationLogList shellId={shell.id} />;
     }
 
     if (section === "extensions") {

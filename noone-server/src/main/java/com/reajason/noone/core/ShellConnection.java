@@ -20,6 +20,7 @@ import java.util.Set;
 
 public abstract class ShellConnection {
     private static final String COMMAND_EXECUTE_PLUGIN = "command-execute";
+    private static final String FILE_MANAGER_PLUGIN = "file-manager";
     private static final String CMD_PLACEHOLDER = "{{cmd}}";
     private static final String CWD_PLACEHOLDER = "{{cwd}}";
 
@@ -179,6 +180,11 @@ public abstract class ShellConnection {
             if (isLocalFailure(pluginArgs)) {
                 return pluginArgs;
             }
+        } else if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
+            pluginArgs = normalizeFileManagerArgs(args);
+            if (isLocalFailure(pluginArgs)) {
+                return pluginArgs;
+            }
         }
 
         Map<String, Object> requestMap = new HashMap<>();
@@ -222,6 +228,95 @@ public abstract class ShellConnection {
         normalized.put("argv", parseTemplateArgs(template.get("args"), cmd, cwd));
         normalized.put("env", parseTemplateEnv(template.get("env"), cmd, cwd));
         return normalized;
+    }
+
+    private Map<String, Object> normalizeFileManagerArgs(Map<String, Object> args) {
+        try {
+            Map<String, Object> source = args == null ? new HashMap<>() : args;
+            return normalizeFileManagerMap(source);
+        } catch (IllegalArgumentException e) {
+            return localFailure("file-manager args normalization failed: " + e.getMessage());
+        }
+    }
+
+    private Map<String, Object> normalizeFileManagerMap(Map<String, Object> source) {
+        Map<String, Object> normalized = new HashMap<>();
+        for (Map.Entry<String, Object> entry : source.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            String key = entry.getKey();
+            normalized.put(key, normalizeFileManagerValue(key, entry.getValue()));
+        }
+        return normalized;
+    }
+
+    private Object normalizeFileManagerValue(String key, Object value) {
+        if (value == null) {
+            return null;
+        }
+        if ("bytes".equals(key)) {
+            return toByteArray(value);
+        }
+        if (value instanceof Map<?, ?> mapValue) {
+            return normalizeFileManagerMap(toStringObjectMap(mapValue));
+        }
+        if (value instanceof Iterable<?>) {
+            List<Object> list = new ArrayList<>();
+            for (Object item : (Iterable<?>) value) {
+                list.add(normalizeFileManagerValue(null, item));
+            }
+            return list;
+        }
+        if (value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            List<Object> list = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                list.add(normalizeFileManagerValue(null, Array.get(value, i)));
+            }
+            return list;
+        }
+        return value;
+    }
+
+    private byte[] toByteArray(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof byte[] bytes) {
+            return bytes;
+        }
+        if (raw instanceof Iterable<?> iterable) {
+            List<Byte> bytes = new ArrayList<>();
+            for (Object item : iterable) {
+                bytes.add(toSingleByte(item));
+            }
+            byte[] out = new byte[bytes.size()];
+            for (int i = 0; i < bytes.size(); i++) {
+                out[i] = bytes.get(i);
+            }
+            return out;
+        }
+        if (raw.getClass().isArray()) {
+            int length = Array.getLength(raw);
+            byte[] out = new byte[length];
+            for (int i = 0; i < length; i++) {
+                out[i] = toSingleByte(Array.get(raw, i));
+            }
+            return out;
+        }
+        throw new IllegalArgumentException("unsupported bytes value type: " + raw.getClass().getName());
+    }
+
+    private byte toSingleByte(Object raw) {
+        if (!(raw instanceof Number number)) {
+            throw new IllegalArgumentException("bytes element is not a number: " + raw);
+        }
+        int value = number.intValue();
+        if (value < 0 || value > 255) {
+            throw new IllegalArgumentException("bytes element out of range [0,255]: " + value);
+        }
+        return (byte) value;
     }
 
     private boolean isLocalFailure(Map<String, Object> response) {
