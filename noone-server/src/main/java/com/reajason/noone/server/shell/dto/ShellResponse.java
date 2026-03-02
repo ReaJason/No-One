@@ -40,5 +40,5 @@ public class ShellResponse {
     private Long retryDelayMs;
 
     // Normalized system info
-    private Map<String, String> basicInfo;
+    private Map<String, Object> basicInfo;
 }

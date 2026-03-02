@@ -6,6 +6,7 @@ import com.reajason.noone.core.exception.RequestSendException;
 import com.reajason.noone.core.exception.ResponseDecodeException;
 import com.reajason.noone.server.admin.plugin.Plugin;
 import com.reajason.noone.server.admin.plugin.PluginRepository;
+import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -19,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -33,6 +33,7 @@ class ShellServiceDispatchPluginTest {
     private PluginRepository pluginRepository;
     private ShellStatusUpdater shellStatusUpdater;
     private ShellMapper shellMapper;
+    private ShellOperationLogService shellOperationLogService;
 
     @BeforeEach
     void setUp() {
@@ -42,12 +43,14 @@ class ShellServiceDispatchPluginTest {
         pluginRepository = mock(PluginRepository.class);
         shellStatusUpdater = mock(ShellStatusUpdater.class);
         shellMapper = mock(ShellMapper.class);
+        shellOperationLogService = mock(ShellOperationLogService.class);
 
         ReflectionTestUtils.setField(shellService, "shellRepository", shellRepository);
         ReflectionTestUtils.setField(shellService, "shellConnectionPool", shellConnectionPool);
         ReflectionTestUtils.setField(shellService, "pluginRepository", pluginRepository);
         ReflectionTestUtils.setField(shellService, "shellStatusUpdater", shellStatusUpdater);
         ReflectionTestUtils.setField(shellService, "shellMapper", shellMapper);
+        ReflectionTestUtils.setField(shellService, "shellOperationLogService", shellOperationLogService);
     }
 
     @Test
@@ -107,34 +110,6 @@ class ShellServiceDispatchPluginTest {
         assertEquals("remote plugin failure", response.get(Constants.ERROR));
         verify(shellStatusUpdater, never()).markError(anyLong());
         verify(shellStatusUpdater, never()).markConnected(anyLong());
-    }
-
-    @Test
-    void shouldMarkConnectedWhenPluginReturnsSuccessCode() {
-        Long shellId = 4L;
-        Shell shell = shell(shellId);
-        ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
-        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
-        when(connection.needLoadPlugin("system-info")).thenReturn(false);
-
-        Map<String, Object> data = new HashMap<>();
-        data.put("os", Map.of("name", "Windows Server 2016", "arch", "amd64"));
-        data.put("runtime", Map.of("type", "jdk", "version", "1.8.0_291"));
-        when(connection.runPlugin(eq("system-info"), any()))
-                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, data));
-
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
-
-        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
-        verify(shellStatusUpdater).markConnected(shellId);
-        verify(shellStatusUpdater, never()).markError(anyLong());
-        verify(shellStatusUpdater).updateBasicInfo(eq(shellId), eq(Map.of(
-                "os", "windows",
-                "arch", "x64",
-                "runtimeType", "jdk",
-                "runtimeVersion", "1.8.0_291"
-        )));
     }
 
     @Test
@@ -256,73 +231,6 @@ class ShellServiceDispatchPluginTest {
         assertEquals("RESPONSE", response.get("phase"));
         verify(shellStatusUpdater, never()).markError(anyLong());
         verify(shellStatusUpdater, never()).markConnected(anyLong());
-    }
-
-    @Test
-    void shouldNotCallUpdateBasicInfoForNonSystemInfoPlugin() {
-        Long shellId = 11L;
-        Shell shell = shell(shellId);
-        ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
-        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
-        when(connection.needLoadPlugin("command-execute")).thenReturn(false);
-        when(connection.runPlugin(eq("command-execute"), any()))
-                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of("output", "root")));
-
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
-
-        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
-        verify(shellStatusUpdater).markConnected(shellId);
-        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
-    }
-
-    @Test
-    void shouldStillSucceedWhenSystemInfoDataHasUnexpectedStructure() {
-        Long shellId = 12L;
-        Shell shell = shell(shellId);
-        ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
-        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
-        when(connection.needLoadPlugin("system-info")).thenReturn(false);
-        // data is a string instead of expected nested map
-        when(connection.runPlugin(eq("system-info"), any()))
-                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "unexpected-string"));
-
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
-
-        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
-        verify(shellStatusUpdater).markConnected(shellId);
-        // updateBasicInfo should not be called because data is not a Map
-        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
-    }
-
-    @SuppressWarnings("unchecked")
-    @Test
-    void shouldConvertFileManagerByteArrayResponseToIntegerList() {
-        Long shellId = 13L;
-        Shell shell = shell(shellId);
-        ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
-        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
-        when(connection.needLoadPlugin("file-manager")).thenReturn(false);
-        when(connection.runPlugin(eq("file-manager"), any())).thenReturn(Map.of(
-                Constants.CODE, Constants.SUCCESS,
-                Constants.DATA, Map.of(
-                        "bytes", new byte[]{0, 1, (byte) 255},
-                        "chunks", List.of(Map.of("bytes", new byte[]{2, 3}))
-                )
-        ));
-
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "file-manager", Map.of("op", "read-all"));
-
-        assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
-        Map<String, Object> data = (Map<String, Object>) response.get(Constants.DATA);
-        assertInstanceOf(List.class, data.get("bytes"));
-        assertEquals(List.of(0, 1, 255), data.get("bytes"));
-        List<Map<String, Object>> chunks = (List<Map<String, Object>>) data.get("chunks");
-        assertEquals(List.of(2, 3), chunks.get(0).get("bytes"));
-        verify(shellStatusUpdater).markConnected(shellId);
-        verify(shellStatusUpdater, never()).updateBasicInfo(anyLong(), any());
     }
 
     private Shell shell(Long id) {

@@ -227,6 +227,7 @@ public class NoOneCore extends ClassLoader {
     static final byte BYTE_ARRAY = 0x06;
     static final byte LIST = 0x7;
     static final byte OBJECT_ARRAY = 0x8;
+    static final byte SET = 0x09;
     static final byte MAP = 0x10;
 
     public byte[] serialize(Map<String, Object> map) throws IOException {
@@ -283,6 +284,13 @@ public class NoOneCore extends ClassLoader {
             byte[] bytes = (byte[]) obj;
             dos.writeInt(bytes.length);
             dos.write(bytes);
+        } else if (obj instanceof Set) {
+            dos.writeByte(SET);
+            Set<?> set = (Set<?>) obj;
+            dos.writeInt(set.size());
+            for (Object item : set) {
+                writeObject(dos, item);
+            }
         } else if (obj instanceof List) {
             dos.writeByte(LIST);
             List<?> list = (List<?>) obj;
@@ -337,6 +345,13 @@ public class NoOneCore extends ClassLoader {
                 byte[] bytes = new byte[len];
                 dis.readFully(bytes);
                 return bytes;
+            case SET:
+                int setSize = dis.readInt();
+                Set<Object> set = new LinkedHashSet<Object>(setSize);
+                for (int i = 0; i < setSize; i++) {
+                    set.add(readObject(dis));
+                }
+                return set;
             case LIST:
                 int listSize = dis.readInt();
                 List<Object> list = new ArrayList<Object>(listSize);

@@ -18,10 +18,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Shell service with JavaManager integration
@@ -202,7 +204,8 @@ public class ShellService {
     }
 
     public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
-        Shell shell = getShellEntity(shellId);
+        Shell shell = shellRepository.findById(shellId)
+                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
         String action = args != null ? (String) args.get("action") : null;
         if (action == null) {
@@ -212,18 +215,16 @@ public class ShellService {
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
             if (connection.needLoadPlugin(pluginId)) {
-                Optional<Plugin> systemInfoPlugin = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
-                systemInfoPlugin.ifPresent(plugin -> connection.loadPlugin(plugin.getPluginId(), pluginPayloadBytes(shellLanguage, plugin)));
+                Optional<Plugin> pluginOptional = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
+                pluginOptional.ifPresent(plugin -> connection.loadPlugin(plugin.getPluginId(), pluginPayloadBytes(shellLanguage, plugin)));
             }
             Map<String, Object> result = connection.runPlugin(pluginId, args);
             Map<String, Object> response = handleShellConnectionResult(result);
-            if ("file-manager".equals(pluginId)) {
-                response = normalizeFileManagerBinaryPayload(response);
-            }
             if (isSuccess(response.get(Constants.CODE))) {
                 shellStatusUpdater.markConnected(shellId);
                 if ("system-info".equals(pluginId)) {
-                    tryExtractBasicInfo(shellId, response);
+                    shell.setBasicInfo(response);
+                    shellRepository.save(shell);
                 }
             }
 
@@ -263,46 +264,6 @@ public class ShellService {
     }
 
     // ==================== Helper Methods ====================
-
-    @SuppressWarnings("unchecked")
-    private void tryExtractBasicInfo(Long shellId, Map<String, Object> response) {
-        try {
-            Object dataObj = response.get(Constants.DATA);
-            if (!(dataObj instanceof Map)) {
-                return;
-            }
-            Map<String, Object> data = (Map<String, Object>) dataObj;
-
-            String rawOsName = SystemInfoNormalizer.extractString(data, "os", "name");
-            String rawArch = SystemInfoNormalizer.extractString(data, "os", "arch");
-            String runtimeType = SystemInfoNormalizer.extractString(data, "runtime", "type");
-            String runtimeVersion = SystemInfoNormalizer.extractString(data, "runtime", "version");
-
-            String os = SystemInfoNormalizer.normalizeOsName(rawOsName);
-            String arch = SystemInfoNormalizer.normalizeArch(rawArch, os);
-
-            Map<String, String> basicInfo = new HashMap<>();
-            if (os != null) basicInfo.put("os", os);
-            if (arch != null) basicInfo.put("arch", arch);
-            if (runtimeType != null) basicInfo.put("runtimeType", runtimeType);
-            if (runtimeVersion != null) basicInfo.put("runtimeVersion", runtimeVersion);
-
-            if (!basicInfo.isEmpty()) {
-                shellStatusUpdater.updateBasicInfo(shellId, basicInfo);
-            }
-        } catch (Exception e) {
-            log.warn("Failed to extract basic info from system-info response: shellId={}", shellId, e);
-        }
-    }
-
-    /**
-     * Get shell entity and verify it exists
-     */
-    private Shell getShellEntity(Long shellId) {
-        return shellRepository.findById(shellId)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-    }
-
     /**
      * Handle ShellConnection result and check for errors
      */
@@ -319,54 +280,6 @@ public class ShellService {
         }
 
         return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> normalizeFileManagerBinaryPayload(Map<String, Object> response) {
-        Object converted = convertBinaryToJsonSafeValue(response);
-        if (converted instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
-        }
-        return response;
-    }
-
-    private Object convertBinaryToJsonSafeValue(Object raw) {
-        if (raw == null) {
-            return null;
-        }
-        if (raw instanceof byte[] bytes) {
-            List<Integer> numbers = new ArrayList<>(bytes.length);
-            for (byte b : bytes) {
-                numbers.add(b & 0xff);
-            }
-            return numbers;
-        }
-        if (raw instanceof Map<?, ?> map) {
-            Map<String, Object> copied = new HashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() == null) {
-                    continue;
-                }
-                copied.put(String.valueOf(entry.getKey()), convertBinaryToJsonSafeValue(entry.getValue()));
-            }
-            return copied;
-        }
-        if (raw instanceof Iterable<?> iterable) {
-            List<Object> copied = new ArrayList<>();
-            for (Object item : iterable) {
-                copied.add(convertBinaryToJsonSafeValue(item));
-            }
-            return copied;
-        }
-        if (raw.getClass().isArray()) {
-            int length = Array.getLength(raw);
-            List<Object> copied = new ArrayList<>(length);
-            for (int i = 0; i < length; i++) {
-                copied.add(convertBinaryToJsonSafeValue(Array.get(raw, i)));
-            }
-            return copied;
-        }
-        return raw;
     }
 
     private boolean isSuccess(Object codeObj) {

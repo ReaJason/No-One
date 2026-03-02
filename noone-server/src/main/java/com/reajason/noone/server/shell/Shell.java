@@ -101,7 +101,7 @@ public class Shell {
      */
     @Column(name = "basic_info", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
-    private Map<String, String> basicInfo;
+    private Map<String, Object> basicInfo;
 
     @CreatedDate
     @Column(name = "create_time", nullable = false, updatable = false)

@@ -239,6 +239,57 @@ class ShellConnectionSendRequestTest {
         assertEquals(args, sentArgs);
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void shouldNormalizeFileManagerBytesToByteArrayBeforeSend() {
+        TestClient client = new TestClient();
+        TestShellConnection conn = new TestShellConnection(client);
+        conn.nextDeserializedResponse = Map.of(
+                Constants.CODE, Constants.SUCCESS,
+                Constants.DATA, Map.of(
+                        "bytes", new byte[]{4, 5, (byte) 255},
+                        "chunks", List.of(Map.of("bytes", new byte[]{6, 7}))
+                )
+        );
+
+        Map<String, Object> response = conn.runPlugin(
+                "file-manager",
+                Map.of(
+                        "op", "write-chunk",
+                        "path", "/tmp/a.bin",
+                        "bytes", List.of(0, 127, 255),
+                        "chunks", List.of(Map.of("offset", 0, "bytes", List.of(1, 2, 3)))
+                )
+        );
+
+        Map<String, Object> sentArgs = (Map<String, Object>) conn.lastSerializedRequest.get(Constants.ARGS);
+        assertTrue(sentArgs.get("bytes") instanceof byte[]);
+        assertArrayEquals(new byte[]{0, 127, (byte) 255}, (byte[]) sentArgs.get("bytes"));
+        List<Map<String, Object>> chunks = (List<Map<String, Object>>) sentArgs.get("chunks");
+        assertTrue(chunks.get(0).get("bytes") instanceof byte[]);
+        assertArrayEquals(new byte[]{1, 2, 3}, (byte[]) chunks.get(0).get("bytes"));
+
+        Map<String, Object> data = (Map<String, Object>) response.get(Constants.DATA);
+        assertEquals(List.of(4, 5, 255), data.get("bytes"));
+        List<Map<String, Object>> responseChunks = (List<Map<String, Object>>) data.get("chunks");
+        assertEquals(List.of(6, 7), responseChunks.get(0).get("bytes"));
+    }
+
+    @Test
+    void shouldReturnFailureWithoutSendWhenFileManagerBytesInvalid() {
+        TestClient client = new TestClient();
+        TestShellConnection conn = new TestShellConnection(client);
+
+        Map<String, Object> response = conn.runPlugin(
+                "file-manager",
+                Map.of("op", "write-all", "path", "/tmp/a.bin", "bytes", List.of(1, -1, 3))
+        );
+
+        assertEquals(Constants.FAILURE, response.get(Constants.CODE));
+        assertTrue(String.valueOf(response.get(Constants.ERROR)).contains("file-manager args normalization failed"));
+        assertEquals(0, client.sendCalls);
+    }
+
     private static final class TestShellConnection extends ShellConnection {
         RuntimeException serializeException;
         RuntimeException deserializeException;
@@ -256,23 +307,6 @@ class ShellConnectionSendRequestTest {
         @Override
         public void fillLoadPluginRequestMaps(String pluginName, byte[] pluginCodeBytes, Map<String, Object> requestMap) {
             requestMap.put(Constants.PLUGIN_CODE, pluginCodeBytes);
-        }
-
-        @Override
-        public byte[] serialize(Map<String, Object> map) {
-            if (serializeException != null) {
-                throw serializeException;
-            }
-            lastSerializedRequest = new HashMap<>(map);
-            return new byte[]{0};
-        }
-
-        @Override
-        public Map<String, Object> deserialize(byte[] data) {
-            if (deserializeException != null) {
-                throw deserializeException;
-            }
-            return nextDeserializedResponse;
         }
     }
 

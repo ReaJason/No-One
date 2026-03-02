@@ -83,6 +83,7 @@
     const BYTE_ARRAY = 0x06;
     const LIST = 0x07;
     const OBJECT_ARRAY = 0x08;
+    const SET = 0x09;
     const MAP = 0x10;
 
     // 插件缓存
@@ -262,6 +263,14 @@
             writer.writeRaw(bytes);
             return;
         }
+        if (obj instanceof Set) {
+            writer.writeByte(SET);
+            writer.writeInt(obj.size);
+            for (const item of obj) {
+                writeObject(writer, item);
+            }
+            return;
+        }
         if (Array.isArray(obj)) {
             writer.writeByte(LIST);
             writer.writeInt(obj.length);
@@ -309,6 +318,17 @@
                 const len = reader.readInt();
                 return reader.readRaw(len);
             }
+            case SET: {
+                const size = reader.readInt();
+                if (size < 0) {
+                    throw new Error(`Negative set size found in stream: ${size}`);
+                }
+                const set = new Set();
+                for (let i = 0; i < size; i++) {
+                    set.add(readObject(reader));
+                }
+                return set;
+            }
             case LIST:
             case OBJECT_ARRAY: {
                 const size = reader.readInt();
@@ -344,7 +364,8 @@
             && !Array.isArray(value)
             && !Buffer.isBuffer(value)
             && !(value instanceof Uint8Array)
-            && !(value instanceof Map);
+            && !(value instanceof Map)
+            && !(value instanceof Set);
     }
 
     function encodeModifiedUtf8(value) {
@@ -410,7 +431,7 @@
     // 获取状态
     function getStatus() {
         const result = {};
-        result[PLUGIN_CACHES] = Array.from(loadedPluginCache.keys());
+        result[PLUGIN_CACHES] = new Set(loadedPluginCache.keys());
         return result;
     }
 

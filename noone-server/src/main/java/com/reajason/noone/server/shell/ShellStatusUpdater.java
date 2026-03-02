@@ -26,18 +26,6 @@ public class ShellStatusUpdater {
         updateStatus(shellId, ShellStatus.ERROR, null);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateBasicInfo(Long shellId, Map<String, String> basicInfo) {
-        try {
-            Shell shell = shellRepository.findById(shellId)
-                    .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-            shell.setBasicInfo(basicInfo);
-            shellRepository.save(shell);
-        } catch (Exception e) {
-            log.warn("Failed to update basic info: shellId={}", shellId, e);
-        }
-    }
-
     private void updateStatus(Long shellId, ShellStatus status, LocalDateTime connectTime) {
         try {
             Shell shell = shellRepository.findById(shellId)

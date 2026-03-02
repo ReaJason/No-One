@@ -68,7 +68,7 @@ public abstract class ShellConnection {
     protected Map<String, Object> sendRequest(Map<String, Object> requestMap) {
         byte[] bytes;
         try {
-            bytes = serialize(requestMap);
+            bytes = TlvCodec.serialize(requestMap);
         } catch (ShellCommunicationException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -90,7 +90,7 @@ public abstract class ShellConnection {
 
         Map<String, Object> response;
         try {
-            response = deserialize(result);
+            response = TlvCodec.deserialize(result);
         } catch (ShellCommunicationException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -193,7 +193,11 @@ public abstract class ShellConnection {
         if (pluginArgs != null) {
             requestMap.put(Constants.ARGS, pluginArgs);
         }
-        return sendRequest(requestMap);
+        Map<String, Object> response = sendRequest(requestMap);
+        if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
+            return normalizeFileManagerResponse(response);
+        }
+        return response;
     }
 
     private Map<String, Object> normalizeCommandExecuteArgs(Map<String, Object> args) {
@@ -319,6 +323,54 @@ public abstract class ShellConnection {
         return (byte) value;
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> normalizeFileManagerResponse(Map<String, Object> response) {
+        Object converted = convertBinaryToJsonSafeValue(response);
+        if (converted instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return response;
+    }
+
+    private Object convertBinaryToJsonSafeValue(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof byte[] bytes) {
+            List<Integer> numbers = new ArrayList<>(bytes.length);
+            for (byte b : bytes) {
+                numbers.add(b & 0xff);
+            }
+            return numbers;
+        }
+        if (raw instanceof Map<?, ?> map) {
+            Map<String, Object> copied = new HashMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                copied.put(String.valueOf(entry.getKey()), convertBinaryToJsonSafeValue(entry.getValue()));
+            }
+            return copied;
+        }
+        if (raw instanceof Iterable<?> iterable) {
+            List<Object> copied = new ArrayList<>();
+            for (Object item : iterable) {
+                copied.add(convertBinaryToJsonSafeValue(item));
+            }
+            return copied;
+        }
+        if (raw.getClass().isArray()) {
+            int length = Array.getLength(raw);
+            List<Object> copied = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                copied.add(convertBinaryToJsonSafeValue(Array.get(raw, i)));
+            }
+            return copied;
+        }
+        return raw;
+    }
+
     private boolean isLocalFailure(Map<String, Object> response) {
         if (response == null) {
             return false;
@@ -433,8 +485,4 @@ public abstract class ShellConnection {
         String text = String.valueOf(value).trim();
         return text.isEmpty() ? null : text;
     }
-
-    public abstract byte[] serialize(Map<String, Object> map);
-
-    public abstract Map<String, Object> deserialize(byte[] data);
 }
