@@ -1,6 +1,7 @@
 import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
 
 export default [
+  route("/shells/:shellId/connect", "routes/shell/shell-connect.tsx"),
   route("/shells/:shellId", "routes/shell/shell-manager.tsx"),
   route("/auth/login", "routes/auth/login.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),

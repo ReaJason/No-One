@@ -37,6 +37,10 @@ export interface UpdateShellConnectionRequest {
   retryDelayMs?: number;
 }
 
+interface ShellConnectionRequestOptions {
+  signal?: AbortSignal;
+}
+
 export async function getShellConnections(
   filters: ShellConnectionSearchParams = {},
 ): Promise<PaginatedResponse<ShellConnection>> {
@@ -64,8 +68,15 @@ export async function getShellConnections(
   return await apiClient.getPaginated<ShellConnection>(baseUrl, params);
 }
 
-export async function getShellConnectionById(id: number | string): Promise<ShellConnection> {
-  return (await apiClient.get<ShellConnection>(`${baseUrl}/${id}`)).data;
+export async function getShellConnectionById(
+  id: number | string,
+  options: ShellConnectionRequestOptions = {},
+): Promise<ShellConnection> {
+  return (
+    await apiClient.get<ShellConnection>(`${baseUrl}/${id}`, undefined, {
+      signal: options.signal,
+    })
+  ).data;
 }
 
 export async function createShellConnection(
@@ -105,6 +116,13 @@ export interface TestShellConfigResponse {
   errorMessage?: string;
 }
 
+export interface TestShellConnectionResponse {
+  connected: boolean;
+  status: "CONNECTED" | "ERROR";
+  error?: string;
+  errorMessage?: string;
+}
+
 export async function testShellConfig(
   payload: TestShellConfigRequest,
 ): Promise<TestShellConfigResponse> {
@@ -119,12 +137,38 @@ export async function testShellConfig(
   return response.data;
 }
 
+export async function testShellConnection(
+  id: number | string,
+  options: ShellConnectionRequestOptions = {},
+): Promise<TestShellConnectionResponse> {
+  const response = await apiClient.post<TestShellConnectionResponse>(`${baseUrl}/${id}/test`, undefined, {
+    signal: options.signal,
+  });
+
+  if (!response.success) {
+    throw new Error(resolveErrorMessage(response.data, "Connection test failed"));
+  }
+  if (!isTestShellConnectionResponse(response.data)) {
+    throw new Error(resolveErrorMessage(response.data, "Connection test failed"));
+  }
+  return response.data;
+}
+
 function isTestShellConfigResponse(data: unknown): data is TestShellConfigResponse {
   if (!data || typeof data !== "object") {
     return false;
   }
 
   const candidate = data as Partial<TestShellConfigResponse>;
+  return typeof candidate.connected === "boolean" && typeof candidate.status === "string";
+}
+
+function isTestShellConnectionResponse(data: unknown): data is TestShellConnectionResponse {
+  if (!data || typeof data !== "object") {
+    return false;
+  }
+
+  const candidate = data as Partial<TestShellConnectionResponse>;
   return typeof candidate.connected === "boolean" && typeof candidate.status === "string";
 }
 

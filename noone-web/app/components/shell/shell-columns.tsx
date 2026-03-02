@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 import { deleteShellConnection } from "@/api/shell-connection-api";
-import type { ShellConnection, ShellStatus, ShellType } from "@/types/shell-connection";
+import type { ShellConnection, ShellStatus } from "@/types/shell-connection";
 
 const statusLabels: Record<ShellStatus, string> = {
   CONNECTED: "Connected",
@@ -219,7 +219,7 @@ export function getShellColumns({
         };
 
         const handleConnectShell = () => {
-          window.open(`/shells/${shell.id}`, "_blank");
+          window.open(`/shells/${shell.id}/connect`, "_blank");
         };
 
         return (
