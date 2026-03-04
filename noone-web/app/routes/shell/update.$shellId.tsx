@@ -13,7 +13,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const formData = await request.formData();
   const url = (formData.get("url") as string)?.trim();
   const languageRaw = (formData.get("language") as string)?.trim();
-  const language = (languageRaw === "nodejs" ? "nodejs" : "java") as ShellLanguage;
+  const language = languageRaw as ShellLanguage;
   const group = (formData.get("group") as string)?.trim();
   const projectIdRaw = (formData.get("projectId") as string)?.trim();
   const profileIdRaw = (formData.get("profileId") as string)?.trim();
@@ -53,9 +53,6 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   const errors: Record<string, string> = {};
   if (!url) errors.url = "URL is required";
-  if (languageRaw && languageRaw !== "java" && languageRaw !== "nodejs") {
-    errors.language = "Language must be either java or nodejs";
-  }
   if (!profileId || !Number.isFinite(profileId)) {
     errors.profileId = "Profile is required";
   }

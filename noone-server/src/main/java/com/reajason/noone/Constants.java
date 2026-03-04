@@ -6,7 +6,7 @@ public class Constants {
     public static final String ACTION = "action";
     public static final String CLASSNAME = "className";
     public static final String PLUGIN = "plugin";
-    public static final String CLASS_BYTES = "classBytes";
+    public static final String PLUGIN_BYTES = "pluginBytes";
     public static final String PLUGIN_CODE = "pluginCode";
     public static final String ARGS = "args";
     public static final String REFRESH = "refresh";

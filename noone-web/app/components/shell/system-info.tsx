@@ -37,6 +37,8 @@ type SystemInfoRuntimeMem = {
   heap_used?: number;
   heap_max?: number;
   heap_total?: number;
+  working_set?: number;
+  private_mem?: number;
   external?: number;
   nonheap_used?: number;
   nonheap_max?: number;
@@ -189,10 +191,15 @@ const OsWidget = memo(function OsWidget({ os }: { os: SystemInfoOs }) {
 const MemoryWidget = memo(function MemoryWidget({ runtime }: { runtime: SystemInfoRuntime }) {
   const runtimeType = runtime.type ?? "unknown";
   const isJava = runtimeType === "java";
+  const isDotnet = runtimeType === "dotnet";
   const mem = runtime.mem ?? {};
 
   const heapUsed = mem.heap_used ?? 0;
-  const heapMax = isJava ? (mem.heap_max ?? 0) : (mem.heap_total ?? 0);
+  const heapMax = isJava
+    ? (mem.heap_max ?? 0)
+    : isDotnet
+      ? (mem.working_set ?? 0)
+      : (mem.heap_total ?? 0);
   const heapFree = Math.max(0, heapMax - heapUsed);
 
   const nonHeapUsed = mem.nonheap_used ?? 0;
@@ -208,10 +215,10 @@ const MemoryWidget = memo(function MemoryWidget({ runtime }: { runtime: SystemIn
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-sm font-semibold">
           <MemoryStick className="h-4 w-4" />
-          {`${isJava ? "JVM" : "Node"} Memory`}
+          {`${isJava ? "JVM" : isDotnet ? "DotNet" : "Node"} Memory`}
         </CardTitle>
         <CardAction>
-          <Badge>{heapUsagePercent}% Heap</Badge>
+          <Badge>{isDotnet ? `${heapUsagePercent}% Heap/WS` : `${heapUsagePercent}% Heap`}</Badge>
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-2 p-4 md:flex-row">
@@ -245,6 +252,21 @@ const MemoryWidget = memo(function MemoryWidget({ runtime }: { runtime: SystemIn
               <div className="flex justify-between text-xs">
                 <span>Non-Heap Max</span>
                 <span>{formatBytes(nonHeapMax)}</span>
+              </div>
+            </>
+          ) : isDotnet ? (
+            <>
+              <div className="flex justify-between text-xs">
+                <span>Heap Used</span>
+                <span>{formatBytes(mem.heap_used ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Working Set</span>
+                <span>{formatBytes(mem.working_set ?? 0)}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span>Private Memory</span>
+                <span>{formatBytes(mem.private_mem ?? 0)}</span>
               </div>
             </>
           ) : (

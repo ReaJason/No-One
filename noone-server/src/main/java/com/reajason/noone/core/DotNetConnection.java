@@ -10,16 +10,14 @@ import java.util.Map;
  * @author ReaJason
  * @since 2025/12/13
  */
-public class JavaConnection extends ShellConnection {
+public class DotNetConnection extends ShellConnection {
 
-    public JavaConnection(Client client) {
+    public DotNetConnection(Client client) {
         super(client);
     }
 
     @Override
     public void fillLoadPluginRequestMaps(String pluginName, byte[] pluginCodeBytes, Map<String, Object> requestMap) {
-        String className = new ClassReader(pluginCodeBytes).getClassName().replace("/", ".");
-        requestMap.put(Constants.CLASSNAME, className);
         requestMap.put(Constants.PLUGIN_BYTES, pluginCodeBytes);
     }
 }

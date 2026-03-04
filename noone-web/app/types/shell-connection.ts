@@ -1,6 +1,23 @@
 export type ShellType = "WEBSHELL" | "REVERSE" | "BIND";
 export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
-export type ShellLanguage = "java" | "nodejs";
+export type ShellLanguage = "java" | "nodejs" | "dotnet";
+
+export interface ShellBasicInfo {
+  os?: {
+    name?: string;
+    [key: string]: unknown;
+  } | string;
+  process?: {
+    cwd?: string;
+    [key: string]: unknown;
+  };
+  arch?: string;
+  runtimeType?: string;
+  runtimeVersion?: string;
+  data?: Record<string, unknown>;
+  result?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 export interface ShellConnection {
   id: number;
@@ -27,8 +44,7 @@ export interface ShellConnection {
   maxRetries?: number;
   retryDelayMs?: number;
 
-  // Normalized system info
-  basicInfo?: Record<string, string>;
+  basicInfo?: any;
 }
 
 export interface ShellConnectionSearchParams {

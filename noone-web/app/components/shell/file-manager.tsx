@@ -20,9 +20,9 @@ import {
   TerminalSquare,
   Upload,
 } from "lucide-react";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import {useVirtualizer} from "@tanstack/react-virtual";
+import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {toast} from "sonner";
 import * as shellApi from "@/api/shell-api";
 import FileEditorPane from "@/components/shell/file-editor-pane";
 import {
@@ -33,7 +33,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
+import {Button} from "@/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -49,20 +49,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import {Input} from "@/components/ui/input";
+import {Progress} from "@/components/ui/progress";
+import {ScrollArea} from "@/components/ui/scroll-area";
+import {Separator} from "@/components/ui/separator";
+import {Spinner} from "@/components/ui/spinner";
+import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
+import type {FileManagerInitialState} from "@/lib/file-manager-initial-state";
+import {cn} from "@/lib/utils";
 
 type LocationKind = "cwd" | "home" | "disk";
 type EntryType = "file" | "directory";
@@ -84,7 +78,7 @@ type OperationStatus = "running" | "success" | "error" | "cancelled";
 
 interface FileManagerProps {
   shellId: number;
-  shellUrl: string;
+  initialState: FileManagerInitialState;
 }
 
 interface FileManagerLocation {
@@ -164,73 +158,87 @@ const DEFAULT_FILE_PERMISSIONS = "-rw-r--r--";
 const DEFAULT_DIR_PERMISSIONS = "drwxr-xr-x";
 const OPERATION_CLEAR_DELAY_MS = 2500;
 
-const EDITABLE_FILE_EXTENSIONS = new Set([
-  "txt",
-  "log",
-  "md",
-  "json",
-  "yaml",
-  "yml",
-  "xml",
-  "ini",
-  "toml",
-  "properties",
-  "env",
-  "conf",
-  "config",
-  "sh",
-  "bash",
-  "zsh",
-  "ps1",
-  "bat",
-  "cmd",
-  "sql",
-  "html",
-  "css",
-  "scss",
-  "less",
-  "js",
-  "jsx",
-  "ts",
-  "tsx",
-  "java",
-  "kt",
-  "kts",
-  "go",
-  "py",
-  "rb",
-  "php",
-  "rs",
-  "c",
-  "h",
-  "cpp",
-  "cc",
-  "cxx",
-  "hpp",
-  "cs",
-]);
-
 const BINARY_FILE_EXTENSIONS = new Set([
   // Images
-  "png", "jpg", "jpeg", "gif", "bmp", "ico", "webp", "svg", "tiff", "tif", "psd",
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "bmp",
+  "ico",
+  "webp",
+  "svg",
+  "tiff",
+  "tif",
+  "psd",
   // Audio
-  "mp3", "wav", "flac", "aac", "ogg", "wma", "m4a",
+  "mp3",
+  "wav",
+  "flac",
+  "aac",
+  "ogg",
+  "wma",
+  "m4a",
   // Video
-  "mp4", "avi", "mov", "mkv", "wmv", "flv", "webm", "m4v",
+  "mp4",
+  "avi",
+  "mov",
+  "mkv",
+  "wmv",
+  "flv",
+  "webm",
+  "m4v",
   // Archives
-  "zip", "tar", "gz", "bz2", "xz", "rar", "7z", "jar", "war", "ear",
+  "zip",
+  "tar",
+  "gz",
+  "bz2",
+  "xz",
+  "rar",
+  "7z",
+  "jar",
+  "war",
+  "ear",
   // Executables/binaries
-  "exe", "dll", "so", "dylib", "bin", "class", "o", "obj", "pyc", "pyo",
+  "exe",
+  "dll",
+  "so",
+  "dylib",
+  "bin",
+  "class",
+  "o",
+  "obj",
+  "pyc",
+  "pyo",
   // Documents
-  "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "ppt",
+  "pptx",
+  "odt",
+  "ods",
   // Databases
-  "db", "sqlite", "sqlite3", "mdb",
+  "db",
+  "sqlite",
+  "sqlite3",
+  "mdb",
   // Fonts
-  "ttf", "otf", "woff", "woff2", "eot",
+  "ttf",
+  "otf",
+  "woff",
+  "woff2",
+  "eot",
   // Disk images
-  "iso", "img", "dmg",
+  "iso",
+  "img",
+  "dmg",
   // Other
-  "dat", "swp", "swo",
+  "dat",
+  "swp",
+  "swo",
 ]);
 
 function createAbortError(): Error {
@@ -362,7 +370,9 @@ function resolvePath(input: string, basePath: string, osFamily: OsFamily, homePa
 
   if (!isAbsolutePath(candidate, osFamily)) {
     const sep = getPathSeparator(osFamily);
-    const merged = basePath.endsWith(sep) ? `${basePath}${candidate}` : `${basePath}${sep}${candidate}`;
+    const merged = basePath.endsWith(sep)
+      ? `${basePath}${candidate}`
+      : `${basePath}${sep}${candidate}`;
     return normalizeAbsolutePath(merged, osFamily);
   }
 
@@ -421,7 +431,9 @@ function parseBreadcrumbs(path: string, osFamily: OsFamily): BreadcrumbSegment[]
     if (!driveMatch) return [{ label: normalized, path: normalized, isCurrent: true }];
     const root = driveMatch[1]!;
     const segments = (driveMatch[2] ?? "").split("\\").filter(Boolean);
-    const crumbs: BreadcrumbSegment[] = [{ label: root, path: root, isCurrent: segments.length === 0 }];
+    const crumbs: BreadcrumbSegment[] = [
+      { label: root, path: root, isCurrent: segments.length === 0 },
+    ];
     let acc = root;
     for (let i = 0; i < segments.length; i++) {
       acc = acc.endsWith("\\") ? `${acc}${segments[i]}` : `${acc}\\${segments[i]}`;
@@ -489,28 +501,6 @@ function toDatetimeLocalValue(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function readEnvCaseInsensitive(env: Record<string, unknown>, key: string) {
-  const lower = key.toLowerCase();
-  const entry = Object.entries(env).find(([name]) => name.toLowerCase() === lower);
-  return typeof entry?.[1] === "string" ? entry[1] : "";
-}
-
-function detectOsFamily(osName: unknown, cwd: string, disks: string[]): OsFamily {
-  if(typeof osName === "string" && osName.toLowerCase() === "darwin"){
-    return "unix";
-  }
-  if (typeof osName === "string" && osName.toLowerCase().includes("win")) {
-    return "windows";
-  }
-  if (isWindowsAbsolutePath(cwd)) {
-    return "windows";
-  }
-  if (disks.some((disk) => isWindowsAbsolutePath(disk))) {
-    return "windows";
-  }
-  return "unix";
-}
-
 function extractDataContainer(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== "object") {
     return {};
@@ -525,53 +515,12 @@ function extractDataContainer(payload: unknown): Record<string, unknown> {
   return p;
 }
 
-function deriveSystemPaths(payload: unknown) {
-  const container = extractDataContainer(payload);
-  const processInfo = (container.process as Record<string, unknown> | undefined) ?? {};
-  const envInfo = (container.env as Record<string, unknown> | undefined) ?? {};
-  const osObj = (container.os as Record<string, unknown> | undefined) ?? {};
-  const osName = osObj.name;
-  const rawFs = Array.isArray(container.file_systems) ? container.file_systems : [];
-  const disks = rawFs
-    .map((fs) => {
-      if (!fs || typeof fs !== "object") return "";
-      const path = (fs as Record<string, unknown>).path;
-      return typeof path === "string" ? path.trim() : "";
-    })
-    .filter((path): path is string => path.length > 0);
-
-  const rawCwd = typeof processInfo.cwd === "string" ? processInfo.cwd : "";
-  const homeFromEnv =
-    readEnvCaseInsensitive(envInfo, "HOME") ||
-    readEnvCaseInsensitive(envInfo, "USERPROFILE") ||
-    `${readEnvCaseInsensitive(envInfo, "HOMEDRIVE")}${readEnvCaseInsensitive(envInfo, "HOMEPATH")}`;
-
-  const osFamily = detectOsFamily(osName, rawCwd, disks);
-  console.log(osFamily);
-  const fallbackRoot = osFamily === "windows" ? "C:\\" : "/";
-  const cwd = normalizeAbsolutePath(rawCwd || fallbackRoot, osFamily);
-  const home = normalizeAbsolutePath(homeFromEnv || fallbackRoot, osFamily);
-  const normalizedDisks = Array.from(new Set((disks.length > 0 ? disks : [fallbackRoot]).map((disk) => normalizeAbsolutePath(disk, osFamily))));
-
-  const locations: FileManagerLocation[] = [
-    { id: "cwd", label: "CWD", path: cwd, kind: "cwd" },
-    { id: "home", label: "Home", path: home, kind: "home" },
-    ...normalizedDisks.map((path, index) => ({
-      id: `disk-${index}`,
-      label: `Disk ${path}`,
-      path,
-      kind: "disk" as const,
-    })),
-  ];
-
-  return { osFamily, cwd, home, locations };
-}
-
 function inferFileType(name: string, entryType: EntryType) {
   if (entryType === "directory") return "Folder";
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   if (["md", "txt", "pdf", "doc", "docx"].includes(ext)) return "Document";
-  if (["ts", "tsx", "js", "jsx", "java", "go", "py", "rs", "json", "yaml", "yml"].includes(ext)) return "Code";
+  if (["ts", "tsx", "js", "jsx", "java", "go", "py", "rs", "json", "yaml", "yml"].includes(ext))
+    return "Code";
   if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext)) return "Image";
   if (["zip", "tar", "gz", "rar", "7z"].includes(ext)) return "Archive";
   if (["mp3", "wav", "flac"].includes(ext)) return "Audio";
@@ -666,9 +615,13 @@ function parseFileNode(raw: unknown, osFamily: OsFamily): FileNode | null {
   if (!path) {
     return null;
   }
-  const name = typeof node.name === "string" && node.name.length > 0 ? node.name : getBaseName(path, osFamily);
+  const name =
+    typeof node.name === "string" && node.name.length > 0 ? node.name : getBaseName(path, osFamily);
   const entryType: EntryType = node.entryType === "directory" ? "directory" : "file";
-  const fileType = typeof node.fileType === "string" && node.fileType.length > 0 ? node.fileType : inferFileType(name, entryType);
+  const fileType =
+    typeof node.fileType === "string" && node.fileType.length > 0
+      ? node.fileType
+      : inferFileType(name, entryType);
 
   return {
     name,
@@ -753,7 +706,9 @@ function ensureResultPayload(payload: unknown): Record<string, unknown> {
   const container = extractDataContainer(payload);
   const code = container.code;
   if (typeof code === "number" && code !== 0) {
-    throw new Error(typeof container.error === "string" ? container.error : "Plugin dispatch failed");
+    throw new Error(
+      typeof container.error === "string" ? container.error : "Plugin dispatch failed",
+    );
   }
   const result = (container.data as Record<string, unknown> | undefined) ?? container;
   if (typeof result.error === "string" && result.error.length > 0) {
@@ -762,14 +717,21 @@ function ensureResultPayload(payload: unknown): Record<string, unknown> {
   return result;
 }
 
-export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManagerProps) {
-  const [osFamily, setOsFamily] = useState<OsFamily>("unix");
-  const [locations, setLocations] = useState<FileManagerLocation[]>([]);
+export default function FileManager({
+  shellId,
+  initialState,
+}: FileManagerProps) {
+  const osFamily = initialState.osFamily;
+  const locations: FileManagerLocation[] = initialState.locations;
   const [entries, setEntries] = useState<FileNode[]>([]);
-  const [fileBuffersByPath, setFileBuffersByPath] = useState<Map<string, FileBufferState>>(new Map());
-  const [currentPath, setCurrentPath] = useState("/");
-  const [pathInput, setPathInput] = useState("/");
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
+  const [fileBuffersByPath, setFileBuffersByPath] = useState<Map<string, FileBufferState>>(
+    new Map(),
+  );
+  const [currentPath, setCurrentPath] = useState(initialState.cwd);
+  const [pathInput, setPathInput] = useState(initialState.cwd);
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(
+    initialState.activeLocationId,
+  );
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -792,7 +754,10 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
   const operationClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const homePath = useMemo(() => {
-    return locations.find((location) => location.kind === "home")?.path ?? (osFamily === "windows" ? "C:\\" : "/");
+    return (
+      locations.find((location) => location.kind === "home")?.path ??
+      (osFamily === "windows" ? "C:\\" : "/")
+    );
   }, [locations, osFamily]);
 
   const currentEntries = useMemo(() => {
@@ -801,7 +766,7 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
     if (q) {
       list = list.filter((entry) => entry.name.toLowerCase().includes(q));
     }
-    const sorted = [...list].sort((a, b) => {
+    return [...list].sort((a, b) => {
       if (a.entryType === "directory" && b.entryType !== "directory") return -1;
       if (a.entryType !== "directory" && b.entryType === "directory") return 1;
       let cmp = 0;
@@ -813,7 +778,6 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
       else if (sortKey === "permissions") cmp = a.permissions.localeCompare(b.permissions);
       return sortDir === "asc" ? cmp : -cmp;
     });
-    return sorted;
   }, [entries, nameFilter, sortKey, sortDir]);
 
   const totalEntriesCount = entries.length;
@@ -824,7 +788,9 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
     }
     return map;
   }, [entries]);
-  const selectedSingleNode = selection.selectedPath ? (entryByPath.get(selection.selectedPath) ?? null) : null;
+  const selectedSingleNode = selection.selectedPath
+    ? (entryByPath.get(selection.selectedPath) ?? null)
+    : null;
   const contextMenuTargetNode = contextMenuTargetPath
     ? (entryByPath.get(contextMenuTargetPath) ?? null)
     : null;
@@ -866,12 +832,10 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
 
   const isLongTaskRunning =
     operationState?.status === "running" &&
-    (
-      operationState.kind === "upload" ||
+    (operationState.kind === "upload" ||
       operationState.kind === "download" ||
       operationState.kind === "compress" ||
-      operationState.kind === "extract"
-    );
+      operationState.kind === "extract");
 
   const clearOperationTimer = useCallback(() => {
     if (operationClearTimerRef.current == null) {
@@ -929,7 +893,12 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
   );
 
   const finishOperation = useCallback(
-    (operationId: number, status: Extract<OperationStatus, "success" | "error">, message: string, patch: Partial<OperationState> = {}) => {
+    (
+      operationId: number,
+      status: Extract<OperationStatus, "success" | "error">,
+      message: string,
+      patch: Partial<OperationState> = {},
+    ) => {
       clearOperationTimer();
       setOperationState((prev) => {
         if (!prev || prev.id !== operationId) {
@@ -1030,7 +999,8 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
           try {
             await onAfterSuccess(result);
           } catch (error) {
-            const message = error instanceof Error ? error.message : "Post-operation refresh failed";
+            const message =
+              error instanceof Error ? error.message : "Post-operation refresh failed";
             toast.error(message);
           }
         }
@@ -1055,11 +1025,14 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
 
   const dispatchFileManager = useCallback(
     async (args: Record<string, unknown>, options: PluginRequestOptions = {}) => {
-      const payload = await shellApi.dispatchPlugin({
-        id: shellId,
-        pluginId: "file-manager",
-        args,
-      }, options);
+      const payload = await shellApi.dispatchPlugin(
+        {
+          id: shellId,
+          pluginId: "file-manager",
+          args,
+        },
+        options,
+      );
       return ensureResultPayload(payload);
     },
     [shellId],
@@ -1095,18 +1068,6 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
     [dispatchFileManager, osFamily],
   );
 
-  const statPath = useCallback(
-    async (path: string) => {
-      const result = await dispatchFileManager({ op: "stat", path });
-      const entry = parseFileNode(result.entry, osFamily);
-      if (!entry) {
-        throw new Error(`Invalid stat result for ${path}`);
-      }
-      return entry;
-    },
-    [dispatchFileManager, osFamily],
-  );
-
   const readAllBytes = useCallback(
     async (path: string, maxBytes?: number, options: PluginRequestOptions = {}) => {
       const args: Record<string, unknown> = { op: "read-all", path };
@@ -1137,26 +1098,38 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
 
   const writeAllBytes = useCallback(
     async (path: string, bytes: Uint8Array, options: PluginRequestOptions = {}) => {
-      await dispatchFileManager({
-        op: "write-all",
-        path,
-        bytes: bytesToNumbers(bytes),
-        createParent: true,
-      }, options);
+      await dispatchFileManager(
+        {
+          op: "write-all",
+          path,
+          bytes: bytesToNumbers(bytes),
+          createParent: true,
+        },
+        options,
+      );
     },
     [dispatchFileManager],
   );
 
   const writeChunk = useCallback(
-    async (path: string, offset: number, bytes: Uint8Array, truncate: boolean, options: PluginRequestOptions = {}) => {
-      await dispatchFileManager({
-        op: "write-chunk",
-        path,
-        offset,
-        bytes: bytesToNumbers(bytes),
-        truncate,
-        createParent: true,
-      }, options);
+    async (
+      path: string,
+      offset: number,
+      bytes: Uint8Array,
+      truncate: boolean,
+      options: PluginRequestOptions = {},
+    ) => {
+      await dispatchFileManager(
+        {
+          op: "write-chunk",
+          path,
+          offset,
+          bytes: bytesToNumbers(bytes),
+          truncate,
+          createParent: true,
+        },
+        options,
+      );
     },
     [dispatchFileManager],
   );
@@ -1211,26 +1184,18 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
     [listDirectory],
   );
 
-  const initializeFromSystemInfo = useCallback(async () => {
-    const payload = await shellApi.dispatchPlugin({ id: shellId, pluginId: "system-info" });
-    console.log(payload)
-    const parsed = deriveSystemPaths(payload);
-    setOsFamily(parsed.osFamily);
-    setLocations(parsed.locations);
-    setActiveLocationId("cwd");
-    await listDirectory(parsed.cwd);
-  }, [listDirectory, shellId]);
-
   useEffect(() => {
     let disposed = false;
 
     const bootstrap = async () => {
+      setActiveLocationId(initialState.activeLocationId);
       setLoading(true);
       try {
-        await initializeFromSystemInfo();
+        await listDirectory(initialState.cwd);
       } catch (error) {
         if (!disposed) {
-          const message = error instanceof Error ? error.message : "Failed to initialize file manager";
+          const message =
+            error instanceof Error ? error.message : "Failed to initialize file manager";
           toast.error(message);
         }
       } finally {
@@ -1245,7 +1210,7 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
     return () => {
       disposed = true;
     };
-  }, [initializeFromSystemInfo]);
+  }, [initialState.activeLocationId, initialState.cwd, listDirectory]);
 
   useLayoutEffect(() => {
     if (listVersion <= 0) {
@@ -1305,7 +1270,9 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
 
       const bytes = encodeText(buffer.draftContent);
       if (bytes.length > MAX_PREVIEW_EDIT_BYTES) {
-        toast.error(`Edited content exceeds ${formatBytes(MAX_PREVIEW_EDIT_BYTES)}. Save is blocked.`);
+        toast.error(
+          `Edited content exceeds ${formatBytes(MAX_PREVIEW_EDIT_BYTES)}. Save is blocked.`,
+        );
         return false;
       }
 
@@ -1543,7 +1510,14 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               processedBytes += count;
               updateOperationProgress(operationId, {
                 processedBytes,
-                message: buildTransferSummary("download", "running", 0, 1, processedBytes, totalBytes),
+                message: buildTransferSummary(
+                  "download",
+                  "running",
+                  0,
+                  1,
+                  processedBytes,
+                  totalBytes,
+                ),
               });
             },
           });
@@ -1556,7 +1530,8 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
           });
           return { processedBytes };
         },
-        (result) => buildTransferSummary("download", "success", 1, 1, result.processedBytes, totalBytes),
+        (result) =>
+          buildTransferSummary("download", "success", 1, 1, result.processedBytes, totalBytes),
       );
     },
     [readWholeFile, runCancelableTask, updateOperationProgress],
@@ -1658,7 +1633,15 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
         },
       );
     },
-    [currentPath, listDirectory, osFamily, runCancelableTask, updateOperationProgress, writeAllBytes, writeChunk],
+    [
+      currentPath,
+      listDirectory,
+      osFamily,
+      runCancelableTask,
+      updateOperationProgress,
+      writeAllBytes,
+      writeChunk,
+    ],
   );
 
   const openPendingAction = useCallback(
@@ -1852,23 +1835,35 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               processedBytes: 0,
               message: buildTransferSummary("compress", "running", 0, 1, 0, totalBytes),
             });
-            const response = await dispatchFileManager({
-              op: "zip",
-              sourcePaths: [actionTarget.path],
-              destinationPath,
-              overwrite: false,
-              createParent: true,
-            }, { signal });
-            const processedBytes = typeof response.archiveSize === "number" ? response.archiveSize : totalBytes;
+            const response = await dispatchFileManager(
+              {
+                op: "zip",
+                sourcePaths: [actionTarget.path],
+                destinationPath,
+                overwrite: false,
+                createParent: true,
+              },
+              { signal },
+            );
+            const processedBytes =
+              typeof response.archiveSize === "number" ? response.archiveSize : totalBytes;
             updateOperationProgress(operationId, {
               completedFiles: 1,
               processedBytes,
-              message: buildTransferSummary("compress", "running", 1, 1, processedBytes, totalBytes),
+              message: buildTransferSummary(
+                "compress",
+                "running",
+                1,
+                1,
+                processedBytes,
+                totalBytes,
+              ),
             });
             return response;
           },
           (response) => {
-            const processedBytes = typeof response.archiveSize === "number" ? response.archiveSize : totalBytes;
+            const processedBytes =
+              typeof response.archiveSize === "number" ? response.archiveSize : totalBytes;
             return buildTransferSummary("compress", "success", 1, 1, processedBytes, totalBytes);
           },
           async () => {
@@ -1906,14 +1901,18 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               processedBytes: 0,
               message: buildTransferSummary("extract", "running", 0, 1, 0, totalBytes),
             });
-            const response = await dispatchFileManager({
-              op: "unzip",
-              path: actionTarget.path,
-              destinationPath,
-              overwrite: false,
-              createParent: true,
-            }, { signal });
-            const processedBytes = typeof response.writtenBytes === "number" ? response.writtenBytes : totalBytes;
+            const response = await dispatchFileManager(
+              {
+                op: "unzip",
+                path: actionTarget.path,
+                destinationPath,
+                overwrite: false,
+                createParent: true,
+              },
+              { signal },
+            );
+            const processedBytes =
+              typeof response.writtenBytes === "number" ? response.writtenBytes : totalBytes;
             updateOperationProgress(operationId, {
               completedFiles: 1,
               processedBytes,
@@ -1922,7 +1921,8 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
             return response;
           },
           (response) => {
-            const processedBytes = typeof response.writtenBytes === "number" ? response.writtenBytes : totalBytes;
+            const processedBytes =
+              typeof response.writtenBytes === "number" ? response.writtenBytes : totalBytes;
             return buildTransferSummary("extract", "success", 1, 1, processedBytes, totalBytes);
           },
           async () => {
@@ -2039,7 +2039,11 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
           <div className="space-y-1">
             {locations.map((location) => {
               const Icon =
-                location.kind === "cwd" ? TerminalSquare : location.kind === "home" ? Home : HardDrive;
+                location.kind === "cwd"
+                  ? TerminalSquare
+                  : location.kind === "home"
+                    ? Home
+                    : HardDrive;
               return (
                 <button
                   key={location.id}
@@ -2053,7 +2057,7 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition-colors",
                     activeLocationId === location.id
-                      ? "bg-primary/10 text-foreground ring-1 ring-inset ring-primary/20"
+                      ? "bg-primary/10 text-foreground ring-1 ring-primary/20 ring-inset"
                       : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
                   )}
                   title={location.path}
@@ -2071,7 +2075,7 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
       </aside>
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="shrink-0 border-b border-border/70 bg-muted/10 px-4 py-3 space-y-2">
+        <div className="shrink-0 space-y-2 border-b border-border/70 bg-muted/10 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -2098,15 +2102,31 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
             <Button type="button" size="sm" onClick={() => goToPath(pathInput)}>
               Go
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={handleUploadClick} disabled={isLongTaskRunning}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleUploadClick}
+              disabled={isLongTaskRunning}
+            >
               <Upload className="size-3.5" />
               Upload
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => openPendingAction("new-file")}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => openPendingAction("new-file")}
+            >
               <FilePlus className="size-3.5" />
               New File
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => openPendingAction("new-folder")}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => openPendingAction("new-folder")}
+            >
               <FolderPlus className="size-3.5" />
               New Folder
             </Button>
@@ -2122,16 +2142,22 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
             </Button>
           </div>
 
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <Breadcrumb className="min-w-0 flex-1 overflow-hidden">
               <BreadcrumbList className="flex-nowrap overflow-x-auto">
                 {parseBreadcrumbs(currentPath, osFamily).map((crumb, i, arr) => (
                   <React.Fragment key={crumb.path}>
                     <BreadcrumbItem>
                       {crumb.isCurrent ? (
-                        <BreadcrumbPage className="max-w-40 truncate font-medium">{crumb.label}</BreadcrumbPage>
+                        <BreadcrumbPage className="max-w-40 truncate font-medium">
+                          {crumb.label}
+                        </BreadcrumbPage>
                       ) : (
-                        <BreadcrumbLink render={<button type="button" />} className="max-w-32 truncate cursor-pointer" onClick={() => goToPath(crumb.path)}>
+                        <BreadcrumbLink
+                          render={<button type="button" />}
+                          className="max-w-32 cursor-pointer truncate"
+                          onClick={() => goToPath(crumb.path)}
+                        >
                           {crumb.label}
                         </BreadcrumbLink>
                       )}
@@ -2147,12 +2173,12 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
             </Breadcrumb>
 
             <div className="relative shrink-0">
-              <Filter className="absolute left-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
+              <Filter className="pointer-events-none absolute top-1/2 left-2 size-3 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={nameFilter}
                 onChange={(e) => setNameFilter(e.target.value)}
                 placeholder="Filter…"
-                className="h-7 pl-6 pr-2 text-xs w-36"
+                className="h-7 w-36 pr-2 pl-6 text-xs"
               />
             </div>
           </div>
@@ -2171,7 +2197,7 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               )}
             >
               <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div className="min-w-0 flex items-center gap-2">
+                <div className="flex min-w-0 items-center gap-2">
                   {operationState.status === "running" ? <Spinner className="size-3.5" /> : null}
                   <span
                     className={cn(
@@ -2192,23 +2218,26 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                             : "Operation"}{" "}
                     {operationState.status}
                   </span>
-                  <span className="truncate text-muted-foreground">{operationState.currentFile ?? operationState.message}</span>
+                  <span className="truncate text-muted-foreground">
+                    {operationState.currentFile ?? operationState.message}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground tabular-nums">
                     {operationState.completedFiles}/{operationState.totalFiles} files
                   </span>
-                  <span className="tabular-nums text-muted-foreground">
-                    {formatBytes(operationState.processedBytes)}/{formatBytes(operationState.totalBytes)}
+                  <span className="text-muted-foreground tabular-nums">
+                    {formatBytes(operationState.processedBytes)}/
+                    {formatBytes(operationState.totalBytes)}
                   </span>
-                  <span className="tabular-nums text-muted-foreground">{operationProgressPercent}%</span>
+                  <span className="text-muted-foreground tabular-nums">
+                    {operationProgressPercent}%
+                  </span>
                   {operationState.status === "running" &&
-                  (
-                    operationState.kind === "upload" ||
+                  (operationState.kind === "upload" ||
                     operationState.kind === "download" ||
                     operationState.kind === "compress" ||
-                    operationState.kind === "extract"
-                  ) ? (
+                    operationState.kind === "extract") ? (
                     <Button type="button" size="sm" variant="outline" onClick={cancelOperation}>
                       Cancel
                     </Button>
@@ -2220,10 +2249,10 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
           ) : null}
         </div>
 
-        <div className="min-h-0 flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             {loading && (
-              <div className="absolute inset-0 z-10 flex justify-center pt-32 bg-background/60 backdrop-blur-sm">
+              <div className="absolute inset-0 z-10 flex justify-center bg-background/60 pt-32 backdrop-blur-sm">
                 <Spinner className="size-6 text-muted-foreground" />
               </div>
             )}
@@ -2245,10 +2274,22 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                         { key: "modifiedAt", label: "Modified", className: "" },
                       ] as const
                     ).map(({ key, label, className }) => (
-                      <TableHead key={key} className={cn("cursor-pointer select-none", className)} onClick={() => handleSortColumn(key)}>
+                      <TableHead
+                        key={key}
+                        className={cn("cursor-pointer select-none", className)}
+                        onClick={() => handleSortColumn(key)}
+                      >
                         <span className="inline-flex items-center gap-1">
                           {label}
-                          {sortKey === key ? sortDir === "asc" ? <ArrowUp className="size-3 opacity-70" /> : <ArrowDown className="size-3 opacity-70" /> : <ArrowUpDown className="size-3 opacity-30" />}
+                          {sortKey === key ? (
+                            sortDir === "asc" ? (
+                              <ArrowUp className="size-3 opacity-70" />
+                            ) : (
+                              <ArrowDown className="size-3 opacity-70" />
+                            )
+                          ) : (
+                            <ArrowUpDown className="size-3 opacity-30" />
+                          )}
                         </span>
                       </TableHead>
                     ))}
@@ -2257,8 +2298,13 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                 <TableBody key={`tbody-${currentPath}-${listVersion}`}>
                   {currentEntries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-28 text-center text-sm text-muted-foreground">
-                        {nameFilter.trim() ? `No entries match "${nameFilter.trim()}".` : "No entries in this directory."}
+                      <TableCell
+                        colSpan={6}
+                        className="h-28 text-center text-sm text-muted-foreground"
+                      >
+                        {nameFilter.trim()
+                          ? `No entries match "${nameFilter.trim()}".`
+                          : "No entries in this directory."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -2286,7 +2332,12 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                               onContextMenu={() => handleRowContextMenu(entry)}
                               onClick={() => updateSelectionForClick(entry.path)}
                               onDoubleClick={() => openNode(entry)}
-                              render={<TableRow data-state={isSelected ? "selected" : undefined} className="cursor-default" />}
+                              render={
+                                <TableRow
+                                  data-state={isSelected ? "selected" : undefined}
+                                  className="cursor-default"
+                                />
+                              }
                             >
                               <TableCell className="max-w-80">
                                 <div className="flex items-center gap-2">
@@ -2297,32 +2348,65 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
                                 </div>
                               </TableCell>
                               <TableCell>{entry.fileType}</TableCell>
-                              <TableCell className="font-mono text-xs">{entry.permissions}</TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {entry.entryType === "directory" ? "—" : formatBytes(entry.sizeBytes)}
+                              <TableCell className="font-mono text-xs">
+                                {entry.permissions}
                               </TableCell>
-                              <TableCell className="tabular-nums">{formatDateTime(entry.createdAt)}</TableCell>
-                              <TableCell className="tabular-nums">{formatDateTime(entry.modifiedAt)}</TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {entry.entryType === "directory"
+                                  ? "—"
+                                  : formatBytes(entry.sizeBytes)}
+                              </TableCell>
+                              <TableCell className="tabular-nums">
+                                {formatDateTime(entry.createdAt)}
+                              </TableCell>
+                              <TableCell className="tabular-nums">
+                                {formatDateTime(entry.modifiedAt)}
+                              </TableCell>
                             </ContextMenuTrigger>
                             <ContextMenuContent>
-                              <ContextMenuItem onClick={() => openNode(entry)}>Open</ContextMenuItem>
+                              <ContextMenuItem onClick={() => openNode(entry)}>
+                                Open
+                              </ContextMenuItem>
                               {entry.entryType === "file" ? (
-                                <ContextMenuItem onClick={() => void handleDownloadNode(entry)}>Download</ContextMenuItem>
+                                <ContextMenuItem onClick={() => void handleDownloadNode(entry)}>
+                                  Download
+                                </ContextMenuItem>
                               ) : null}
-                              <ContextMenuItem onClick={() => openPendingAction("compress", entry)}>Compress to ZIP...</ContextMenuItem>
+                              <ContextMenuItem onClick={() => openPendingAction("compress", entry)}>
+                                Compress to ZIP...
+                              </ContextMenuItem>
                               {entry.entryType === "file" && isZipArchivePath(entry.path) ? (
-                                <ContextMenuItem onClick={() => openPendingAction("extract", entry)}>Extract ZIP...</ContextMenuItem>
+                                <ContextMenuItem
+                                  onClick={() => openPendingAction("extract", entry)}
+                                >
+                                  Extract ZIP...
+                                </ContextMenuItem>
                               ) : null}
                               <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => void handleActionCopyName(entry)}>Copy Name</ContextMenuItem>
-                              <ContextMenuItem onClick={() => void handleActionCopyPath(entry)}>Copy Path</ContextMenuItem>
+                              <ContextMenuItem onClick={() => void handleActionCopyName(entry)}>
+                                Copy Name
+                              </ContextMenuItem>
+                              <ContextMenuItem onClick={() => void handleActionCopyPath(entry)}>
+                                Copy Path
+                              </ContextMenuItem>
                               <ContextMenuSeparator />
-                              <ContextMenuItem onClick={() => openPendingAction("rename", entry)}>Rename</ContextMenuItem>
-                              <ContextMenuItem onClick={() => openPendingAction("move", entry)}>Move To</ContextMenuItem>
-                              <ContextMenuItem onClick={() => openPendingAction("copy", entry)}>Copy To</ContextMenuItem>
-                              <ContextMenuItem onClick={() => openPendingAction("touch", entry)}>Modify Time</ContextMenuItem>
+                              <ContextMenuItem onClick={() => openPendingAction("rename", entry)}>
+                                Rename
+                              </ContextMenuItem>
+                              <ContextMenuItem onClick={() => openPendingAction("move", entry)}>
+                                Move To
+                              </ContextMenuItem>
+                              <ContextMenuItem onClick={() => openPendingAction("copy", entry)}>
+                                Copy To
+                              </ContextMenuItem>
+                              <ContextMenuItem onClick={() => openPendingAction("touch", entry)}>
+                                Modify Time
+                              </ContextMenuItem>
                               <ContextMenuSeparator />
-                              <ContextMenuItem variant="destructive" onClick={() => openPendingAction("delete", entry)}>
+                              <ContextMenuItem
+                                variant="destructive"
+                                onClick={() => openPendingAction("delete", entry)}
+                              >
                                 Delete
                               </ContextMenuItem>
                             </ContextMenuContent>
@@ -2343,7 +2427,9 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
 
           <div className="flex shrink-0 items-center justify-between border-t border-border/70 bg-muted/10 px-4 py-2 text-xs text-muted-foreground">
             <span>
-              {nameFilter.trim() ? `${currentEntries.length} of ${totalEntriesCount} items` : `${currentEntries.length} item${currentEntries.length === 1 ? "" : "s"}`}
+              {nameFilter.trim()
+                ? `${currentEntries.length} of ${totalEntriesCount} items`
+                : `${currentEntries.length} item${currentEntries.length === 1 ? "" : "s"}`}
             </span>
             <span>{selectedCount} selected</span>
           </div>
@@ -2369,7 +2455,10 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
           }
         }}
       >
-        <DialogContent showCloseButton={false} className="h-[76vh] w-[96vw] max-w-[96vw] sm:max-w-[96vw] gap-0 overflow-hidden p-0">
+        <DialogContent
+          showCloseButton={false}
+          className="h-[76vh] w-[96vw] max-w-[96vw] gap-0 overflow-hidden p-0 sm:max-w-[96vw]"
+        >
           <FileEditorPane
             filePath={openedFilePath}
             language={openedFileBuffer?.language ?? "plaintext"}
@@ -2394,7 +2483,9 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Unsaved changes</DialogTitle>
-            <DialogDescription>You have unsaved changes in the current file. Save before leaving?</DialogDescription>
+            <DialogDescription>
+              You have unsaved changes in the current file. Save before leaving?
+            </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={handleCancelNavigation}>
@@ -2436,9 +2527,12 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               {pendingAction?.type === "touch" && "Update modified time for the selected entry."}
               {pendingAction?.type === "new-file" && "Create a new file in current directory."}
               {pendingAction?.type === "new-folder" && "Create a new folder in current directory."}
-              {pendingAction?.type === "delete" && "Delete the selected entry recursively. This action cannot be undone."}
-              {pendingAction?.type === "compress" && "Create a ZIP archive from the selected entry."}
-              {pendingAction?.type === "extract" && "Extract the selected ZIP archive to target directory."}
+              {pendingAction?.type === "delete" &&
+                "Delete the selected entry recursively. This action cannot be undone."}
+              {pendingAction?.type === "compress" &&
+                "Create a ZIP archive from the selected entry."}
+              {pendingAction?.type === "extract" &&
+                "Extract the selected ZIP archive to target directory."}
             </DialogDescription>
           </DialogHeader>
 
@@ -2469,7 +2563,9 @@ export default function FileManager({ shellId, shellUrl: _shellUrl }: FileManage
               type="datetime-local"
               value={pendingAction.datetimeValue}
               onChange={(event) =>
-                setPendingAction((prev) => (prev ? { ...prev, datetimeValue: event.target.value } : prev))
+                setPendingAction((prev) =>
+                  prev ? { ...prev, datetimeValue: event.target.value } : prev,
+                )
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {

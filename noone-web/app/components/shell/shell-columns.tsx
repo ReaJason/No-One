@@ -1,5 +1,14 @@
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Edit, MoreHorizontal, Terminal, Trash2, Wifi, WifiOff } from "lucide-react";
+import {
+  AlertCircle,
+  Database,
+  Edit,
+  MoreHorizontal,
+  Terminal,
+  Trash2,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -161,9 +170,7 @@ export function getShellColumns({
                 )}
               </div>
             )}
-            {runtime && (
-              <span className="text-xs text-muted-foreground">{runtime}</span>
-            )}
+            {runtime && <span className="text-xs text-muted-foreground">{runtime}</span>}
           </div>
         );
       },

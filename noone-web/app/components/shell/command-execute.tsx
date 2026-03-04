@@ -12,10 +12,8 @@ import {
 
 interface CommandExecuteProps {
   shellId: number;
-  systemHints?: {
-    osName?: string;
-    cwd?: string;
-  } | null;
+  osName?: string;
+  cwdHint?: string;
 }
 
 interface CommandTemplatePayload {
@@ -141,10 +139,10 @@ const detectOsFamily = (osName?: string): OsFamily => {
   const normalized = osName?.trim().toLowerCase() ?? "";
   if (!normalized) return "unknown";
   if (
-      normalized.includes("linux") ||
-      normalized.includes("mac") ||
-      normalized.includes("darwin") ||
-      normalized.includes("os x")
+    normalized.includes("linux") ||
+    normalized.includes("mac") ||
+    normalized.includes("darwin") ||
+    normalized.includes("os x")
   ) {
     return "unix";
   }
@@ -174,7 +172,7 @@ const getDefaultTemplateByOs = (osFamily: OsFamily): TemplatePreset | null => {
   return null;
 };
 
-export default function CommandExecute({ shellId, systemHints }: CommandExecuteProps) {
+export default function CommandExecute({ shellId, osName, cwdHint }: CommandExecuteProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<{
     write: (data: string) => void;
@@ -189,7 +187,7 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
   const inputBufferRef = useRef("");
   const commandHistoryRef = useRef<string[]>([]);
   const historyIndexRef = useRef(0);
-  const systemDefaultsAppliedShellIdsRef = useRef<Set<number>>(new Set());
+  const handleTerminalDataRef = useRef<(data: string) => void>(() => {});
   const loadedStorageKeyRef = useRef<string | null>(null);
   const { resolvedTheme, theme } = useTheme();
 
@@ -300,41 +298,55 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
   }, []);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
+    if (typeof window === "undefined" || loadedStorageKeyRef.current === storageKey) {
       return;
     }
     loadedStorageKeyRef.current = null;
     setConfigLoaded(false);
+
+    const osFamily = detectOsFamily(osName);
+    const defaultTemplate = getDefaultTemplateByOs(osFamily);
+    const nextConfig: PersistedCommandConfig = {
+      cwd: (cwdHint ?? "").trim(),
+      charset: getDefaultCharsetByOs(osFamily),
+      executable: defaultTemplate?.executable ?? "",
+      args: defaultTemplate ? defaultTemplate.args.join("\n") : DEFAULT_TEMPLATE_ARGS,
+      env: "",
+    };
+
     const raw = window.localStorage.getItem(storageKey);
-    if (!raw) {
-      loadedStorageKeyRef.current = storageKey;
-      setConfigLoaded(true);
-      return;
+    if (raw) {
+      try {
+        const persisted = JSON.parse(raw) as Partial<PersistedCommandConfig>;
+        if (typeof persisted.cwd === "string") {
+          nextConfig.cwd = persisted.cwd;
+        }
+        if (typeof persisted.charset === "string") {
+          nextConfig.charset = persisted.charset;
+        }
+        if (typeof persisted.executable === "string") {
+          nextConfig.executable = persisted.executable;
+        }
+        if (typeof persisted.args === "string") {
+          nextConfig.args = persisted.args || DEFAULT_TEMPLATE_ARGS;
+        }
+        if (typeof persisted.env === "string") {
+          nextConfig.env = persisted.env;
+        }
+      } catch {
+        // Ignore invalid local storage payload and use defaults.
+      }
     }
-    try {
-      const persisted = JSON.parse(raw) as Partial<PersistedCommandConfig>;
-      if (typeof persisted.cwd === "string") {
-        setCwdInput(persisted.cwd);
-      }
-      if (typeof persisted.charset === "string") {
-        setCharset(persisted.charset);
-      }
-      if (typeof persisted.executable === "string") {
-        setTemplateExecutable(persisted.executable);
-      }
-      if (typeof persisted.args === "string") {
-        setTemplateArgs(persisted.args || DEFAULT_TEMPLATE_ARGS);
-      }
-      if (typeof persisted.env === "string") {
-        setTemplateEnv(persisted.env);
-      }
-    } catch {
-      // Ignore invalid local storage payload and keep defaults.
-    } finally {
-      loadedStorageKeyRef.current = storageKey;
-      setConfigLoaded(true);
-    }
-  }, [storageKey]);
+
+    setCwdInput(nextConfig.cwd);
+    setCharset(nextConfig.charset);
+    setTemplateExecutable(nextConfig.executable);
+    setTemplateArgs(nextConfig.args);
+    setTemplateEnv(nextConfig.env);
+
+    loadedStorageKeyRef.current = storageKey;
+    setConfigLoaded(true);
+  }, [cwdHint, osName, storageKey]);
 
   useEffect(() => {
     if (
@@ -353,36 +365,6 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
     };
     window.localStorage.setItem(storageKey, JSON.stringify(payload));
   }, [charset, configLoaded, cwdInput, storageKey, templateArgs, templateEnv, templateExecutable]);
-
-  useEffect(() => {
-    if (!configLoaded) {
-      return;
-    }
-    if (systemDefaultsAppliedShellIdsRef.current.has(shellId)) {
-      return;
-    }
-
-    const osFamily = detectOsFamily(systemHints?.osName);
-    const defaultCharset = getDefaultCharsetByOs(osFamily);
-    const defaultTemplate = getDefaultTemplateByOs(osFamily);
-    const defaultCwd = (systemHints?.cwd ?? "").trim();
-
-    if (!defaultCwd && !defaultCharset && !defaultTemplate) {
-      return;
-    }
-
-    if (defaultCwd) {
-      setCwdInput(defaultCwd);
-    }
-    if (defaultCharset) {
-      setCharset(defaultCharset);
-    }
-    if (defaultTemplate) {
-      applyTemplatePreset(defaultTemplate.executable, defaultTemplate.args);
-    }
-
-    systemDefaultsAppliedShellIdsRef.current.add(shellId);
-  }, [applyTemplatePreset, configLoaded, shellId, systemHints]);
 
   const runCommand = useCallback(
     async (cmd: string) => {
@@ -591,6 +573,10 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
   );
 
   useEffect(() => {
+    handleTerminalDataRef.current = handleTerminalData;
+  }, [handleTerminalData]);
+
+  useEffect(() => {
     let resizeObserver: ResizeObserver | null = null;
     let dataSubscription: { dispose: () => void } | null = null;
     let disposed = false;
@@ -639,7 +625,7 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
       writePrompt();
 
       dataSubscription = term.onData((data) => {
-        handleTerminalData(data);
+        handleTerminalDataRef.current(data);
       });
 
       resizeObserver = new ResizeObserver(() => {
@@ -667,7 +653,7 @@ export default function CommandExecute({ shellId, systemHints }: CommandExecuteP
       commandHistoryRef.current = [];
       historyIndexRef.current = 0;
     };
-  }, [handleTerminalData, writePrompt]);
+  }, [writePrompt]);
 
   useEffect(() => {
     terminalThemeRef.current = terminalTheme;

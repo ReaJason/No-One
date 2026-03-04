@@ -1,5 +1,6 @@
 package com.reajason.noone.server.shell;
 
+import com.reajason.noone.core.DotNetConnection;
 import com.reajason.noone.core.JavaConnection;
 import com.reajason.noone.core.NodeJsConnection;
 import com.reajason.noone.core.ShellConnection;
@@ -90,6 +91,7 @@ public class ShellConnectionPool {
         return switch (language) {
             case JAVA -> new JavaConnection(client);
             case NODEJS -> new NodeJsConnection(client);
+            case DOTNET ->  new DotNetConnection(client);
         };
     }
 

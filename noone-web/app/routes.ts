@@ -2,7 +2,14 @@ import { index, layout, prefix, type RouteConfig, route } from "@react-router/de
 
 export default [
   route("/shells/:shellId/connect", "routes/shell/shell-connect.tsx"),
-  route("/shells/:shellId", "routes/shell/shell-manager.tsx"),
+  route("/shells/:shellId", "routes/shell/shell-manager.tsx", [
+    index("routes/shell/shell-manager-index.tsx"),
+    route("info", "routes/shell/shell-info.tsx"),
+    route("files", "routes/shell/shell-files.tsx"),
+    route("command", "routes/shell/shell-command.tsx"),
+    route("extensions", "routes/shell/shell-extensions.tsx"),
+    route("operations", "routes/shell/shell-operations.tsx"),
+  ]),
   route("/auth/login", "routes/auth/login.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),
   route("/test", "routes/test.tsx"),

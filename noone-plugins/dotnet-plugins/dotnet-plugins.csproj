@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>dotnet_core</RootNamespace>
+    <AssemblyName>dotnet-system-info</AssemblyName>
+    <PluginId>system-info</PluginId>
+    <PluginBase64Output>$(MSBuildProjectDirectory)/build/$(PluginId).base64</PluginBase64Output>
+  </PropertyGroup>
+
+  <UsingTask
+    TaskName="EncodeFileToBase64"
+    TaskFactory="RoslynCodeTaskFactory"
+    AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <InputFile ParameterType="System.String" Required="true" />
+      <OutputFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var bytes = System.IO.File.ReadAllBytes(InputFile);
+        var base64 = System.Convert.ToBase64String(bytes);
+        var directory = System.IO.Path.GetDirectoryName(OutputFile);
+        if (!string.IsNullOrEmpty(directory))
+        {
+            System.IO.Directory.CreateDirectory(directory);
+        }
+        System.IO.File.WriteAllText(OutputFile, base64);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="GeneratePluginBase64" AfterTargets="Build">
+    <EncodeFileToBase64 InputFile="$(TargetPath)" OutputFile="$(PluginBase64Output)" />
+    <Message Importance="High" Text="Plugin base64 written: $(PluginBase64Output)" />
+  </Target>
+
+</Project>

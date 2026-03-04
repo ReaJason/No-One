@@ -59,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const url = (formData.get("url") as string)?.trim();
   const languageRaw = (formData.get("language") as string)?.trim();
-  const language = (languageRaw === "nodejs" ? "nodejs" : "java") as ShellLanguage;
+  const language = languageRaw as ShellLanguage;
   const group = (formData.get("group") as string)?.trim();
   const projectIdRaw = (formData.get("projectId") as string)?.trim();
   const projectId = projectIdRaw ? Number(projectIdRaw) : undefined;
@@ -94,9 +94,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const errors: Record<string, string> = {};
   if (!url) errors.url = "URL is required";
-  if (languageRaw && languageRaw !== "java" && languageRaw !== "nodejs") {
-    errors.language = "Language must be either java or nodejs";
-  }
   if (profileId === undefined || !Number.isFinite(profileId)) {
     errors.profileId = "Profile is required";
   }
@@ -186,7 +183,7 @@ export default function CreateShell() {
       const formElement = document.querySelector("form") as HTMLFormElement;
       const formData = new FormData(formElement);
       const languageRaw = (formData.get("language") as string)?.trim();
-      const language = (languageRaw === "nodejs" ? "nodejs" : "java") as ShellLanguage;
+      const language = languageRaw as ShellLanguage;
 
       let customHeaders: Record<string, string> | undefined;
       const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
@@ -318,10 +315,11 @@ export default function CreateShell() {
                     items={[
                       { label: "Java", value: "java" },
                       { label: "NodeJs", value: "nodejs" },
+                      { label: "DotNet", value: "dotnet" },
                     ]}
                     value={language}
                     onValueChange={(value) =>
-                      setLanguage((value === "nodejs" ? "nodejs" : "java") as ShellLanguage)
+                      setLanguage(value as ShellLanguage)
                     }
                   >
                     <SelectTrigger
@@ -335,6 +333,7 @@ export default function CreateShell() {
                       <SelectGroup>
                         <SelectItem value="java">Java</SelectItem>
                         <SelectItem value="nodejs">NodeJs</SelectItem>
+                        <SelectItem value="dotnet">DotNet</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>

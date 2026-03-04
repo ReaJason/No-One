@@ -1,4 +1,9 @@
-import { apiClient, isAbortError as isApiAbortError, type ApiResponse, type RequestConfig } from "./api-client";
+import {
+  apiClient,
+  isAbortError as isApiAbortError,
+  type ApiResponse,
+  type RequestConfig,
+} from "./api-client";
 import type { ShellPluginDispatchRequest } from "@/types/shell";
 
 // ==================== API Functions ====================

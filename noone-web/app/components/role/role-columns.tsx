@@ -21,10 +21,8 @@ export const roleColumns: ColumnDef<Role>[] = [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
+        checked={table.getIsAllPageRowsSelected()}
+        onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(Boolean(value))}
         aria-label="Select all"
         className="translate-y-0.5"
       />
@@ -32,7 +30,7 @@ export const roleColumns: ColumnDef<Role>[] = [
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
-        onCheckedChange={(value: any) => row.toggleSelected(!!value)}
+        onCheckedChange={(value: boolean) => row.toggleSelected(Boolean(value))}
         aria-label="Select row"
         className="translate-y-0.5"
       />
@@ -131,7 +129,7 @@ export const roleColumns: ColumnDef<Role>[] = [
               <DropdownMenuItem
                 onClick={handleDeleteRole}
                 className="text-destructive"
-                disabled={role.id === "1"}
+                disabled={role.id === 1}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete

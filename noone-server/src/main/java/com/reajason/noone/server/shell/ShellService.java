@@ -223,7 +223,7 @@ public class ShellService {
             if (isSuccess(response.get(Constants.CODE))) {
                 shellStatusUpdater.markConnected(shellId);
                 if ("system-info".equals(pluginId)) {
-                    shell.setBasicInfo(response);
+                    shell.setBasicInfo(((Map<String, Object>) response.get("data")));
                     shellRepository.save(shell);
                 }
             }
@@ -324,9 +324,19 @@ public class ShellService {
         }
 
         return switch (shellLanguage) {
-            case JAVA -> Base64.getDecoder().decode(plugin.getPayload());
+            case JAVA, DOTNET -> decodeBase64Payload(plugin, shellLanguage);
             case NODEJS -> plugin.getPayload().getBytes(StandardCharsets.UTF_8);
         };
     }
 
+    private byte[] decodeBase64Payload(Plugin plugin, ShellLanguage shellLanguage) {
+        try {
+            return Base64.getDecoder().decode(plugin.getPayload());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                    "Invalid base64 payload for plugin [" + plugin.getPluginId() + "] language [" + shellLanguage.getValue() + "]",
+                    e
+            );
+        }
+    }
 }

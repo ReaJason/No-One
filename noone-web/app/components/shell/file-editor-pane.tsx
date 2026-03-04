@@ -156,7 +156,13 @@ export default function FileEditorPane({
           <div className="truncate font-mono text-[11px] text-muted-foreground">{filePath}</div>
         </div>
         <Badge variant={isDirty ? "default" : "secondary"}>{isDirty ? "Dirty" : "Saved"}</Badge>
-        <Button type="button" size="sm" variant="outline" onClick={onSave} disabled={!isDirty || isReadOnly}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onSave}
+          disabled={!isDirty || isReadOnly}
+        >
           <Save className="size-3.5" />
           Save
         </Button>

@@ -62,16 +62,7 @@ export default function ShellList() {
           <DataTableSkeleton
             columnCount={8}
             filterCount={2}
-            cellWidths={[
-              "3rem",
-              "20rem",
-              "8rem",
-              "10rem",
-              "12rem",
-              "10rem",
-              "10rem",
-              "3rem",
-            ]}
+            cellWidths={["3rem", "20rem", "8rem", "10rem", "12rem", "10rem", "10rem", "3rem"]}
             shrinkZero
           />
         }

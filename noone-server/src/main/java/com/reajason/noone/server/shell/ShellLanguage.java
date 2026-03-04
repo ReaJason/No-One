@@ -7,7 +7,8 @@ import java.util.Locale;
 
 public enum ShellLanguage {
     JAVA("java"),
-    NODEJS("nodejs");
+    NODEJS("nodejs"),
+    DOTNET("dotnet");
 
     private final String value;
 
@@ -30,6 +31,7 @@ public enum ShellLanguage {
         return switch (normalized) {
             case "java" -> JAVA;
             case "nodejs", "node", "node.js", "javascript", "js" -> NODEJS;
+            case "dotnet", ".net" -> DOTNET;
             default -> throw new IllegalArgumentException("Unsupported shell language: " + raw);
         };
     }

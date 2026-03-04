@@ -1,11 +1,26 @@
 import { Separator } from "@radix-ui/react-separator";
-import { ArrowLeft, ClipboardList, Files, Info, Puzzle, Terminal } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardList,
+  Database,
+  Files,
+  Info,
+  Loader,
+  Puzzle,
+  Terminal,
+} from "lucide-react";
 import type { ComponentType } from "react";
-import { Link, type LoaderFunctionArgs, useLoaderData, useSearchParams } from "react-router";
+import {
+  Link,
+  NavLink,
+  type LoaderFunctionArgs,
+  Outlet,
+  useLoaderData,
+  useLocation,
+} from "react-router";
 import { Toaster } from "sonner";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
-import ShellManager, { type ShellManagerSection } from "@/components/shell/shell-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,18 +60,10 @@ const shellSections = [
   { id: "extensions", title: "Extensions", icon: Puzzle },
   { id: "operations", title: "Operations", icon: ClipboardList },
 ] as const satisfies ReadonlyArray<{
-  id: ShellManagerSection;
+  id: string;
   title: string;
   icon: ComponentType<{ className?: string }>;
 }>;
-
-function coerceShellSection(value: string | null): ShellManagerSection {
-  const ids = new Set<ShellManagerSection>(shellSections.map((s) => s.id));
-  if (value && ids.has(value as ShellManagerSection)) {
-    return value as ShellManagerSection;
-  }
-  return "info";
-}
 
 function getStatusBadgeClassName(status: ShellConnection["status"]) {
   switch (status) {
@@ -69,15 +76,9 @@ function getStatusBadgeClassName(status: ShellConnection["status"]) {
   }
 }
 
-function ShellManagerSidebar({
-  shell,
-  section,
-  onSectionChange,
-}: {
-  shell: ShellConnection;
-  section: ShellManagerSection;
-  onSectionChange: (section: ShellManagerSection) => void;
-}) {
+function ShellManagerSidebar({ shell }: { shell: ShellConnection }) {
+  const location = useLocation();
+
   return (
     <Sidebar variant="inset">
       <SidebarHeader>
@@ -99,17 +100,34 @@ function ShellManagerSidebar({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {shellSections.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    isActive={section === item.id}
-                    onClick={() => onSectionChange(item.id)}
-                  >
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {shellSections.map((item) => {
+                const url = `/shells/${shell.id}/${item.id}`;
+                const isActive = location.pathname.endsWith(`/${item.id}`);
+                return (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      render={
+                        isActive ? (
+                          <div className="flex items-center gap-2">
+                            <item.icon />
+                            <span>{item.title}</span>
+                          </div>
+                        ) : (
+                          <NavLink to={url} viewTransition>
+                            {({ isPending }) => (
+                              <>
+                                {isPending ? <Loader className="animate-spin" /> : <item.icon />}
+                                <span>{item.title}</span>
+                              </>
+                            )}
+                          </NavLink>
+                        )
+                      }
+                    />
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -138,18 +156,9 @@ export default function ShellManagerPage() {
     shell: ShellConnection;
   };
 
-  const [searchParams, setSearchParams] = useSearchParams();
-  const section = coerceShellSection(searchParams.get("section"));
-
-  const handleSectionChange = (next: ShellManagerSection) => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set("section", next);
-    setSearchParams(nextParams, { replace: true });
-  };
-
   return (
     <SidebarProvider>
-      <ShellManagerSidebar shell={shell} section={section} onSectionChange={handleSectionChange} />
+      <ShellManagerSidebar shell={shell} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2 px-4">
@@ -184,7 +193,7 @@ export default function ShellManagerPage() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">
-          <ShellManager shell={shell} section={section} />
+          <Outlet context={{ shell }} />
         </main>
         <Toaster />
       </SidebarInset>

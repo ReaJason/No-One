@@ -10,12 +10,19 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { getShellConnectionById, testShellConnection } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -88,7 +95,9 @@ function isAbortError(error: unknown): boolean {
     return true;
   }
   const message = (candidate.message ?? "").toLowerCase();
-  return message.includes("aborted") || message.includes("cancelled") || message.includes("canceled");
+  return (
+    message.includes("aborted") || message.includes("cancelled") || message.includes("canceled")
+  );
 }
 
 function statusBadgeClassName(status: StepStatus): string {
@@ -118,7 +127,6 @@ function logColorClassName(level: ConnectLog["level"]): string {
 export default function ShellConnectPage() {
   const { shellId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [shell, setShell] = useState<ShellConnection | null>(null);
   const [steps, setSteps] = useState<Record<StepKey, StepStatus>>(() => createInitialStepStatus());
@@ -167,23 +175,26 @@ export default function ShellConnectPage() {
     setSteps((prev) => ({ ...prev, [step]: status }));
   }, []);
 
-  const loadLatestFailureReason = useCallback(async (currentShellId: number): Promise<string | null> => {
-    try {
-      const response = await getShellOperationLogs(currentShellId, {
-        operation: "TEST",
-        success: false,
-        page: 1,
-        pageSize: 1,
-      });
-      const latest = response.content[0];
-      if (latest?.errorMessage && latest.errorMessage.trim()) {
-        return latest.errorMessage.trim();
+  const loadLatestFailureReason = useCallback(
+    async (currentShellId: number): Promise<string | null> => {
+      try {
+        const response = await getShellOperationLogs(currentShellId, {
+          operation: "TEST",
+          success: false,
+          page: 1,
+          pageSize: 1,
+        });
+        const latest = response.content[0];
+        if (latest?.errorMessage && latest.errorMessage.trim()) {
+          return latest.errorMessage.trim();
+        }
+        return null;
+      } catch {
+        return null;
       }
-      return null;
-    } catch {
-      return null;
-    }
-  }, []);
+    },
+    [],
+  );
 
   const runConnectionFlow = useCallback(async () => {
     abortControllerRef.current?.abort();
@@ -238,7 +249,7 @@ export default function ShellConnectPage() {
 
       setStepStatus("handoff", "success");
       appendLog("success", "Handoff complete, entering manager");
-      navigate(`/shells/${parsedShellId}${location.search}`, { replace: true });
+      navigate(`/shells/${parsedShellId}/info`);
     } catch (flowError) {
       if (!mountedRef.current || controller.signal.aborted || isAbortError(flowError)) {
         return;
@@ -257,7 +268,7 @@ export default function ShellConnectPage() {
         setIsRunning(false);
       }
     }
-  }, [appendLog, loadLatestFailureReason, location.search, navigate, parsedShellId, setStepStatus]);
+  }, [appendLog, loadLatestFailureReason, navigate, parsedShellId, setStepStatus]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -359,7 +370,7 @@ export default function ShellConnectPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs font-medium tracking-wider text-muted-foreground uppercase">
               <Wifi className="h-3.5 w-3.5" />
               Steps logs
             </div>
@@ -373,7 +384,9 @@ export default function ShellConnectPage() {
                 <div className="space-y-1">
                   {logs.map((log) => (
                     <div key={log.id} className="flex gap-2">
-                      <span className="shrink-0 text-slate-500">[{formatLogTimestamp(log.timestamp)}]</span>
+                      <span className="shrink-0 text-slate-500">
+                        [{formatLogTimestamp(log.timestamp)}]
+                      </span>
                       <span className={logColorClassName(log.level)}>{log.message}</span>
                     </div>
                   ))}

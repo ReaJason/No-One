@@ -70,7 +70,12 @@ export function isAbortError(error: unknown): boolean {
     return true;
   }
   const message = (candidate.message || candidate.cause?.message || "").toLowerCase();
-  return message.includes("aborted") || message.includes("aborterror") || message.includes("cancelled") || message.includes("canceled");
+  return (
+    message.includes("aborted") ||
+    message.includes("aborterror") ||
+    message.includes("cancelled") ||
+    message.includes("canceled")
+  );
 }
 
 const DEFAULT_CONFIG: ApiClientConfig = {
@@ -148,7 +153,8 @@ export class ApiClient {
     });
 
     const error: ApiError = {
-      message: response._data?.message || response._data?.error || response.statusText || "Unknown error",
+      message:
+        response._data?.message || response._data?.error || response.statusText || "Unknown error",
       code: response.status,
       details: response._data,
     };

@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -229,6 +230,29 @@ class ShellServiceDispatchPluginTest {
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("RESPONSE", response.get("phase"));
+        verify(shellStatusUpdater, never()).markError(anyLong());
+        verify(shellStatusUpdater, never()).markConnected(anyLong());
+    }
+
+    @Test
+    void shouldFailEarlyWhenDotnetPluginPayloadIsNotAssemblyBytes() {
+        Long shellId = 11L;
+        Shell shell = shell(shellId);
+        shell.setLanguage(ShellLanguage.DOTNET);
+        ShellConnection connection = mock(ShellConnection.class);
+        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.needLoadPlugin("system-info")).thenReturn(true);
+        when(pluginRepository.findByPluginIdAndLanguage("system-info", "dotnet"))
+                .thenReturn(Optional.of(plugin("system-info", "using System; class FakePlugin {}")));
+
+        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+
+        assertEquals(Constants.FAILURE, response.get(Constants.CODE));
+        assertEquals("INTERNAL", response.get("phase"));
+        assertTrue(String.valueOf(response.get(Constants.ERROR)).contains("DOTNET plugin payload"));
+        verify(connection, never()).loadPlugin(anyString(), any(byte[].class));
+        verify(connection, never()).runPlugin(anyString(), any());
         verify(shellStatusUpdater, never()).markError(anyLong());
         verify(shellStatusUpdater, never()).markConnected(anyLong());
     }

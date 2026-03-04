@@ -202,7 +202,7 @@ export default function EditShell() {
               <Select
                 value={language}
                 onValueChange={(value) =>
-                  setLanguage((value === "nodejs" ? "nodejs" : "java") as ShellLanguage)
+                  setLanguage(value as ShellLanguage)
                 }
               >
                 <SelectTrigger className="w-full">
@@ -211,6 +211,7 @@ export default function EditShell() {
                 <SelectContent>
                   <SelectItem value="java">Java</SelectItem>
                   <SelectItem value="nodejs">NodeJs</SelectItem>
+                  <SelectItem value="dotnet">DotNet</SelectItem>
                 </SelectContent>
               </Select>
               {actionData?.errors?.language ? (
