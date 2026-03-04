@@ -33,7 +33,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-undertow")
     implementation("com.vladmihalcea:hibernate-types-60:2.21.1")
     developmentOnly("org.springframework.boot:spring-boot-docker-compose")
-    implementation(project(":noone-core"))
+    implementation(project(":noone-core:java-core"))
     implementation(libs.bundles.jjwt)
     implementation(libs.memshell.party.generator)
     implementation(libs.memshell.party.common)

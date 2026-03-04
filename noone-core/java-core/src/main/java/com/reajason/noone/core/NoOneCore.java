@@ -15,7 +15,7 @@ public class NoOneCore extends ClassLoader {
     private static final String ACTION = "action";
     private static final String CLASSNAME = "className";
     private static final String PLUGIN = "plugin";
-    private static final String CLASS_BYTES = "classBytes";
+    private static final String PLUGIN_BYTES = "pluginBytes";
     private static final String ARGS = "args";
 
     private static final String REFRESH = "refresh";
@@ -111,7 +111,7 @@ public class NoOneCore extends ClassLoader {
     public Object load(Map<String, Object> args, Map<String, Object> result) throws Exception {
         String plugin = (String) args.get(PLUGIN);
         String className = (String) args.get(CLASSNAME);
-        byte[] classBytes = (byte[]) args.get(CLASS_BYTES);
+        byte[] pluginBytes = (byte[]) args.get(PLUGIN_BYTES);
         boolean refresh = Boolean.parseBoolean((String) args.get(REFRESH));
         Object pluginObj = null;
 
@@ -122,10 +122,10 @@ public class NoOneCore extends ClassLoader {
             if (plugin == null) {
                 throw new RuntimeException("plugin is required");
             }
-            if (className == null || classBytes == null) {
+            if (className == null || pluginBytes == null) {
                 throw new RuntimeException("className and classBytes are required for class loading");
             }
-            pluginObj = new NoOneCore(Thread.currentThread().getContextClassLoader()).defineClass(className, classBytes).newInstance();
+            pluginObj = new NoOneCore(Thread.currentThread().getContextClassLoader()).defineClass(className, pluginBytes).newInstance();
             loadedPluginCache.put(plugin, pluginObj);
             result.put(CLASS_DEFINE, true);
         }

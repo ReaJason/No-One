@@ -26,4 +26,6 @@ include("noone-vul:vul-webapp")
 include("noone-vul:vul-webapp-jakarta")
 
 include("noone-core")
+include("noone-core:java-core")
+
 include("noone-plugins:java-plugins")
