@@ -147,31 +147,35 @@ export function getShellColumns({
       accessorKey: "basicInfo",
       header: ({ column }) => <DataTableColumnHeader column={column} title="System Info" />,
       cell: ({ row }) => {
-        const basicInfo = row.getValue("basicInfo") as Record<string, string> | undefined;
+        const basicInfo = row.getValue("basicInfo") as Record<string, any> | undefined;
         if (!basicInfo || Object.keys(basicInfo).length === 0) {
           return <span className="text-sm text-muted-foreground">Unknown</span>;
         }
-        const os = basicInfo.os;
-        const arch = basicInfo.arch;
-        const runtime = basicInfo.runtimeType + " " + basicInfo.runtimeVersion;
+        const os = basicInfo.os as Record<string, string> | undefined;
+        const runtime = basicInfo.runtime as Record<string, string> | undefined;
+        const proc = basicInfo.process as Record<string, any> | undefined;
+
+        const items: [string, string][] = [];
+        if (os?.name) items.push(["OS", os.name]);
+        if (os?.hostname) items.push(["Host", os.hostname]);
+        if (runtime?.type) items.push(["Runtime", `${runtime.type} ${runtime.version ?? ""}`.trim()]);
+        if (proc?.pid) items.push(["PID", String(proc.pid)]);
+
+        if (items.length === 0) {
+          return <span className="text-sm text-muted-foreground">Unknown</span>;
+        }
+
         return (
-          <div className="flex flex-col gap-0.5">
-            {(os || arch) && (
-              <div className="flex items-center gap-1">
-                {os && (
-                  <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                    {os}
-                  </Badge>
-                )}
-                {arch && (
-                  <Badge variant="secondary" className="px-1.5 py-0 text-xs">
-                    {arch}
-                  </Badge>
-                )}
-              </div>
-            )}
-            {runtime && <span className="text-xs text-muted-foreground">{runtime}</span>}
-          </div>
+          <table className="text-xs">
+            <tbody>
+              {items.map(([label, value]) => (
+                <tr key={label}>
+                  <td className="pr-2 text-muted-foreground whitespace-nowrap">{label}</td>
+                  <td className="max-w-40 truncate" title={value}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         );
       },
       enableSorting: false,
