@@ -3,6 +3,7 @@ import { useTheme } from "next-themes";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
 interface FileEditorPaneProps {
@@ -10,7 +11,9 @@ interface FileEditorPaneProps {
   language: string;
   value: string;
   isDirty: boolean;
+  isLoading: boolean;
   readOnlyReason?: string | null;
+  onMount: () => void;
   onChange: (value: string) => void;
   onSave: () => void;
   onClose: () => void;
@@ -45,7 +48,9 @@ export default function FileEditorPane({
   language,
   value,
   isDirty,
+  isLoading,
   readOnlyReason = null,
+  onMount,
   onChange,
   onSave,
   onClose,
@@ -171,7 +176,7 @@ export default function FileEditorPane({
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         {isReadOnly ? (
           <div className="flex h-full min-h-0 flex-col">
             <div className="border-b border-border/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -181,52 +186,57 @@ export default function FileEditorPane({
               Preview is disabled for this file.
             </div>
           </div>
-        ) : MonacoEditor && !monacoLoadError ? (
-          <MonacoEditor
-            className="h-full"
-            path={filePath}
-            defaultLanguage={language}
-            defaultValue={value}
-            theme={monacoTheme}
-            onChange={(nextValue) => {
-              isInternalChange.current = true;
-              onChange(nextValue ?? "");
-            }}
-            onMount={(editor, monaco) => {
-              editorRef.current = editor;
-              monacoRef.current = monaco;
-              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-                onSave();
-              });
-            }}
-            options={{
-              automaticLayout: true,
-              minimap: { enabled: false },
-              fontSize: 13,
-              scrollBeyondLastLine: false,
-              tabSize: 2,
-              wordWrap: "on",
-            }}
-          />
         ) : (
-          <div className="flex h-full min-h-0 flex-col">
-            <div
-              className={cn(
-                "border-b border-border/70 px-3 py-2 text-xs",
-                monacoLoadError ? "text-amber-700" : "text-muted-foreground",
-              )}
-            >
-              {monacoLoadError
-                ? `Monaco load failed, fallback editor enabled: ${monacoLoadError}`
-                : "Loading Monaco..."}
-            </div>
-            <textarea
-              value={value}
-              onChange={(event) => onChange(event.target.value)}
-              className="h-full min-h-0 w-full resize-none border-0 bg-transparent p-3 font-mono text-sm outline-none"
-              spellCheck={false}
-            />
-          </div>
+          <> 
+            {MonacoEditor && !monacoLoadError ? (
+              <MonacoEditor
+                className={cn("h-full transition-opacity duration-200", isLoading ? "opacity-0" : "opacity-100")}
+                path={filePath}
+                defaultLanguage={language}
+                defaultValue={value}
+                theme={monacoTheme}
+                onChange={(nextValue) => {
+                  isInternalChange.current = true;
+                  onChange(nextValue ?? "");
+                }}
+                onMount={(editor, monaco) => {
+                  onMount();
+                  editorRef.current = editor;
+                  monacoRef.current = monaco;
+                  editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+                    onSave();
+                  });
+                }}
+                options={{
+                  automaticLayout: true,
+                  minimap: { enabled: false },
+                  fontSize: 13,
+                  scrollBeyondLastLine: false,
+                  tabSize: 2,
+                  wordWrap: "on",
+                }}
+              />
+            ) : monacoLoadError ? (
+              <div className="flex h-full min-h-0 flex-col">
+                <div
+                  className={cn(
+                    "border-b border-border/70 px-3 py-2 text-xs",
+                    monacoLoadError ? "text-amber-700" : "text-muted-foreground",
+                  )}
+                >
+                  {monacoLoadError
+                    ? `Monaco load failed, fallback editor enabled: ${monacoLoadError}`
+                    : "Loading Monaco..."}
+                </div>
+                <textarea
+                  value={value}
+                  onChange={(event) => onChange(event.target.value)}
+                  className="h-full min-h-0 w-full resize-none border-0 bg-transparent p-3 font-mono text-sm outline-none"
+                  spellCheck={false}
+                />
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     </div>

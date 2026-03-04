@@ -735,6 +735,8 @@ export default function FileManager({
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingFile, setLoadingFile] = useState(false);
+  const [isEditorMounted, setIsEditorMounted] = useState(false);
   const [selection, setSelection] = useState<FileSelectionState>(EMPTY_SELECTION);
   const [contextMenuTargetPath, setContextMenuTargetPath] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingActionState | null>(null);
@@ -1346,7 +1348,10 @@ export default function FileManager({
         return;
       }
 
+      setOpenedFilePath(node.path);
+
       if (node.sizeBytes > MAX_PREVIEW_EDIT_BYTES) {
+        setIsEditorMounted(false);
         const next = new Map(fileBuffersByPath);
         next.set(node.path, {
           savedContent: "",
@@ -1356,11 +1361,10 @@ export default function FileManager({
           readOnlyReason: `This file is ${formatBytes(node.sizeBytes)}. Direct preview/edit is disabled above ${formatBytes(MAX_PREVIEW_EDIT_BYTES)}. Use chunk upload/download.`,
         });
         setFileBuffersByPath(next);
-        setOpenedFilePath(node.path);
         return;
       }
 
-      setLoading(true);
+      setLoadingFile(true);
       try {
         const readResult = await readAllBytes(node.path, MAX_PREVIEW_EDIT_BYTES);
         const content = decodeText(readResult.bytes);
@@ -1375,12 +1379,12 @@ export default function FileManager({
           });
           return next;
         });
-        setOpenedFilePath(node.path);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to open file";
         toast.error(message);
+        setOpenedFilePath(null);
       } finally {
-        setLoading(false);
+        setLoadingFile(false);
       }
     },
     [fileBuffersByPath, readAllBytes],
@@ -1414,6 +1418,7 @@ export default function FileManager({
   const closeOpenedEditor = useCallback(() => {
     requestNavigationWithUnsavedGuard(() => {
       setOpenedFilePath(null);
+      setIsEditorMounted(false);
     });
   }, [requestNavigationWithUnsavedGuard]);
 
@@ -2457,18 +2462,28 @@ export default function FileManager({
       >
         <DialogContent
           showCloseButton={false}
-          className="h-[76vh] w-[96vw] max-w-[96vw] gap-0 overflow-hidden p-0 sm:max-w-[96vw]"
+          className="flex h-[76vh] w-[80vw] max-w-[80vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[80vw]"
         >
-          <FileEditorPane
-            filePath={openedFilePath}
-            language={openedFileBuffer?.language ?? "plaintext"}
-            value={openedFileBuffer?.draftContent ?? ""}
-            isDirty={openedFileBuffer?.isDirty ?? false}
-            readOnlyReason={openedFileBuffer?.readOnlyReason ?? null}
-            onChange={handleEditorChange}
-            onSave={handleEditorSave}
-            onClose={closeOpenedEditor}
-          />
+          <div className="relative min-h-0 flex-1">
+            {loadingFile || (openedFilePath && !isEditorMounted) ? (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm text-muted-foreground p-8">
+                <Spinner className="size-8" />
+                <p>Loading file content...</p>
+              </div>
+            ) : null}
+            <FileEditorPane
+              filePath={openedFilePath}
+              language={openedFileBuffer?.language ?? "plaintext"}
+              value={openedFileBuffer?.draftContent ?? ""}
+              isDirty={openedFileBuffer?.isDirty ?? false}
+              isLoading={loadingFile || (openedFilePath && !isEditorMounted) || false}
+              readOnlyReason={openedFileBuffer?.readOnlyReason ?? null}
+              onMount={() => setIsEditorMounted(true)}
+              onChange={handleEditorChange}
+              onSave={handleEditorSave}
+              onClose={closeOpenedEditor}
+            />
+          </div>
         </DialogContent>
       </Dialog>
 
