@@ -141,9 +141,13 @@ export async function testShellConnection(
   id: number | string,
   options: ShellConnectionRequestOptions = {},
 ): Promise<TestShellConnectionResponse> {
-  const response = await apiClient.post<TestShellConnectionResponse>(`${baseUrl}/${id}/test`, undefined, {
-    signal: options.signal,
-  });
+  const response = await apiClient.post<TestShellConnectionResponse>(
+    `${baseUrl}/${id}/test`,
+    undefined,
+    {
+      signal: options.signal,
+    },
+  );
 
   if (!response.success) {
     throw new Error(resolveErrorMessage(response.data, "Connection test failed"));
@@ -160,7 +164,7 @@ function isTestShellConfigResponse(data: unknown): data is TestShellConfigRespon
   }
 
   const candidate = data as Partial<TestShellConfigResponse>;
-  return typeof candidate.connected === "boolean" && typeof candidate.status === "string";
+  return typeof candidate.connected === "boolean";
 }
 
 function isTestShellConnectionResponse(data: unknown): data is TestShellConnectionResponse {
