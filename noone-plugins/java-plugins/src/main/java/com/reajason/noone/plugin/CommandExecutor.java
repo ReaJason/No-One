@@ -5,7 +5,7 @@ import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Array;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -189,12 +189,12 @@ public class CommandExecutor {
 
     private static Charset resolveCharset(String charsetName) {
         if (charsetName == null || charsetName.isEmpty()) {
-            return StandardCharsets.UTF_8;
+            return Charset.forName("UTF-8");
         }
         try {
             return Charset.forName(charsetName);
         } catch (Exception ignored) {
-            return StandardCharsets.UTF_8;
+            return Charset.forName("UTF-8");
         }
     }
 
