@@ -1,0 +1,7 @@
+# case_name|target_node|docker_image
+# Node.js LTS versions for plugin compatibility testing.
+# Use -slim images for smaller download size.
+
+node18-lts|18|node:18-slim
+node20-lts|20|node:20-slim
+node22-lts|22|node:22-slim

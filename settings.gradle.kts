@@ -29,3 +29,4 @@ include("noone-core")
 include("noone-core:java-core")
 
 include("noone-plugins:java-plugins")
+include("noone-plugins:plugin-tests")

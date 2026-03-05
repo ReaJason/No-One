@@ -1,0 +1,7 @@
+# case_name|target_dotnet|docker_image
+# .NET runtime versions for plugin compatibility testing.
+# Plugin DLL targets netstandard2.0, runner targets net6.0 with RollForward=Major.
+
+dotnet6-lts|6|mcr.microsoft.com/dotnet/runtime:6.0
+dotnet8-lts|8|mcr.microsoft.com/dotnet/runtime:8.0
+dotnet9|9|mcr.microsoft.com/dotnet/runtime:9.0

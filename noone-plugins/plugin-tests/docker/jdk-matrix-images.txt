@@ -1,0 +1,16 @@
+# case_name|target_jdk|docker_image
+# Tips:
+# - Prefer pinning immutable digests in CI, e.g. image@sha256:...
+# - Keep at least one JDK8 vendor matrix for compatibility regression checks.
+# - Add stricter environments here (musl/alpine, old distro base, etc.) when needed.
+# - JDK5/JDK6 images vary by vendor/private registry; add them explicitly when available.
+
+
+jdk6-legacy|6|reajason/oracle-jdk:6u45
+jdk7-legacy|7|reajason/oracle-jdk:7u17
+jdk8-temurin|8|eclipse-temurin:8-jdk
+jdk8-corretto|8|amazoncorretto:8
+jdk8-zulu|8|azul/zulu-openjdk:8
+jdk11-temurin|11|eclipse-temurin:11-jdk
+jdk17-temurin|17|eclipse-temurin:17-jdk
+jdk21-temurin|21|eclipse-temurin:21-jdk
