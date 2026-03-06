@@ -3,6 +3,8 @@ package com.reajason.noone.core;
 import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -10,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author ReaJason
  * @since 2025/8/29
  */
-public class NoOneCore extends ClassLoader {
+public class NoOneCore extends URLClassLoader {
 
     private static final String ACTION = "action";
     private static final String CLASSNAME = "className";
@@ -39,11 +41,25 @@ public class NoOneCore extends ClassLoader {
     public static Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
     public static Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
 
+    private static volatile NoOneCore pluginClassLoader;
+
     public NoOneCore() {
+        super(new URL[0]);
     }
 
     public NoOneCore(ClassLoader parent) {
-        super(parent);
+        super(new URL[0], parent);
+    }
+
+    private static NoOneCore getPluginClassLoader() {
+        if (pluginClassLoader == null) {
+            synchronized (NoOneCore.class) {
+                if (pluginClassLoader == null) {
+                    pluginClassLoader = new NoOneCore(Thread.currentThread().getContextClassLoader());
+                }
+            }
+        }
+        return pluginClassLoader;
     }
 
     @Override
@@ -75,7 +91,17 @@ public class NoOneCore extends ClassLoader {
                             result.put(DATA, loaded != null);
                             break;
                         case ACTION_CLEAN:
+                            for (Object service : globalCaches.values()) {
+                                try {
+                                    Map<String, Object> shutdownCtx = new HashMap<String, Object>();
+                                    shutdownCtx.put("op", "shutdown");
+                                    service.equals(shutdownCtx);
+                                } catch (Throwable ignored) {
+                                }
+                            }
+                            globalCaches.clear();
                             loadedPluginCache.clear();
+                            pluginClassLoader = null;
                             break;
                         default:
                             result.put(CODE, FAILURE);
@@ -105,6 +131,7 @@ public class NoOneCore extends ClassLoader {
     public Map<String, Object> getStatus() {
         Map<String, Object> result = new HashMap<String, Object>();
         result.put(PLUGIN_CACHES, loadedPluginCache.keySet());
+        result.put(GLOBAL_CACHES, globalCaches.keySet());
         return result;
     }
 
@@ -113,23 +140,41 @@ public class NoOneCore extends ClassLoader {
         String className = (String) args.get(CLASSNAME);
         byte[] pluginBytes = (byte[]) args.get(PLUGIN_BYTES);
         boolean refresh = Boolean.parseBoolean((String) args.get(REFRESH));
-        Object pluginObj = null;
 
         if (!refresh && plugin != null) {
-            pluginObj = loadedPluginCache.get(plugin);
+            Object cached = loadedPluginCache.get(plugin);
+            if (cached != null) {
+                return cached;
+            }
         }
-        if (pluginObj == null) {
-            if (plugin == null) {
-                throw new RuntimeException("plugin is required");
-            }
-            if (className == null || pluginBytes == null) {
-                throw new RuntimeException("className and classBytes are required for class loading");
-            }
-            pluginObj = new NoOneCore(Thread.currentThread().getContextClassLoader()).defineClass(className, pluginBytes).newInstance();
+
+        if (className == null || className.isEmpty()) {
+            throw new RuntimeException("className is required for class loading");
+        }
+        if (pluginBytes == null || pluginBytes.length == 0) {
+            throw new RuntimeException("pluginBytes is required for class loading");
+        }
+
+        NoOneCore loader = getPluginClassLoader();
+
+        if (refresh) {
+            Object pluginObj = loader.defineClass(className, pluginBytes)
+                    .getDeclaredConstructor().newInstance();
             loadedPluginCache.put(plugin, pluginObj);
             result.put(CLASS_DEFINE, true);
+            return pluginObj;
         }
-        return pluginObj;
+
+        synchronized (loadedPluginCache) {
+            Object pluginObj = loadedPluginCache.get(plugin);
+            if (pluginObj == null) {
+                pluginObj = loader.defineClass(className, pluginBytes)
+                        .getDeclaredConstructor().newInstance();
+                loadedPluginCache.put(plugin, pluginObj);
+                result.put(CLASS_DEFINE, true);
+            }
+            return pluginObj;
+        }
     }
 
 
@@ -142,6 +187,7 @@ public class NoOneCore extends ClassLoader {
             map = new HashMap<String, Object>();
         }
         map.put(PLUGIN_CACHES, loadedPluginCache);
+        map.put(GLOBAL_CACHES, globalCaches);
         pluginObj.equals(map);
         result.put(DATA, map.get("result"));
         result.put(CLASS_RUN, true);

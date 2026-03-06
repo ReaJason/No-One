@@ -203,6 +203,8 @@ public class ShellService {
         }
     }
 
+    private static final String TASK_MANAGER_PLUGIN_ID = "task-manager";
+
     public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
         Shell shell = shellRepository.findById(shellId)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
@@ -214,10 +216,24 @@ public class ShellService {
         long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            if (connection.needLoadPlugin(pluginId)) {
-                Optional<Plugin> pluginOptional = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
-                pluginOptional.ifPresent(plugin -> connection.loadPlugin(plugin.getPluginId(), pluginPayloadBytes(shellLanguage, plugin)));
+
+            String runMode = resolveRunMode(pluginId, shellLanguage);
+            boolean isTaskAction = action != null && action.startsWith("_task_");
+
+            if (isTaskAction) {
+                String taskOp = action.substring(6);
+                return executeViaTaskManager(connection, shellLanguage, pluginId, taskOp, args, shell, shellId, start);
             }
+
+            if ("async".equals(runMode)) {
+                return executeViaTaskManager(connection, shellLanguage, pluginId, "submit", args, shell, shellId, start);
+            }
+
+            if ("scheduled".equals(runMode)) {
+                return executeViaTaskManager(connection, shellLanguage, pluginId, "schedule", args, shell, shellId, start);
+            }
+
+            ensurePluginLoaded(connection, pluginId, shellLanguage);
             Map<String, Object> result = connection.runPlugin(pluginId, args);
             Map<String, Object> response = handleShellConnectionResult(result);
             if (isSuccess(response.get(Constants.CODE))) {
@@ -261,6 +277,72 @@ public class ShellService {
 
             return response;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> executeViaTaskManager(ShellConnection connection, ShellLanguage shellLanguage,
+                                                      String pluginId, String taskOp,
+                                                      Map<String, Object> originalArgs,
+                                                      Shell shell, Long shellId, long start) {
+        ensurePluginLoaded(connection, TASK_MANAGER_PLUGIN_ID, shellLanguage);
+        ensurePluginLoaded(connection, pluginId, shellLanguage);
+
+        Map<String, Object> taskManagerArgs = new HashMap<>();
+        taskManagerArgs.put("op", taskOp);
+
+        if ("submit".equals(taskOp) || "schedule".equals(taskOp)) {
+            taskManagerArgs.put("targetPlugin", pluginId);
+            taskManagerArgs.put("targetArgs", originalArgs);
+            if ("schedule".equals(taskOp) && originalArgs != null) {
+                Object interval = originalArgs.remove("_interval");
+                if (interval != null) {
+                    taskManagerArgs.put("delay", interval);
+                    taskManagerArgs.put("period", interval);
+                }
+                Object delay = originalArgs.remove("_delay");
+                if (delay != null) {
+                    taskManagerArgs.put("delay", delay);
+                }
+            }
+        } else {
+            if (originalArgs != null && originalArgs.containsKey("taskId")) {
+                taskManagerArgs.put("taskId", originalArgs.get("taskId"));
+            }
+        }
+
+        Map<String, Object> result = connection.runPlugin(TASK_MANAGER_PLUGIN_ID, taskManagerArgs);
+        Map<String, Object> response = handleShellConnectionResult(result);
+
+        if (isSuccess(response.get(Constants.CODE))) {
+            shellStatusUpdater.markConnected(shellId);
+        }
+
+        String action = "_task_" + taskOp;
+        long durationMs = System.currentTimeMillis() - start;
+        boolean success = isSuccess(response.get(Constants.CODE));
+        String errorMsg = success ? null : String.valueOf(response.getOrDefault(Constants.ERROR, ""));
+        shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
+                originalArgs, response, success, errorMsg, durationMs);
+
+        return response;
+    }
+
+    private void ensurePluginLoaded(ShellConnection connection, String pluginId, ShellLanguage shellLanguage) {
+        if (connection.needLoadPlugin(pluginId)) {
+            Optional<Plugin> pluginOptional = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
+            pluginOptional.ifPresent(plugin -> connection.loadPlugin(plugin.getPluginId(), pluginPayloadBytes(shellLanguage, plugin)));
+        }
+    }
+
+    private String resolveRunMode(String pluginId, ShellLanguage shellLanguage) {
+        Optional<Plugin> pluginOptional = pluginRepository.findByPluginIdAndLanguage(pluginId, shellLanguage.getValue());
+        if (pluginOptional.isPresent()) {
+            String runMode = pluginOptional.get().getRunMode();
+            if (runMode != null && !runMode.isBlank()) {
+                return runMode;
+            }
+        }
+        return "sync";
     }
 
     // ==================== Helper Methods ====================

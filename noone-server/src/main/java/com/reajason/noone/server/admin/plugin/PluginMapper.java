@@ -14,6 +14,7 @@ public class PluginMapper {
         plugin.setVersion(request.getVersion());
         plugin.setLanguage(request.getLanguage());
         plugin.setType(request.getType());
+        plugin.setRunMode(request.getRunMode());
         plugin.setPayload(request.getPayload());
         plugin.setActions(request.getActions());
         return plugin;
@@ -26,6 +27,7 @@ public class PluginMapper {
         response.setVersion(plugin.getVersion());
         response.setLanguage(plugin.getLanguage());
         response.setType(plugin.getType());
+        response.setRunMode(plugin.getRunMode());
         response.setActions(plugin.getActions());
         response.setCreatedAt(plugin.getCreatedAt());
         response.setUpdatedAt(plugin.getUpdatedAt());

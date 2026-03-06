@@ -22,6 +22,8 @@ public class PluginCreateRequest {
     @NotBlank
     private String type;
 
+    private String runMode;
+
     private String payload;
 
     private Map<String, Object> actions;

@@ -41,6 +41,9 @@ public class Plugin {
     @Column(nullable = false)
     private String type;
 
+    @Column(nullable = true)
+    private String runMode;
+
     @Column(columnDefinition = "text")
     private String payload;
 

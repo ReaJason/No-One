@@ -35,6 +35,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    jvmArgs("--add-opens", "java.base/java.net=ALL-UNNAMED")
 }
 
 // ── Plugin id → Java class mapping ─────────────────────────────────────
@@ -43,6 +44,9 @@ val javaPluginMapping = mapOf(
     "command-execute" to "com.reajason.noone.plugin.CommandExecutor",
     "file-manager" to "com.reajason.noone.plugin.FileManagerPlugin",
     "class-finder" to "com.reajason.noone.plugin.ClassFinder",
+    "log-monitor" to "com.reajason.noone.plugin.LogMonitor",
+    "port-scanner" to "com.reajason.noone.plugin.PortScanner",
+    "task-manager" to "com.reajason.noone.plugin.TaskManager",
 )
 
 // ── Resolve all paths at configuration time (configuration cache safe) ──

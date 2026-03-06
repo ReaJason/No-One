@@ -12,6 +12,7 @@ public class PluginResponse {
     private String version;
     private String language;
     private String type;
+    private String runMode;
     private Map<String, Object> actions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
