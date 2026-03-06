@@ -1,27 +1,37 @@
-import { LoaderCircle, WandSparklesIcon } from "lucide-react";
+import { Download, FileCode2, LoaderCircle, WandSparklesIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActionFunctionArgs } from "react-router";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { toast } from "sonner";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import { getAllProfiles } from "@/api/profile-api";
+import { generateWebShell, type WebShellGenerateResponse } from "@/api/webshell-api";
+import CodeViewer from "@/components/memshell/code-viewer";
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
 import ShellResult from "@/components/memshell/shell-result";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardAction,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { transformToPostData } from "@/lib/transformer";
 import { type MemShellResult } from "@/types/memshell";
+import type { Profile } from "@/types/profile";
 
 export const handle = createBreadcrumb(() => ({
   id: "generator",
@@ -249,28 +259,134 @@ export default function Generator() {
             </div>
           </Form>
         </TabsContent>
-        <TabsContent value="webshell" className="flex flex-1 items-center justify-center">
-          <Card className="w-full max-w-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <WandSparklesIcon className="size-4 text-muted-foreground" />
-                WebShell
-              </CardTitle>
-              <CardDescription>WebShell generator is under active development.</CardDescription>
-              <CardAction>
-                <Badge variant="secondary">Coming soon</Badge>
-              </CardAction>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-muted-foreground">Planned capabilities:</div>
-              <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
-                <li>Quick create & connect</li>
-                <li>Traffic profile & obfuscation options</li>
-              </ul>
-            </CardContent>
-          </Card>
+        <TabsContent value="webshell">
+          <WebShellPanel profiles={profiles} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function WebShellPanel({ profiles }: { profiles: Profile[] }) {
+  const [selectedProfileId, setSelectedProfileId] = useState<string>(profiles[0]?.id ?? "");
+  const [format, setFormat] = useState<"JSP" | "JSPX">("JSP");
+  const [result, setResult] = useState<WebShellGenerateResponse | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const profileOptions = useMemo(
+    () => profiles.map((p) => ({ label: p.name, value: p.id })),
+    [profiles],
+  );
+
+  const handleGenerate = useCallback(async () => {
+    if (!selectedProfileId) {
+      toast.error("Please select a profile");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const response = await generateWebShell({ profileId: selectedProfileId, format });
+      if (response.success) {
+        setResult(response.data);
+        toast.success("WebShell generated successfully");
+      } else {
+        toast.error(response.message ?? "Generation failed");
+      }
+    } catch (error) {
+      toast.error(`Generation error: ${(error as Error).message}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [selectedProfileId, format]);
+
+  const handleDownload = useCallback(() => {
+    if (!result) return;
+    const blob = new Blob([result.content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = result.fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [result]);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-4 pt-4">
+          <Field className="min-w-48 flex-1">
+            <FieldContent>
+              <FieldLabel htmlFor="ws-profile">Profile</FieldLabel>
+              <Select
+                value={selectedProfileId}
+                onValueChange={(v) => v && setSelectedProfileId(v)}
+                items={profileOptions}
+              >
+                <SelectTrigger className="w-full" id="ws-profile">
+                  <SelectValue placeholder="Select profile" />
+                </SelectTrigger>
+                <SelectContent>
+                  {profileOptions.map((p) => (
+                    <SelectItem key={p.value} value={p.value}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FieldContent>
+          </Field>
+          <Field className="w-auto">
+            <FieldContent>
+              <FieldLabel>Format</FieldLabel>
+              <RadioGroup
+                value={format}
+                onValueChange={(v) => setFormat(v as "JSP" | "JSPX")}
+                className="flex h-9 flex-row items-center gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="JSP" id="fmt-jsp" />
+                  <Label htmlFor="fmt-jsp">JSP</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="JSPX" id="fmt-jspx" />
+                  <Label htmlFor="fmt-jspx">JSPX</Label>
+                </div>
+              </RadioGroup>
+            </FieldContent>
+          </Field>
+          <Button onClick={handleGenerate} disabled={isGenerating} className="shrink-0">
+            {isGenerating ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
+            Generate
+          </Button>
+        </CardContent>
+      </Card>
+      {result ? (
+        <CodeViewer
+          code={result.content}
+          language="java"
+          wrapLongLines={false}
+          header={
+            <span className="px-2 text-sm text-muted-foreground">{result.fileName}</span>
+          }
+          button={
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleDownload}>
+              <Download className="size-4" />
+            </Button>
+          }
+          height="70vh"
+        />
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <FileCode2 className="mx-auto mb-4 size-12 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              Select a profile and format, then click Generate to create a WebShell.
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
