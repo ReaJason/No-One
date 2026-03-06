@@ -280,5 +280,8 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     manualFiltering: true,
   });
 
-  return { table, shallow, debounceMs, throttleMs };
+  return React.useMemo(
+    () => ({ table, shallow, debounceMs, throttleMs }),
+    [table, shallow, debounceMs, throttleMs],
+  );
 }

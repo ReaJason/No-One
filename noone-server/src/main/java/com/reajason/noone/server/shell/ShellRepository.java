@@ -27,8 +27,4 @@ public interface ShellRepository extends JpaRepository<Shell, Long>, JpaSpecific
      */
     List<Shell> findByStatus(ShellStatus status);
 
-    /**
-     * Check if shell exists by URL
-     */
-    boolean existsByUrl(String url);
 }

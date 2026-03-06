@@ -2,7 +2,7 @@ import type { Column } from "@tanstack/react-table";
 import { dataTableConfig } from "@/config/data-table";
 import type { ExtendedColumnFilter, FilterOperator, FilterVariant } from "@/types/data-table";
 
-export function getCommonPinningStyles<TData>({
+export function getColumnPinningStyle<TData>({
   column,
   withBorder = false,
 }: {
@@ -27,7 +27,7 @@ export function getCommonPinningStyles<TData>({
     position: isPinned ? "sticky" : "relative",
     background: isPinned ? "var(--background)" : "var(--background)",
     width: column.getSize(),
-    zIndex: isPinned ? 1 : 0,
+    zIndex: isPinned ? 1 : undefined,
   };
 }
 

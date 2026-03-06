@@ -62,10 +62,6 @@ public class ShellService {
     public ShellResponse create(ShellCreateRequest request) {
         log.info("Creating shell connection: {}", request.getUrl());
 
-        if (shellRepository.existsByUrl(request.getUrl())) {
-            throw new IllegalArgumentException("Shell with URL already exists: " + request.getUrl());
-        }
-
         Shell shell = shellMapper.toEntity(request);
         shell.setStatus(ShellStatus.DISCONNECTED);
 
@@ -130,6 +126,16 @@ public class ShellService {
 
         if (request.getProjectId() != null && request.getProjectId() != 0) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("projectId"), request.getProjectId()));
+        }
+
+        if (request.getUrl() != null && !request.getUrl().isBlank()) {
+            String urlPattern = "%" + request.getUrl().trim().toLowerCase() + "%";
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("url")), urlPattern));
+        }
+
+        if (request.getLanguage() != null && !request.getLanguage().isBlank()) {
+            ShellLanguage language = ShellLanguage.fromJson(request.getLanguage());
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("language"), language));
         }
 
         return shellRepository.findAll(spec, pageable).map(shellMapper::toResponse);

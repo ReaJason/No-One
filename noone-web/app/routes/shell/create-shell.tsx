@@ -1,7 +1,7 @@
-import { ArrowLeft, Plus, Wifi } from "lucide-react";
+import { ArrowLeft, Edit, Plus, Wifi } from "lucide-react";
 import { useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import { Form, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
@@ -28,18 +28,37 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import { createShellConnection, testShellConfig } from "@/api/shell-connection-api";
+import {
+  createShellConnection,
+  getShellConnectionById,
+  testShellConfig,
+} from "@/api/shell-connection-api";
 import type { Profile } from "@/types/profile";
 import type { Project } from "@/types/project";
-import type { ShellLanguage } from "@/types/shell-connection";
+import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+  const shellId = params.shellId;
+  const [projects, profiles] = await Promise.all([getAllProjects(), getAllProfiles()]);
+
+  if (shellId) {
+    const shell = await getShellConnectionById(shellId);
+    if (!shell) {
+      throw new Response("Shell connection not found", { status: 404 });
+    }
+    return { shell, projects, profiles } as {
+      shell: ShellConnection;
+      projects: Project[];
+      profiles: Profile[];
+    };
+  }
+
   const url = new URL(request.url);
-  const projectIdParam = url.searchParams.get("projectId") ?? "";
   const shellUrlParam = url.searchParams.get("shellUrl") ?? "";
   const profileIdParam = url.searchParams.get("profileId") ?? "";
+  const projectIdParam = url.searchParams.get("projectId") ?? "";
   const parsedProjectId = Number(projectIdParam);
-  const [projects, profiles] = await Promise.all([getAllProjects(), getAllProfiles()]);
+
   return {
     shellUrlParam,
     profileIdParam,
@@ -66,7 +85,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const profileIdRaw = (formData.get("profileId") as string)?.trim();
   const profileId = profileIdRaw ? Number(profileIdRaw) : undefined;
 
-  // Advanced settings
   const proxyUrl = (formData.get("proxyUrl") as string)?.trim() || undefined;
   const connectTimeoutMsRaw = (formData.get("connectTimeoutMs") as string)?.trim();
   const readTimeoutMsRaw = (formData.get("readTimeoutMs") as string)?.trim();
@@ -78,7 +96,6 @@ export async function action({ request }: ActionFunctionArgs) {
   const retryDelayMs = retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined;
   const skipSslVerify = formData.get("skipSslVerify") === "on";
 
-  // Parse custom headers JSON
   const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
   let customHeaders: Record<string, string> | undefined;
   if (customHeadersRaw) {
@@ -135,21 +152,35 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-export const handle = createBreadcrumb(() => ({
-  id: "shells-create",
-  label: "Create Shell",
-  to: "/shells/create",
-}));
-
-export default function CreateShell() {
-  const { projects, profiles, initialProjectId, shellUrlParam, profileIdParam } =
-    useLoaderData() as {
-      projects: Project[];
-      profiles: Profile[];
-      initialProjectId?: number;
-      shellUrlParam?: string;
-      profileIdParam?: string;
+export const handle = createBreadcrumb(({ params }) => {
+  if (params.shellId) {
+    return {
+      id: "shells-edit",
+      label: "Edit Shell",
+      to: `/shells/edit/${params.shellId}`,
     };
+  }
+  return {
+    id: "shells-create",
+    label: "Create Shell",
+    to: "/shells/create",
+  };
+});
+
+export default function CreateOrEditShell() {
+  const loaderData = useLoaderData() as {
+    shell?: ShellConnection;
+    projects: Project[];
+    profiles: Profile[];
+    initialProjectId?: number;
+    shellUrlParam?: string;
+    profileIdParam?: string;
+  };
+  const { shell, projects, profiles, initialProjectId, shellUrlParam, profileIdParam } =
+    loaderData;
+  const params = useParams();
+  const isEdit = Boolean(params.shellId);
+
   const profileItems = profiles.map((profile) => ({
     label: `${profile.name} (${profile.protocolType})`,
     value: String(profile.id),
@@ -163,13 +194,20 @@ export default function CreateShell() {
     | undefined;
   const errors = actionData?.errors;
   const navigate = useNavigate();
+
   const [projectId, setProjectId] = useState<string>(
-    initialProjectId ? String(initialProjectId) : "",
+    shell?.projectId
+      ? String(shell.projectId)
+      : initialProjectId
+        ? String(initialProjectId)
+        : "",
   );
-  const [profileId, setProfileId] = useState<string>(profileIdParam ?? "");
-  const [language, setLanguage] = useState<ShellLanguage>("java");
-  const [skipSslVerify, setSkipSslVerify] = useState(false);
-  const [url, setUrl] = useState(shellUrlParam ?? "");
+  const [profileId, setProfileId] = useState<string>(
+    shell ? String(shell.profileId) : (profileIdParam ?? ""),
+  );
+  const [language, setLanguage] = useState<ShellLanguage>(shell?.language ?? "java");
+  const [skipSslVerify, setSkipSslVerify] = useState(shell?.skipSslVerify ?? false);
+  const [url, setUrl] = useState(shell?.url ?? shellUrlParam ?? "");
   const [isTesting, setIsTesting] = useState(false);
 
   const handleTestConnection = async () => {
@@ -224,6 +262,11 @@ export default function CreateShell() {
     }
   };
 
+  const TitleIcon = isEdit ? Edit : Plus;
+  const pageTitle = isEdit ? "Edit Shell" : "Create Shell";
+  const submitLabel = isEdit ? "Update Shell" : "Create Shell";
+  const formAction = isEdit ? `/shells/update/${shell!.id}` : undefined;
+
   return (
     <div className="container mx-auto max-w-6xl p-6">
       <div className="mb-8">
@@ -236,19 +279,27 @@ export default function CreateShell() {
           Return to shell list
         </Button>
 
-        <h1 className="text-3xl font-bold text-balance">Create Shell</h1>
-        <p className="mt-2 text-muted-foreground">Register a new shell connection</p>
+        <h1 className="text-3xl font-bold text-balance">{pageTitle}</h1>
+        <p className="mt-2 text-muted-foreground">
+          {isEdit ? (
+            <>
+              Update shell: <span className="font-semibold">#{shell!.id}</span>
+            </>
+          ) : (
+            "Register a new shell connection"
+          )}
+        </p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
+            <TitleIcon className="h-5 w-5" />
             Shell Information
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Form method="post" className="space-y-6">
+          <Form method="post" action={formAction} className="space-y-6">
             {errors?.general ? (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {errors.general}
@@ -318,9 +369,7 @@ export default function CreateShell() {
                       { label: "DotNet", value: "dotnet" },
                     ]}
                     value={language}
-                    onValueChange={(value) =>
-                      setLanguage(value as ShellLanguage)
-                    }
+                    onValueChange={(value) => setLanguage(value as ShellLanguage)}
                   >
                     <SelectTrigger
                       id="language"
@@ -375,7 +424,13 @@ export default function CreateShell() {
 
                   <Field>
                     <FieldLabel htmlFor="group">Group</FieldLabel>
-                    <Input id="group" name="group" type="text" placeholder="Optional group" />
+                    <Input
+                      id="group"
+                      name="group"
+                      type="text"
+                      defaultValue={shell?.group || ""}
+                      placeholder="Optional group"
+                    />
                   </Field>
                 </div>
               </FieldGroup>
@@ -390,6 +445,7 @@ export default function CreateShell() {
                     id="proxyUrl"
                     name="proxyUrl"
                     type="text"
+                    defaultValue={shell?.proxyUrl || ""}
                     placeholder="http://proxy:8080 or socks5://user:pass@proxy:1080"
                   />
                   <FieldDescription>Override the profile&apos;s proxy setting.</FieldDescription>
@@ -401,6 +457,9 @@ export default function CreateShell() {
                     id="customHeaders"
                     name="customHeaders"
                     type="text"
+                    defaultValue={
+                      shell?.customHeaders ? JSON.stringify(shell.customHeaders) : ""
+                    }
                     placeholder='{"Cookie": "session=xxx", "Authorization": "Bearer xxx"}'
                     aria-invalid={Boolean(errors?.customHeaders) || undefined}
                   />
@@ -417,6 +476,7 @@ export default function CreateShell() {
                       id="connectTimeoutMs"
                       name="connectTimeoutMs"
                       type="number"
+                      defaultValue={shell?.connectTimeoutMs || ""}
                       placeholder="30000"
                     />
                   </Field>
@@ -426,6 +486,7 @@ export default function CreateShell() {
                       id="readTimeoutMs"
                       name="readTimeoutMs"
                       type="number"
+                      defaultValue={shell?.readTimeoutMs || ""}
                       placeholder="60000"
                     />
                   </Field>
@@ -439,6 +500,7 @@ export default function CreateShell() {
                       name="maxRetries"
                       type="number"
                       min="0"
+                      defaultValue={shell?.maxRetries || ""}
                       placeholder="0"
                     />
                   </Field>
@@ -449,6 +511,7 @@ export default function CreateShell() {
                       name="retryDelayMs"
                       type="number"
                       min="0"
+                      defaultValue={shell?.retryDelayMs || ""}
                       placeholder="1000"
                     />
                   </Field>
@@ -475,8 +538,8 @@ export default function CreateShell() {
 
             <div className="flex gap-4 pt-4">
               <Button type="submit" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create Shell
+                <TitleIcon className="h-4 w-4" />
+                {submitLabel}
               </Button>
               <Button
                 type="button"

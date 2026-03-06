@@ -44,7 +44,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
     cell: ({ row }) => row.getValue("name") as string,
     meta: {
       label: "Profile",
@@ -56,7 +56,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "protocolType",
     accessorKey: "protocolType",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="ProtocolType" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="ProtocolType" />,
     cell: ({ row }) => row.getValue("protocolType") as string,
     meta: {
       label: "ProtocolType",
@@ -71,7 +71,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
   {
     id: "updatedAt",
     accessorKey: "updatedAt",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Updated Time" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Updated Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {

@@ -42,7 +42,7 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Role" />,
     cell: ({ row }) => {
       const role = row.original;
       return (
@@ -64,7 +64,7 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "permissions",
     accessorKey: "permissions",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Permissions" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Permissions" />,
     cell: ({ row }) => {
       const permissions = row.getValue("permissions") as Permission[];
       return (
@@ -79,7 +79,7 @@ export const roleColumns: ColumnDef<Role>[] = [
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {

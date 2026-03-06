@@ -10,9 +10,10 @@ public class PluginSpecifications {
             if (ObjectUtils.isEmpty(name)) {
                 return criteriaBuilder.conjunction();
             }
-            return criteriaBuilder.like(
-                    criteriaBuilder.lower(root.get("name")),
-                    "%" + name.toLowerCase() + "%"
+            String pattern = "%" + name.toLowerCase() + "%";
+            return criteriaBuilder.or(
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), pattern),
+                    criteriaBuilder.like(criteriaBuilder.lower(root.get("pluginId")), pattern)
             );
         };
     }

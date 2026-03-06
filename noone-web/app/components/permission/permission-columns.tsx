@@ -56,7 +56,7 @@ export const permissionColumns: ColumnDef<Permission>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
     cell: ({ row }) => {
       const permission = row.original;
       return (
@@ -78,13 +78,13 @@ export const permissionColumns: ColumnDef<Permission>[] = [
   {
     id: "code",
     accessorKey: "code",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Code" />,
     cell: ({ cell }) => cell.getValue<string>(),
   },
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {

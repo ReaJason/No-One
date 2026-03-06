@@ -44,7 +44,7 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "name",
     accessorKey: "name",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Name" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
     cell: ({ row }) => row.getValue("name") as string,
     meta: {
       label: "Project",
@@ -56,13 +56,13 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "code",
     accessorKey: "code",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Code" />,
     cell: ({ row }) => row.getValue("code") as string,
   },
   {
     id: "status",
     accessorKey: "status",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
     cell: ({ row }) => row.getValue("status") as string,
     meta: {
       label: "Status",
@@ -78,7 +78,7 @@ export const projectColumns: ColumnDef<Project>[] = [
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
     cell: ({ cell }) => formatDate(cell.getValue<Date>()),
     meta: {
       label: "Created At",

@@ -10,6 +10,8 @@ import lombok.Data;
  */
 @Data
 public class ShellQueryRequest {
+    private String url;
+    private String language;
     private String group;
     private String status;
     private Long projectId;

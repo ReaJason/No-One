@@ -110,6 +110,7 @@ export function ShellConnectionTable({
         pageIndex: shellConnectionResponseData.page - 1,
         pageSize: shellConnectionResponseData.pageSize,
       },
+      columnPinning: { right: ["actions"] },
     },
     shallow: false,
     clearOnDefault: true,

@@ -48,6 +48,8 @@ export interface ShellConnection {
 }
 
 export interface ShellConnectionSearchParams {
+  url?: string;
+  language?: ShellLanguage | string;
   status?: ShellStatus | string;
   projectId?: number;
   page?: number;

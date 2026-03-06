@@ -1,7 +1,6 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   AlertCircle,
-  Database,
   Edit,
   MoreHorizontal,
   Terminal,
@@ -26,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 import { deleteShellConnection } from "@/api/shell-connection-api";
-import type { ShellConnection, ShellStatus } from "@/types/shell-connection";
+import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
 
 const statusLabels: Record<ShellStatus, string> = {
   CONNECTED: "Connected",
@@ -75,7 +74,7 @@ export function getShellColumns({
     {
       id: "url",
       accessorKey: "url",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="URL" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="URL" />,
       cell: ({ row }) => {
         const url = row.getValue("url") as string;
         return (
@@ -84,12 +83,66 @@ export function getShellColumns({
           </div>
         );
       },
+      meta: {
+        label: "URL",
+        variant: "text",
+        placeholder: "Search by URL...",
+      },
+      enableColumnFilter: true,
       size: 300,
+    },
+    {
+      id: "profileName",
+      accessorKey: "profileName",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Profile" />,
+      cell: ({ row }) => {
+        const profileName = row.getValue("profileName") as string | undefined;
+        return profileName ? (
+          <Badge variant="outline" className="py-1">
+            {profileName}
+          </Badge>
+        ) : (
+          <span className="text-sm text-muted-foreground">--</span>
+        );
+      },
+      size: 120,
+      meta: {
+        label: "Profile",
+      }
+    },
+    {
+      id: "language",
+      accessorKey: "language",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Language" />,
+      cell: ({ row }) => {
+        const language = row.getValue("language") as ShellLanguage;
+        const labels: Record<ShellLanguage, string> = {
+          java: "Java",
+          nodejs: "NodeJs",
+          dotnet: "DotNet",
+        };
+        return (
+          <Badge variant="secondary">
+            {labels[language] ?? language}
+          </Badge>
+        );
+      },
+      meta: {
+        label: "Language",
+        variant: "select",
+        options: [
+          { label: "Java", value: "java" },
+          { label: "NodeJs", value: "nodejs" },
+          { label: "DotNet", value: "dotnet" },
+        ],
+      },
+      enableColumnFilter: true,
+      size: 100,
     },
     {
       id: "projectId",
       accessorKey: "projectId",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Project" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Project" />,
       cell: ({ row }) => {
         const projectId = row.getValue("projectId") as number | null | undefined;
         if (typeof projectId !== "number") {
@@ -112,7 +165,7 @@ export function getShellColumns({
     {
       id: "status",
       accessorKey: "status",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
       cell: ({ row }) => {
         const status = row.getValue("status") as ShellStatus;
         const icon =
@@ -145,7 +198,7 @@ export function getShellColumns({
     {
       id: "basicInfo",
       accessorKey: "basicInfo",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="System Info" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Basic Info" />,
       cell: ({ row }) => {
         const basicInfo = row.getValue("basicInfo") as Record<string, any> | undefined;
         if (!basicInfo || Object.keys(basicInfo).length === 0) {
@@ -179,11 +232,15 @@ export function getShellColumns({
         );
       },
       enableSorting: false,
+      size: 200,
+      meta: {
+        label: "Basic Info"
+      }
     },
     {
       id: "connectTime",
       accessorKey: "connectTime",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Last Connected" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Last Connected" />,
       cell: ({ row }) => {
         const connectTime = row.getValue("connectTime") as string | undefined;
         return connectTime ? (
@@ -192,15 +249,21 @@ export function getShellColumns({
           <span className="text-sm text-muted-foreground">Never connected</span>
         );
       },
+      meta: {
+        label: "Last Connected",
+      }
     },
     {
       id: "createTime",
       accessorKey: "createTime",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
       cell: ({ row }) => {
         const createTime = row.getValue("createTime") as string | undefined;
         return <span className="text-sm text-muted-foreground">{formatDate(createTime)}</span>;
       },
+      meta: {
+        label: "Created Time",
+      }
     },
     {
       id: "actions",
