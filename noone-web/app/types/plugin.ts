@@ -19,12 +19,23 @@ export interface PluginAction {
   resultSchema?: PluginResultSchema;
 }
 
+export type PluginRunMode = "sync" | "async" | "scheduled";
+
+export type TaskStatus =
+  | "SUBMITTED"
+  | "SCHEDULED"
+  | "RUNNING"
+  | "COMPLETED"
+  | "FAILED"
+  | "CANCELLED";
+
 export interface Plugin {
   id: string;
   name: string;
   version: string;
   language: string;
   type: string;
+  runMode?: PluginRunMode;
   actions?: Record<string, PluginAction>;
   createdAt: string;
   updatedAt: string;
