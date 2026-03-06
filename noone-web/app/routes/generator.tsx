@@ -5,7 +5,7 @@ import { Form, useActionData, useLoaderData, useNavigation } from "react-router"
 import { toast } from "sonner";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import { getAllProfiles } from "@/api/profile-api";
-import { generateWebShell, type WebShellGenerateResponse } from "@/api/webshell-api";
+import { generateWebShell, type WebShellFormat, type WebShellGenerateResponse } from "@/api/webshell-api";
 import CodeViewer from "@/components/memshell/code-viewer";
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
@@ -269,7 +269,9 @@ export default function Generator() {
 
 function WebShellPanel({ profiles }: { profiles: Profile[] }) {
   const [selectedProfileId, setSelectedProfileId] = useState<string>(profiles[0]?.id ?? "");
-  const [format, setFormat] = useState<"JSP" | "JSPX">("JSP");
+  const [format, setFormat] = useState<WebShellFormat>("JSP");
+  const [servletModule, setServletModule] = useState<"JAVAX" | "JAKARTA">("JAVAX");
+  const isJavaFormat = format === "JSP" || format === "JSPX";
   const [result, setResult] = useState<WebShellGenerateResponse | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -285,7 +287,11 @@ function WebShellPanel({ profiles }: { profiles: Profile[] }) {
     }
     setIsGenerating(true);
     try {
-      const response = await generateWebShell({ profileId: selectedProfileId, format });
+      const response = await generateWebShell({
+        profileId: selectedProfileId,
+        format,
+        ...(isJavaFormat ? { servletModule } : {}),
+      });
       if (response.success) {
         setResult(response.data);
         toast.success("WebShell generated successfully");
@@ -297,7 +303,7 @@ function WebShellPanel({ profiles }: { profiles: Profile[] }) {
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedProfileId, format]);
+  }, [selectedProfileId, format, servletModule, isJavaFormat]);
 
   const handleDownload = useCallback(() => {
     if (!result) return;
@@ -342,7 +348,7 @@ function WebShellPanel({ profiles }: { profiles: Profile[] }) {
               <FieldLabel>Format</FieldLabel>
               <RadioGroup
                 value={format}
-                onValueChange={(v) => setFormat(v as "JSP" | "JSPX")}
+                onValueChange={(v) => setFormat(v as WebShellFormat)}
                 className="flex h-9 flex-row items-center gap-4"
               >
                 <div className="flex items-center gap-2">
@@ -353,9 +359,34 @@ function WebShellPanel({ profiles }: { profiles: Profile[] }) {
                   <RadioGroupItem value="JSPX" id="fmt-jspx" />
                   <Label htmlFor="fmt-jspx">JSPX</Label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="ASPX" id="fmt-aspx" />
+                  <Label htmlFor="fmt-aspx">ASPX</Label>
+                </div>
               </RadioGroup>
             </FieldContent>
           </Field>
+          {isJavaFormat && (
+            <Field className="w-auto">
+              <FieldContent>
+                <FieldLabel>Servlet Module</FieldLabel>
+                <RadioGroup
+                  value={servletModule}
+                  onValueChange={(v) => setServletModule(v as "JAVAX" | "JAKARTA")}
+                  className="flex h-9 flex-row items-center gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="JAVAX" id="sm-javax" />
+                    <Label htmlFor="sm-javax">javax</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="JAKARTA" id="sm-jakarta" />
+                    <Label htmlFor="sm-jakarta">jakarta</Label>
+                  </div>
+                </RadioGroup>
+              </FieldContent>
+            </Field>
+          )}
           <Button onClick={handleGenerate} disabled={isGenerating} className="shrink-0">
             {isGenerating ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
             Generate
@@ -365,7 +396,7 @@ function WebShellPanel({ profiles }: { profiles: Profile[] }) {
       {result ? (
         <CodeViewer
           code={result.content}
-          language="java"
+          language={result.format === "ASPX" ? "csharp" : "java"}
           wrapLongLines={false}
           header={
             <span className="px-2 text-sm text-muted-foreground">{result.fileName}</span>
