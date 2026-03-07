@@ -17,7 +17,7 @@ export default [
     index("routes/home.tsx"),
     route("/shells", "routes/shell/shell-list.tsx"),
     route("/shells/create", "routes/shell/create-shell.tsx"),
-    route("/shells/edit/:shellId", "routes/shell/edit.$shellId.tsx"),
+    route("/shells/edit/:shellId", "routes/shell/create-shell.tsx", { id: "shells-edit" }),
     route("/shells/update/:shellId", "routes/shell/update.$shellId.tsx"),
     route("/generator", "routes/generator.tsx"),
     ...prefix("profiles", [

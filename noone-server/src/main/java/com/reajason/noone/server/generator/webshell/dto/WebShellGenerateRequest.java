@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class WebShellGenerateRequest {
     private Long profileId;
+    private String language;
     private String format;
     private String servletModule;
 }

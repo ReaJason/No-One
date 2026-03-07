@@ -56,18 +56,24 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const shellUrlParam = url.searchParams.get("shellUrl") ?? "";
   const profileIdParam = url.searchParams.get("profileId") ?? "";
+  const languageParamRaw = (url.searchParams.get("language") ?? "").trim().toLowerCase();
+  const languageParam = ["java", "nodejs", "dotnet"].includes(languageParamRaw)
+    ? (languageParamRaw as ShellLanguage)
+    : undefined;
   const projectIdParam = url.searchParams.get("projectId") ?? "";
   const parsedProjectId = Number(projectIdParam);
 
   return {
     shellUrlParam,
     profileIdParam,
+    languageParam,
     projects,
     profiles,
     initialProjectId: Number.isFinite(parsedProjectId) ? parsedProjectId : undefined,
   } as {
     shellUrlParam: string;
     profileIdParam: string;
+    languageParam?: ShellLanguage;
     projects: Project[];
     profiles: Profile[];
     initialProjectId?: number;
@@ -175,8 +181,9 @@ export default function CreateOrEditShell() {
     initialProjectId?: number;
     shellUrlParam?: string;
     profileIdParam?: string;
+    languageParam?: ShellLanguage;
   };
-  const { shell, projects, profiles, initialProjectId, shellUrlParam, profileIdParam } =
+  const { shell, projects, profiles, initialProjectId, shellUrlParam, profileIdParam, languageParam } =
     loaderData;
   const params = useParams();
   const isEdit = Boolean(params.shellId);
@@ -205,7 +212,7 @@ export default function CreateOrEditShell() {
   const [profileId, setProfileId] = useState<string>(
     shell ? String(shell.profileId) : (profileIdParam ?? ""),
   );
-  const [language, setLanguage] = useState<ShellLanguage>(shell?.language ?? "java");
+  const [language, setLanguage] = useState<ShellLanguage>(shell?.language ?? languageParam ?? "java");
   const [skipSslVerify, setSkipSslVerify] = useState(shell?.skipSslVerify ?? false);
   const [url, setUrl] = useState(shell?.url ?? shellUrlParam ?? "");
   const [isTesting, setIsTesting] = useState(false);

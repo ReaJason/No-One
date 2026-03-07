@@ -178,7 +178,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "username",
         accessorKey: "username",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="User" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} label="User" />,
         cell: ({ cell }) => cell.getValue<string>(),
         meta: {
           label: "User",
@@ -192,12 +192,12 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "roles",
         accessorKey: "roles",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Role" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Role" />,
         cell: ({ row }) => {
-          const roles = row.getValue("roles") as Role[];
+          const userRoles = row.getValue("roles") as Role[];
           return (
             <div className="flex flex-wrap gap-1">
-              {roles.map((role) => (
+              {userRoles.map((role) => (
                 <Badge key={role.id} variant="outline" className="text-xs">
                   {role.name}
                 </Badge>
@@ -210,7 +210,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
           variant: "select",
           options: roles.map((role) => ({
             label: role.name,
-            value: role.id,
+            value: String(role.id),
           })),
         },
         enableColumnFilter: true,
@@ -218,7 +218,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "enabled",
         accessorKey: "enabled",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
         cell: ({ row }) => {
           const status = row.getValue("enabled") as boolean;
           return <StatusBadge status={status} />;
@@ -236,8 +236,8 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
       {
         id: "createdAt",
         accessorKey: "createdAt",
-        header: ({ column }) => <DataTableColumnHeader column={column} title="Created Time" />,
-        cell: ({ cell }) => formatDate(cell.getValue<Date>()),
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
+        cell: ({ cell }) => formatDate(cell.getValue<string>()),
         meta: {
           label: "Created At",
           variant: "dateRange",

