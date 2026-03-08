@@ -2,7 +2,8 @@ package com.reajason.noone.server.generator.webshell;
 
 import com.reajason.noone.core.generator.NoOneConfig;
 import com.reajason.noone.core.generator.NoOneDotNetWebShellGenerator;
-import com.reajason.noone.core.generator.NoOneWebShellGenerator;
+import com.reajason.noone.core.generator.NoOneNodeJsWebShellGenerator;
+import com.reajason.noone.core.generator.NoOneJavaWebShellGenerator;
 import com.reajason.noone.core.generator.ServletModule;
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateRequest;
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateResponse;
@@ -20,6 +21,7 @@ public class WebShellGeneratorController {
 
     private static final Set<String> JAVA_FORMATS = Set.of("JSP", "JSPX");
     private static final Set<String> DOTNET_FORMATS = Set.of("ASPX", "ASHX", "ASMX", "SOAP");
+    private static final Set<String> NODEJS_FORMATS = Set.of("MJS");
 
     private final ProfileRepository profileRepository;
 
@@ -39,6 +41,7 @@ public class WebShellGeneratorController {
         return switch (language) {
             case "JAVA" -> generateJavaWebShell(config, request.getServletModule(), format);
             case "DOTNET" -> generateDotNetWebShell(config, format);
+            case "NODEJS" -> generateNodeJsWebShell(config, format);
             default -> throw new IllegalArgumentException("Unsupported webshell language: " + request.getLanguage());
         };
     }
@@ -50,7 +53,7 @@ public class WebShellGeneratorController {
 
         ServletModule servletModule = "JAKARTA".equalsIgnoreCase(servletModuleValue)
                 ? ServletModule.JAKARTA : ServletModule.JAVAX;
-        NoOneWebShellGenerator generator = new NoOneWebShellGenerator(config, servletModule);
+        NoOneJavaWebShellGenerator generator = new NoOneJavaWebShellGenerator(config, servletModule);
 
         boolean isJspx = "JSPX".equals(format);
         String content = isJspx ? generator.generateJspx() : generator.generateJsp();
@@ -73,6 +76,16 @@ public class WebShellGeneratorController {
             case "SOAP" -> generator.generateSoap();
             default -> throw new IllegalArgumentException("Unsupported dotnet webshell format: " + format);
         };
+        return new WebShellGenerateResponse(content, format, "shell." + format.toLowerCase(Locale.ROOT));
+    }
+
+    private WebShellGenerateResponse generateNodeJsWebShell(NoOneConfig config, String format) {
+        if (!NODEJS_FORMATS.contains(format)) {
+            throw new IllegalArgumentException("Unsupported format for nodejs webshell: " + format);
+        }
+
+        NoOneNodeJsWebShellGenerator generator = new NoOneNodeJsWebShellGenerator(config);
+        String content = generator.generateMjs();
         return new WebShellGenerateResponse(content, format, "shell." + format.toLowerCase(Locale.ROOT));
     }
 

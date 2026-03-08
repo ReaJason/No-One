@@ -2,8 +2,8 @@ import { type ApiResponse, apiClient } from "./api-client";
 
 const baseUrl = "/webshell";
 
-export type WebShellLanguage = "java" | "dotnet";
-export type WebShellFormat = "JSP" | "JSPX" | "ASPX" | "ASHX" | "ASMX" | "SOAP";
+export type WebShellLanguage = "java" | "dotnet" | "nodejs";
+export type WebShellFormat = "JSP" | "JSPX" | "ASPX" | "ASHX" | "ASMX" | "SOAP" | "MJS";
 
 export interface WebShellGenerateRequest {
   profileId: string;

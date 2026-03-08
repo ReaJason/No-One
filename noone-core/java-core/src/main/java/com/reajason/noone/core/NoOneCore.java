@@ -38,8 +38,8 @@ public class NoOneCore extends URLClassLoader {
     private static final int FAILURE = 1;
 
     // pluginName to pluginObject
-    public static Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
-    public static Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
+    public static final Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
+    public static final Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
 
     private static volatile NoOneCore pluginClassLoader;
 
@@ -181,7 +181,8 @@ public class NoOneCore extends URLClassLoader {
     @SuppressWarnings("unchecked")
     public Map<String, Object> run(Map<String, Object> args) throws Exception {
         Map<String, Object> result = new HashMap<String, Object>();
-        Object pluginObj = load(args, result);
+        String plugin = (String) args.get(PLUGIN);
+        Object pluginObj = loadedPluginCache.get(plugin);
         Map<String, Object> map = (Map<String, Object>) args.get(ARGS);
         if (map == null) {
             map = new HashMap<String, Object>();

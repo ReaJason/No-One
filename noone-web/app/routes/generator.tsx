@@ -86,29 +86,52 @@ const DOTNET_WEBSHELL_OPTIONS: Array<{ value: WebShellFormat; label: string; des
   { value: "SOAP", label: "SOAP", desc: "SOAP-triggered Web Service variant" },
 ];
 
+const NODEJS_WEBSHELL_OPTIONS: Array<{ value: WebShellFormat; label: string; desc: string }> = [
+  { value: "MJS", label: "MJS", desc: "ES Module script" },
+];
+
 const DOTNET_WEBSHELL_FORMATS = new Set<WebShellFormat>(
   DOTNET_WEBSHELL_OPTIONS.map((option) => option.value),
+);
+
+const NODEJS_WEBSHELL_FORMATS = new Set<WebShellFormat>(
+  NODEJS_WEBSHELL_OPTIONS.map((option) => option.value),
 );
 
 const WEBSHELL_LANGUAGE_OPTIONS: Array<{ value: WebShellLanguage; label: string; desc: string }> = [
   { value: "java", label: "Java", desc: "Generate JSP or JSPX scripts" },
   { value: "dotnet", label: ".NET", desc: "Generate ASPX, ASHX, ASMX, or SOAP scripts" },
+  { value: "nodejs", label: "Node.js", desc: "Generate MJS scripts" },
 ];
 
 function getDefaultWebShellFormat(language: WebShellLanguage): WebShellFormat {
-  return language === "dotnet" ? "ASPX" : "JSP";
+  switch (language) {
+    case "dotnet": return "ASPX";
+    case "nodejs": return "MJS";
+    default: return "JSP";
+  }
 }
 
 function getFormatsByLanguage(language: WebShellLanguage) {
-  return language === "dotnet" ? DOTNET_WEBSHELL_OPTIONS : JAVA_WEBSHELL_OPTIONS;
+  switch (language) {
+    case "dotnet": return DOTNET_WEBSHELL_OPTIONS;
+    case "nodejs": return NODEJS_WEBSHELL_OPTIONS;
+    default: return JAVA_WEBSHELL_OPTIONS;
+  }
 }
 
 function getWebShellLanguageByFormat(format: string): WebShellLanguage {
-  return DOTNET_WEBSHELL_FORMATS.has(format.toUpperCase() as WebShellFormat) ? "dotnet" : "java";
+  const upper = format.toUpperCase() as WebShellFormat;
+  if (DOTNET_WEBSHELL_FORMATS.has(upper)) return "dotnet";
+  if (NODEJS_WEBSHELL_FORMATS.has(upper)) return "nodejs";
+  return "java";
 }
 
 function getCodeViewerLanguage(format: string) {
-  return getWebShellLanguageByFormat(format) === "dotnet" ? "csharp" : "java";
+  const lang = getWebShellLanguageByFormat(format);
+  if (lang === "dotnet") return "csharp";
+  if (lang === "nodejs") return "javascript";
+  return "java";
 }
 
 export async function loader() {

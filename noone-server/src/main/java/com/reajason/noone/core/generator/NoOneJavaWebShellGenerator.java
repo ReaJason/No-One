@@ -25,7 +25,7 @@ import java.util.*;
  *
  * @author ReaJason
  */
-public class NoOneWebShellGenerator {
+public class NoOneJavaWebShellGenerator {
 
     private static final String JSP_TEMPLATE_PATH = "/templates/java/vul-java-server.jsp";
     private static final String JSPX_TEMPLATE_PATH = "/templates/java/vul-java-server.jspx";
@@ -33,11 +33,11 @@ public class NoOneWebShellGenerator {
     private final NoOneConfig config;
     private final ServletModule servletModule;
 
-    public NoOneWebShellGenerator(NoOneConfig config) {
+    public NoOneJavaWebShellGenerator(NoOneConfig config) {
         this(config, ServletModule.JAVAX);
     }
 
-    public NoOneWebShellGenerator(NoOneConfig config, ServletModule servletModule) {
+    public NoOneJavaWebShellGenerator(NoOneConfig config, ServletModule servletModule) {
         this.config = Objects.requireNonNull(config, "config");
         this.servletModule = Objects.requireNonNull(servletModule, "servletModule");
     }
@@ -582,7 +582,7 @@ public class NoOneWebShellGenerator {
     // ==================== Utilities ====================
 
     private static String loadTemplate(String path) {
-        try (InputStream in = NoOneWebShellGenerator.class.getResourceAsStream(path)) {
+        try (InputStream in = NoOneJavaWebShellGenerator.class.getResourceAsStream(path)) {
             if (in == null) {
                 throw new IllegalStateException("Template not found: " + path);
             }
