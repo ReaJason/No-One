@@ -1,17 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>dotnet_core</RootNamespace>
-    <AssemblyName>dotnet-system-info</AssemblyName>
-    <PluginId>system-info</PluginId>
+    <AssemblyName>dotnet-command-execute</AssemblyName>
+    <PluginId>command-execute</PluginId>
     <PluginBase64Output>$(MSBuildProjectDirectory)/build/$(PluginId).base64</PluginBase64Output>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="dotnet-system-info.cs" />
-    <Compile Include="runner/**/*.cs" />
+    <Compile Include="dotnet-command-execute.cs" />
   </ItemGroup>
 
   <UsingTask

@@ -1,17 +1,21 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>dotnet_core</RootNamespace>
-    <AssemblyName>dotnet-system-info</AssemblyName>
-    <PluginId>system-info</PluginId>
+    <AssemblyName>dotnet-file-manager</AssemblyName>
+    <PluginId>file-manager</PluginId>
     <PluginBase64Output>$(MSBuildProjectDirectory)/build/$(PluginId).base64</PluginBase64Output>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="dotnet-system-info.cs" />
-    <Compile Include="runner/**/*.cs" />
+    <Compile Include="dotnet-file-manager.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
+    <PackageReference Include="System.IO.Compression.ZipFile" Version="4.3.0" />
   </ItemGroup>
 
   <UsingTask

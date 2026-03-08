@@ -17,5 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../dotnet-plugins/dotnet-plugins.csproj" />
+    <ProjectReference Include="../dotnet-plugins/dotnet-command-execute.csproj" />
+    <ProjectReference Include="../dotnet-plugins/dotnet-file-manager.csproj" />
   </ItemGroup>
 </Project>
