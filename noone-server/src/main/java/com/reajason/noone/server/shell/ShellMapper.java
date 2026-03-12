@@ -88,13 +88,14 @@ public class ShellMapper {
     public ShellResponse toResponse(Shell shell) {
         ShellResponse response = new ShellResponse();
         response.setId(shell.getId());
+        response.setName(shell.getName());
         response.setUrl(shell.getUrl());
         response.setLanguage(shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA);
         response.setStatus(shell.getStatus().name());
         response.setProjectId(shell.getProjectId());
-        response.setCreateTime(shell.getCreateTime());
-        response.setConnectTime(shell.getConnectTime());
-        response.setUpdateTime(shell.getUpdateTime());
+        response.setCreatedAt(shell.getCreatedAt());
+        response.setLastOnlineAt(shell.getLastOnlineAt());
+        response.setUpdatedAt(shell.getUpdatedAt());
 
         // New fields
         response.setProfileId(shell.getProfileId());

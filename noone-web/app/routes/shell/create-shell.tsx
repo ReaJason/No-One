@@ -1,5 +1,5 @@
-import { ArrowLeft, Edit, Plus, Wifi } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   Form,
@@ -8,14 +8,26 @@ import {
   useFetcher,
   useLoaderData,
   useNavigate,
+  useNavigation,
   useParams,
 } from "react-router";
 import { toast } from "sonner";
 import { createAuthFetch } from "@/api.server";
+import {
+  createShellConnection,
+  getShellConnectionById,
+  testShellConfig,
+  updateShellConnection,
+  type CreateShellConnectionRequest,
+  type TestShellConfigRequest,
+  type UpdateShellConnectionRequest,
+} from "@/api/shell-connection-api";
 import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
+import ShellFormActions from "@/components/shell/shell-form-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -37,14 +49,56 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import {
-  createShellConnection,
-  getShellConnectionById,
-  testShellConfig,
-} from "@/api/shell-connection-api";
 import type { Profile } from "@/types/profile";
 import type { Project } from "@/types/project";
 import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
+
+type LoaderData =
+  | {
+      shell: ShellConnection;
+      projects: Project[];
+      profiles: Profile[];
+    }
+  | {
+      shell?: undefined;
+      shellUrlParam: string;
+      profileIdParam: string;
+      languageParam?: ShellLanguage;
+      projects: Project[];
+      profiles: Profile[];
+      initialProjectId?: number;
+    };
+
+type ShellActionData = {
+  errors?: Record<string, string>;
+  success?: boolean;
+};
+
+type ShellFormSeed = {
+  name: string;
+  url: string;
+  projectId: string;
+  profileId: string;
+  language: ShellLanguage;
+  proxyUrl: string;
+  customHeaders: string;
+  connectTimeoutMs: string;
+  readTimeoutMs: string;
+  skipSslVerify: boolean;
+  maxRetries: string;
+  retryDelayMs: string;
+};
+
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
+const LANGUAGE_ITEMS: SelectOption[] = [
+  { label: "Java", value: "java" },
+  { label: "NodeJs", value: "nodejs" },
+  { label: "DotNet", value: "dotnet" },
+];
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const shellId = params.shellId;
@@ -59,170 +113,79 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
     if (!shell) {
       throw new Response("Shell connection not found", { status: 404 });
     }
-    return { shell, projects, profiles } as {
-      shell: ShellConnection;
-      projects: Project[];
-      profiles: Profile[];
-    };
+
+    return { shell, projects, profiles } satisfies LoaderData;
   }
 
   const url = new URL(request.url);
   const shellUrlParam = url.searchParams.get("shellUrl") ?? "";
   const profileIdParam = url.searchParams.get("profileId") ?? "";
   const languageParamRaw = (url.searchParams.get("language") ?? "").trim().toLowerCase();
-  const languageParam = ["java", "nodejs", "dotnet"].includes(languageParamRaw)
-    ? (languageParamRaw as ShellLanguage)
-    : undefined;
   const projectIdParam = url.searchParams.get("projectId") ?? "";
   const parsedProjectId = Number(projectIdParam);
-
   return {
     shellUrlParam,
     profileIdParam,
-    languageParam,
+    languageParam: isShellLanguage(languageParamRaw) ? languageParamRaw : undefined,
     projects,
     profiles,
-    initialProjectId: Number.isFinite(parsedProjectId) ? parsedProjectId : undefined,
-  } as {
-    shellUrlParam: string;
-    profileIdParam: string;
-    languageParam?: ShellLanguage;
-    projects: Project[];
-    profiles: Profile[];
-    initialProjectId?: number;
-  };
+    initialProjectId:
+      Number.isFinite(parsedProjectId) && parsedProjectId !== 0 ? parsedProjectId : undefined,
+  } satisfies LoaderData;
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
   const authFetch = createAuthFetch(request, context);
 
   if (intent === "test-config") {
-    const url = (formData.get("url") as string)?.trim();
-    const languageRaw = (formData.get("language") as string)?.trim();
-    const language = languageRaw as ShellLanguage;
-    const profileIdRaw = (formData.get("profileId") as string)?.trim();
-    const profileId = profileIdRaw ? Number(profileIdRaw) : undefined;
-    const proxyUrl = (formData.get("proxyUrl") as string)?.trim() || undefined;
-    const connectTimeoutMsRaw = (formData.get("connectTimeoutMs") as string)?.trim();
-    const readTimeoutMsRaw = (formData.get("readTimeoutMs") as string)?.trim();
-    const maxRetriesRaw = (formData.get("maxRetries") as string)?.trim();
-    const retryDelayMsRaw = (formData.get("retryDelayMs") as string)?.trim();
-    const skipSslVerify = formData.get("skipSslVerify") === "on";
-    const connectTimeoutMs = connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined;
-    const readTimeoutMs = readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined;
-    const maxRetries = maxRetriesRaw ? Number(maxRetriesRaw) : undefined;
-    const retryDelayMs = retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined;
-
-    if (!url || profileId === undefined || !Number.isFinite(profileId)) {
-      return { errors: { general: "URL and Profile are required to test connection" } };
-    }
-
-    const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
-    let customHeaders: Record<string, string> | undefined;
-    if (customHeadersRaw) {
-      try {
-        customHeaders = JSON.parse(customHeadersRaw);
-      } catch {
-        return { errors: { general: "Invalid JSON format for custom headers" } };
-      }
+    const parsed = parseTestConfigFormData(formData);
+    if (parsed.errors) {
+      return { errors: parsed.errors, success: false } satisfies ShellActionData;
     }
 
     try {
-      const result = await testShellConfig(
-        {
-          url,
-          language,
-          profileId,
-          proxyUrl,
-          customHeaders,
-          connectTimeoutMs,
-          readTimeoutMs,
-          skipSslVerify: skipSslVerify || undefined,
-          maxRetries,
-          retryDelayMs,
-        },
-        authFetch,
-      );
-      return { success: result.connected };
+      const result = await testShellConfig(parsed.payload, authFetch);
+      return { success: result.connected } satisfies ShellActionData;
     } catch (error: any) {
       return {
         errors: {
           general: error?.message || "Connection test failed",
         },
-      };
-    }
-  }
-
-  const name = (formData.get("name") as string)?.trim();
-  const url = (formData.get("url") as string)?.trim();
-  const languageRaw = (formData.get("language") as string)?.trim();
-  const language = languageRaw as ShellLanguage;
-  const group = (formData.get("group") as string)?.trim();
-  const projectIdRaw = (formData.get("projectId") as string)?.trim();
-  const projectId = projectIdRaw ? Number(projectIdRaw) : undefined;
-  const profileIdRaw = (formData.get("profileId") as string)?.trim();
-  const profileId = profileIdRaw ? Number(profileIdRaw) : undefined;
-
-  const proxyUrl = (formData.get("proxyUrl") as string)?.trim() || undefined;
-  const connectTimeoutMsRaw = (formData.get("connectTimeoutMs") as string)?.trim();
-  const readTimeoutMsRaw = (formData.get("readTimeoutMs") as string)?.trim();
-  const maxRetriesRaw = (formData.get("maxRetries") as string)?.trim();
-  const retryDelayMsRaw = (formData.get("retryDelayMs") as string)?.trim();
-  const connectTimeoutMs = connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined;
-  const readTimeoutMs = readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined;
-  const maxRetries = maxRetriesRaw ? Number(maxRetriesRaw) : undefined;
-  const retryDelayMs = retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined;
-  const skipSslVerify = formData.get("skipSslVerify") === "on";
-
-  const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
-  let customHeaders: Record<string, string> | undefined;
-  if (customHeadersRaw) {
-    try {
-      customHeaders = JSON.parse(customHeadersRaw);
-    } catch {
-      return {
-        errors: { customHeaders: "Invalid JSON format for custom headers" },
         success: false,
-      };
+      } satisfies ShellActionData;
     }
   }
 
-  const errors: Record<string, string> = {};
-  if (!url) errors.url = "URL is required";
-  if (profileId === undefined || !Number.isFinite(profileId)) {
-    errors.profileId = "Profile is required";
-  }
-  if (projectIdRaw && !Number.isFinite(projectId)) {
-    errors.projectId = "Project ID must be a number";
+  const shellId = params.shellId;
+
+  if (shellId) {
+    const parsed = parseShellFormData(formData, { isEdit: true });
+    if (parsed.errors) {
+      return { errors: parsed.errors, success: false } satisfies ShellActionData;
+    }
+
+    try {
+      await updateShellConnection(shellId, parsed.payload, authFetch);
+      return redirect("/shells");
+    } catch (error: any) {
+      return {
+        errors: {
+          general: error?.message || "Failed to update shell connection",
+        },
+        success: false,
+      } satisfies ShellActionData;
+    }
   }
 
-  if (Object.keys(errors).length > 0) return { errors, success: false };
-
-  if (profileId === undefined) {
-    return { errors: { profileId: "Profile is required" }, success: false };
+  const parsed = parseShellFormData(formData, { isEdit: false });
+  if (parsed.errors) {
+    return { errors: parsed.errors, success: false } satisfies ShellActionData;
   }
 
   try {
-    await createShellConnection(
-      {
-        name,
-        url,
-        language,
-        group: group || undefined,
-        projectId,
-        profileId,
-        proxyUrl,
-        customHeaders,
-        connectTimeoutMs,
-        readTimeoutMs,
-        skipSslVerify: skipSslVerify || undefined,
-        maxRetries,
-        retryDelayMs,
-      },
-      authFetch,
-    );
+    await createShellConnection(parsed.payload, authFetch);
     return redirect("/shells");
   } catch (error: any) {
     return {
@@ -230,7 +193,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
         general: error?.message || "Failed to create shell connection",
       },
       success: false,
-    };
+    } satisfies ShellActionData;
   }
 }
 
@@ -242,6 +205,7 @@ export const handle = createBreadcrumb(({ params }) => {
       to: `/shells/edit/${params.shellId}`,
     };
   }
+
   return {
     id: "shells-create",
     label: "Create Shell",
@@ -250,54 +214,103 @@ export const handle = createBreadcrumb(({ params }) => {
 });
 
 export default function CreateOrEditShell() {
-  const loaderData = useLoaderData() as {
-    shell?: ShellConnection;
-    projects: Project[];
-    profiles: Profile[];
-    initialProjectId?: number;
-    shellUrlParam?: string;
-    profileIdParam?: string;
-    languageParam?: ShellLanguage;
-  };
-  const {
-    shell,
-    projects,
-    profiles,
-    initialProjectId,
-    shellUrlParam,
-    profileIdParam,
-    languageParam,
-  } = loaderData;
+  const loaderData = useLoaderData() as LoaderData;
+  const actionData = useActionData() as ShellActionData | undefined;
+  const navigate = useNavigate();
   const params = useParams();
+  const shell = loaderData.shell;
   const isEdit = Boolean(params.shellId);
+  const hasPrefill = hasIncomingPrefill(loaderData);
 
-  const profileItems = profiles.map((profile) => ({
+  const profileItems = loaderData.profiles.map((profile) => ({
     label: `${profile.name} (${profile.protocolType})`,
     value: String(profile.id),
   }));
-  const projectItems = projects.map((project) => ({
+  const projectItems = loaderData.projects.map((project) => ({
     label: project.name,
     value: String(project.id),
   }));
-  const actionData = useActionData() as
-    | { errors?: Record<string, string>; success?: boolean }
-    | undefined;
-  const testFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
-  const errors = actionData?.errors;
-  const navigate = useNavigate();
+  console.log(projectItems);
 
-  const [projectId, setProjectId] = useState<string>(
-    shell?.projectId ? String(shell.projectId) : initialProjectId ? String(initialProjectId) : "",
+  const formSeed = getShellFormSeed(loaderData);
+  console.log(formSeed);
+  const formKey = shell
+    ? `edit:${shell.id}:${shell.updatedAt}`
+    : `create:${formSeed.url}:${formSeed.profileId}:${formSeed.language}:${formSeed.projectId}`;
+
+  return (
+    <div className="container mx-auto max-w-7xl p-6">
+      <section className="mb-8 rounded-2xl border border-border/70 bg-gradient-to-br from-muted/40 via-background to-background p-6 shadow-sm">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/shells")}
+          className="mb-4 flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Return to shell list
+        </Button>
+
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={isEdit ? "secondary" : "default"}>
+              {isEdit ? "Edit mode" : "New connection"}
+            </Badge>
+            {hasPrefill ? <Badge variant="outline">Pre-filled</Badge> : null}
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-balance">
+              {isEdit ? "Edit Shell" : "Create Shell"}
+            </h1>
+            <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
+              {shell
+                ? `Update shell #${shell.id} and verify the connection details before saving.`
+                : "Register a new shell connection with a clearer overview of runtime, profile, and transport settings."}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <ShellForm
+        key={formKey}
+        formSeed={formSeed}
+        errors={actionData?.errors}
+        isEdit={isEdit}
+        projectItems={projectItems}
+        profileItems={profileItems}
+        onCancel={() => navigate("/shells")}
+      />
+    </div>
   );
-  const [profileId, setProfileId] = useState<string>(
-    shell ? String(shell.profileId) : (profileIdParam ?? ""),
-  );
-  const [language, setLanguage] = useState<ShellLanguage>(
-    shell?.language ?? languageParam ?? "java",
-  );
-  const [skipSslVerify, setSkipSslVerify] = useState(shell?.skipSslVerify ?? false);
-  const [url, setUrl] = useState(shell?.url ?? shellUrlParam ?? "");
-  const [name, setName] = useState(shell?.name ?? "");
+}
+
+type ShellFormProps = {
+  formSeed: ShellFormSeed;
+  errors?: Record<string, string>;
+  isEdit: boolean;
+  projectItems: SelectOption[];
+  profileItems: SelectOption[];
+  onCancel: () => void;
+};
+
+function ShellForm({
+  formSeed,
+  errors,
+  isEdit,
+  projectItems,
+  profileItems,
+  onCancel,
+}: ShellFormProps) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const navigation = useNavigation();
+  const testFetcher = useFetcher<ShellActionData>();
+  const [projectId, setProjectId] = useState(formSeed.projectId);
+  const [profileId, setProfileId] = useState(formSeed.profileId);
+  const [language, setLanguage] = useState<ShellLanguage>(formSeed.language);
+  const [skipSslVerify, setSkipSslVerify] = useState(formSeed.skipSslVerify);
+
+  const isSubmitting =
+    navigation.state !== "idle" && navigation.formMethod?.toLowerCase() === "post";
   const isTesting = testFetcher.state !== "idle";
 
   useEffect(() => {
@@ -316,92 +329,103 @@ export default function CreateOrEditShell() {
   }, [testFetcher.data, testFetcher.state]);
 
   const handleTestConnection = () => {
-    if (!url || !profileId) {
-      toast.error("URL and Profile are required to test connection");
-      return;
-    }
-
-    const formElement = document.querySelector("form") as HTMLFormElement | null;
+    const formElement = formRef.current;
     if (!formElement) {
       toast.error("Unable to read shell form");
       return;
     }
 
     const formData = new FormData(formElement);
+    const currentUrl = readTrimmedField(formData, "url");
+    const currentProfileId = readTrimmedField(formData, "profileId");
+
+    if (!currentUrl || !currentProfileId) {
+      toast.error("URL and Profile are required to test connection");
+      return;
+    }
+
     formData.set("intent", "test-config");
     testFetcher.submit(formData, { method: "post" });
   };
 
-  const TitleIcon = isEdit ? Edit : Plus;
-  const pageTitle = isEdit ? "Edit Shell" : "Create Shell";
-  const submitLabel = isEdit ? "Update Shell" : "Create Shell";
-  const formAction = isEdit ? `/shells/update/${shell!.id}` : undefined;
-
   return (
-    <div className="container mx-auto max-w-6xl p-6">
-      <div className="mb-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/shells")}
-          className="mb-4 flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Return to shell list
-        </Button>
-
-        <h1 className="text-3xl font-bold text-balance">{pageTitle}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {isEdit ? (
-            <>
-              Update shell: <span className="font-semibold">#{shell!.id}</span>
-            </>
-          ) : (
-            "Register a new shell connection"
-          )}
-        </p>
-      </div>
+    <Form ref={formRef} method="post" className="space-y-6">
+      {errors?.general ? (
+        <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+          {errors.general}
+        </div>
+      ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TitleIcon className="h-5 w-5" />
-            Shell Information
-          </CardTitle>
+          <CardTitle>Basic Details</CardTitle>
+          <CardDescription>
+            Define the shell identity, runtime, and the profile used to communicate with it.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form method="post" action={formAction} className="space-y-6">
-            {errors?.general ? (
-              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {errors.general}
-              </div>
-            ) : null}
-
-            <FieldSet>
-              <FieldLegend>Basic</FieldLegend>
-              <FieldGroup>
+          <FieldSet>
+            <FieldLegend className="sr-only">Basic Details</FieldLegend>
+            <FieldGroup className="gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <Field data-invalid={Boolean(errors?.name)}>
-                  <FieldLabel htmlFor="url">Name *</FieldLabel>
+                  <FieldLabel htmlFor="name">Name *</FieldLabel>
                   <Input
                     id="name"
                     name="name"
-                    type="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    type="text"
+                    defaultValue={formSeed.name}
                     placeholder="TestShell"
                     aria-invalid={Boolean(errors?.name) || undefined}
+                    aria-describedby="name-description"
                     required
                   />
-                  <FieldDescription id="url-description">Shell Name for search.</FieldDescription>
+                  <FieldDescription id="name-description">Shell name for search.</FieldDescription>
                   <FieldError>{errors?.name}</FieldError>
                 </Field>
-                <Field data-invalid={Boolean(errors?.url)}>
+
+                <Field data-invalid={Boolean(errors?.language)}>
+                  <FieldLabel htmlFor="language">Language *</FieldLabel>
+                  <input type="hidden" name="language" value={language} />
+                  <Select
+                    items={LANGUAGE_ITEMS}
+                    value={language}
+                    onValueChange={(value) => {
+                      if (value && isShellLanguage(value)) {
+                        setLanguage(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      id="language"
+                      aria-invalid={Boolean(errors?.language) || undefined}
+                      className="w-full"
+                    >
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {LANGUAGE_ITEMS.map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    Language determines plugin runtime and encoding.
+                  </FieldDescription>
+                  <FieldError>{errors?.language}</FieldError>
+                </Field>
+
+                <Field data-invalid={Boolean(errors?.url)} className="md:col-span-2">
                   <FieldLabel htmlFor="url">Shell URL *</FieldLabel>
                   <Input
                     id="url"
                     name="url"
                     type="url"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
+                    defaultValue={formSeed.url}
                     placeholder="http://example.com/shell.jsp"
                     aria-invalid={Boolean(errors?.url) || undefined}
                     aria-describedby="url-description"
@@ -444,105 +468,71 @@ export default function CreateOrEditShell() {
                   <FieldError>{errors?.profileId}</FieldError>
                 </Field>
 
-                <Field data-invalid={Boolean(errors?.language)}>
-                  <FieldLabel htmlFor="language">Language *</FieldLabel>
-                  <input type="hidden" name="language" value={language} />
+                <Field data-invalid={Boolean(errors?.projectId)}>
+                  <FieldLabel htmlFor="projectId">Project</FieldLabel>
+                  <input type="hidden" name="projectId" value={projectId} />
                   <Select
-                    items={[
-                      { label: "Java", value: "java" },
-                      { label: "NodeJs", value: "nodejs" },
-                      { label: "DotNet", value: "dotnet" },
-                    ]}
-                    value={language}
-                    onValueChange={(value) => setLanguage(value as ShellLanguage)}
+                    items={projectItems}
+                    value={projectId}
+                    onValueChange={(value) => setProjectId(value ?? "")}
                   >
                     <SelectTrigger
-                      id="language"
-                      aria-invalid={Boolean(errors?.language) || undefined}
+                      id="projectId"
+                      aria-invalid={Boolean(errors?.projectId) || undefined}
                       className="w-full"
                     >
-                      <SelectValue placeholder="Select language" />
+                      <SelectValue placeholder="Select project" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectItem value="java">Java</SelectItem>
-                        <SelectItem value="nodejs">NodeJs</SelectItem>
-                        <SelectItem value="dotnet">DotNet</SelectItem>
+                        {projectItems.map((project) => (
+                          <SelectItem key={project.value} value={project.value}>
+                            {project.label}
+                          </SelectItem>
+                        ))}
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <FieldDescription>
-                    Language determines plugin runtime and encoding.
-                  </FieldDescription>
-                  <FieldError>{errors?.language}</FieldError>
+                  <FieldDescription>Optional grouping for organizing shells.</FieldDescription>
+                  <FieldError>{errors?.projectId}</FieldError>
                 </Field>
+              </div>
+            </FieldGroup>
+          </FieldSet>
+        </CardContent>
+      </Card>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Field data-invalid={Boolean(errors?.projectId)}>
-                    <FieldLabel htmlFor="projectId">Project</FieldLabel>
-                    <input type="hidden" name="projectId" value={projectId} />
-                    <Select
-                      items={projectItems}
-                      value={projectId}
-                      onValueChange={(value) => setProjectId(value ?? "")}
-                    >
-                      <SelectTrigger
-                        id="projectId"
-                        aria-invalid={Boolean(errors?.projectId) || undefined}
-                        className="w-full"
-                      >
-                        <SelectValue placeholder="Select project" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          {projectItems.map((project) => (
-                            <SelectItem key={project.value} value={project.value}>
-                              {project.label}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                    <FieldDescription>Optional grouping for organizing shells.</FieldDescription>
-                    <FieldError>{errors?.projectId}</FieldError>
-                  </Field>
-
-                  <Field>
-                    <FieldLabel htmlFor="group">Group</FieldLabel>
-                    <Input
-                      id="group"
-                      name="group"
-                      type="text"
-                      defaultValue={shell?.group || ""}
-                      placeholder="Optional group"
-                    />
-                  </Field>
-                </div>
-              </FieldGroup>
-            </FieldSet>
-
-            <FieldSet>
-              <FieldLegend>Connection</FieldLegend>
-              <FieldGroup>
-                <Field>
+      <Card>
+        <CardHeader>
+          <CardTitle>Connection Settings</CardTitle>
+          <CardDescription>
+            Tune transport behavior, proxy overrides, retries, and certificate validation.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FieldSet>
+            <FieldLegend className="sr-only">Connection Settings</FieldLegend>
+            <FieldGroup className="gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Field className="md:col-span-2">
                   <FieldLabel htmlFor="proxyUrl">Proxy URL</FieldLabel>
                   <Input
                     id="proxyUrl"
                     name="proxyUrl"
                     type="text"
-                    defaultValue={shell?.proxyUrl || ""}
+                    defaultValue={formSeed.proxyUrl}
                     placeholder="http://proxy:8080 or socks5://user:pass@proxy:1080"
                   />
                   <FieldDescription>Override the profile&apos;s proxy setting.</FieldDescription>
                 </Field>
 
-                <Field data-invalid={Boolean(errors?.customHeaders)}>
+                <Field data-invalid={Boolean(errors?.customHeaders)} className="md:col-span-2">
                   <FieldLabel htmlFor="customHeaders">Custom Headers (JSON)</FieldLabel>
                   <Input
                     id="customHeaders"
                     name="customHeaders"
                     type="text"
-                    defaultValue={shell?.customHeaders ? JSON.stringify(shell.customHeaders) : ""}
+                    defaultValue={formSeed.customHeaders}
                     placeholder='{"Cookie": "session=xxx", "Authorization": "Bearer xxx"}'
                     aria-invalid={Boolean(errors?.customHeaders) || undefined}
                   />
@@ -552,95 +542,306 @@ export default function CreateOrEditShell() {
                   <FieldError>{errors?.customHeaders}</FieldError>
                 </Field>
 
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="connectTimeoutMs">Connect Timeout (ms)</FieldLabel>
-                    <Input
-                      id="connectTimeoutMs"
-                      name="connectTimeoutMs"
-                      type="number"
-                      defaultValue={shell?.connectTimeoutMs || ""}
-                      placeholder="30000"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="readTimeoutMs">Read Timeout (ms)</FieldLabel>
-                    <Input
-                      id="readTimeoutMs"
-                      name="readTimeoutMs"
-                      type="number"
-                      defaultValue={shell?.readTimeoutMs || ""}
-                      placeholder="60000"
-                    />
-                  </Field>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="maxRetries">Max Retries</FieldLabel>
-                    <Input
-                      id="maxRetries"
-                      name="maxRetries"
-                      type="number"
-                      min="0"
-                      defaultValue={shell?.maxRetries || ""}
-                      placeholder="0"
-                    />
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="retryDelayMs">Retry Delay (ms)</FieldLabel>
-                    <Input
-                      id="retryDelayMs"
-                      name="retryDelayMs"
-                      type="number"
-                      min="0"
-                      defaultValue={shell?.retryDelayMs || ""}
-                      placeholder="1000"
-                    />
-                  </Field>
-                </div>
-
-                <Field orientation="horizontal">
-                  <input type="hidden" name="skipSslVerify" value={skipSslVerify ? "on" : "off"} />
-                  <Checkbox
-                    id="skipSslVerify"
-                    checked={skipSslVerify}
-                    onCheckedChange={(checked) => setSkipSslVerify(checked)}
+                <Field>
+                  <FieldLabel htmlFor="connectTimeoutMs">Connect Timeout (ms)</FieldLabel>
+                  <Input
+                    id="connectTimeoutMs"
+                    name="connectTimeoutMs"
+                    type="number"
+                    defaultValue={formSeed.connectTimeoutMs}
+                    placeholder="30000"
                   />
-                  <FieldContent>
-                    <FieldLabel htmlFor="skipSslVerify">
-                      Skip SSL certificate verification
-                    </FieldLabel>
-                    <FieldDescription>
-                      Enable for self-signed certificates (not recommended for production).
-                    </FieldDescription>
-                  </FieldContent>
                 </Field>
-              </FieldGroup>
-            </FieldSet>
+                <Field>
+                  <FieldLabel htmlFor="readTimeoutMs">Read Timeout (ms)</FieldLabel>
+                  <Input
+                    id="readTimeoutMs"
+                    name="readTimeoutMs"
+                    type="number"
+                    defaultValue={formSeed.readTimeoutMs}
+                    placeholder="60000"
+                  />
+                </Field>
 
-            <div className="flex gap-4 pt-4">
-              <Button type="submit" className="flex items-center gap-2">
-                <TitleIcon className="h-4 w-4" />
-                {submitLabel}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleTestConnection}
-                disabled={isTesting || !url || !profileId}
-                className="flex items-center gap-2"
-              >
-                <Wifi className={`h-4 w-4 ${isTesting ? "animate-pulse" : ""}`} />
-                {isTesting ? "Testing..." : "Test Connection"}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => navigate("/shells")}>
-                Cancel
-              </Button>
-            </div>
-          </Form>
+                <Field>
+                  <FieldLabel htmlFor="maxRetries">Max Retries</FieldLabel>
+                  <Input
+                    id="maxRetries"
+                    name="maxRetries"
+                    type="number"
+                    min="0"
+                    defaultValue={formSeed.maxRetries}
+                    placeholder="0"
+                  />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor="retryDelayMs">Retry Delay (ms)</FieldLabel>
+                  <Input
+                    id="retryDelayMs"
+                    name="retryDelayMs"
+                    type="number"
+                    min="0"
+                    defaultValue={formSeed.retryDelayMs}
+                    placeholder="1000"
+                  />
+                </Field>
+              </div>
+
+              <Field orientation="horizontal">
+                <input type="hidden" name="skipSslVerify" value={skipSslVerify ? "on" : "off"} />
+                <Checkbox
+                  id="skipSslVerify"
+                  checked={skipSslVerify}
+                  onCheckedChange={(checked) => setSkipSslVerify(checked === true)}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="skipSslVerify">Skip SSL certificate verification</FieldLabel>
+                  <FieldDescription>
+                    Enable for self-signed certificates (not recommended for production).
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+            </FieldGroup>
+          </FieldSet>
         </CardContent>
       </Card>
-    </div>
+
+      <ShellFormActions
+        isEdit={isEdit}
+        isSubmitting={isSubmitting}
+        isTesting={isTesting}
+        onCancel={onCancel}
+        onTestConnection={handleTestConnection}
+      />
+    </Form>
   );
+}
+
+function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
+  if (loaderData.shell) {
+    const shell = loaderData.shell;
+
+    return {
+      name: shell.name ?? "",
+      url: shell.url ?? "",
+      projectId: shell.projectId == null ? "" : String(shell.projectId),
+      profileId: String(shell.profileId),
+      language: shell.language,
+      proxyUrl: shell.proxyUrl ?? "",
+      customHeaders: shell.customHeaders ? JSON.stringify(shell.customHeaders) : "",
+      connectTimeoutMs: shell.connectTimeoutMs == null ? "" : String(shell.connectTimeoutMs),
+      readTimeoutMs: shell.readTimeoutMs == null ? "" : String(shell.readTimeoutMs),
+      skipSslVerify: shell.skipSslVerify ?? false,
+      maxRetries: shell.maxRetries == null ? "" : String(shell.maxRetries),
+      retryDelayMs: shell.retryDelayMs == null ? "" : String(shell.retryDelayMs),
+    };
+  }
+
+  const firstProfileId = loaderData.profiles[0]?.id;
+  const firstProjectId = loaderData.projects[0]?.id;
+
+  return {
+    name: "",
+    url: loaderData.shellUrlParam,
+    projectId:
+      loaderData.initialProjectId != null
+        ? String(loaderData.initialProjectId)
+        : firstProjectId != null
+          ? String(firstProjectId)
+          : "",
+    profileId: loaderData.profileIdParam || (firstProfileId != null ? String(firstProfileId) : ""),
+    language: loaderData.languageParam ?? "java",
+    proxyUrl: "",
+    customHeaders: "",
+    connectTimeoutMs: "",
+    readTimeoutMs: "",
+    skipSslVerify: false,
+    maxRetries: "",
+    retryDelayMs: "",
+  };
+}
+
+function hasIncomingPrefill(loaderData: LoaderData) {
+  return (
+    !loaderData.shell &&
+    Boolean(
+      loaderData.shellUrlParam ||
+      loaderData.profileIdParam ||
+      loaderData.languageParam ||
+      loaderData.initialProjectId != null,
+    )
+  );
+}
+
+function parseTestConfigFormData(
+  formData: FormData,
+):
+  | { payload: TestShellConfigRequest; errors?: undefined }
+  | { payload?: undefined; errors: Record<string, string> } {
+  const url = readTrimmedField(formData, "url");
+  const language = parseLanguage(readTrimmedField(formData, "language"));
+  const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
+  const proxyUrl = readTrimmedField(formData, "proxyUrl");
+  const connectTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "connectTimeoutMs"));
+  const readTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "readTimeoutMs"));
+  const maxRetries = parseFiniteNumber(readTrimmedField(formData, "maxRetries"));
+  const retryDelayMs = parseFiniteNumber(readTrimmedField(formData, "retryDelayMs"));
+  const skipSslVerify = formData.get("skipSslVerify") === "on";
+
+  if (!url || profileId === undefined) {
+    return { errors: { general: "URL and Profile are required to test connection" } };
+  }
+
+  const parsedHeaders = parseCustomHeaders(readTrimmedField(formData, "customHeaders"));
+  if (parsedHeaders.error) {
+    return { errors: { general: parsedHeaders.error } };
+  }
+
+  return {
+    payload: {
+      url,
+      language: language ?? "java",
+      profileId,
+      proxyUrl,
+      customHeaders: parsedHeaders.value,
+      connectTimeoutMs,
+      readTimeoutMs,
+      skipSslVerify: skipSslVerify || undefined,
+      maxRetries,
+      retryDelayMs,
+    },
+  };
+}
+
+function parseShellFormData(
+  formData: FormData,
+  options: { isEdit: true },
+):
+  | { payload: UpdateShellConnectionRequest; errors?: undefined }
+  | { payload?: undefined; errors: Record<string, string> };
+function parseShellFormData(
+  formData: FormData,
+  options: { isEdit: false },
+):
+  | { payload: CreateShellConnectionRequest; errors?: undefined }
+  | { payload?: undefined; errors: Record<string, string> };
+function parseShellFormData(
+  formData: FormData,
+  options: { isEdit: boolean },
+):
+  | { payload: CreateShellConnectionRequest | UpdateShellConnectionRequest; errors?: undefined }
+  | { payload?: undefined; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+  const name = readTrimmedField(formData, "name");
+  const url = readTrimmedField(formData, "url");
+  const language = parseLanguage(readTrimmedField(formData, "language"));
+  const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
+  const proxyUrl = readTrimmedField(formData, "proxyUrl");
+  const connectTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "connectTimeoutMs"));
+  const readTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "readTimeoutMs"));
+  const maxRetries = parseFiniteNumber(readTrimmedField(formData, "maxRetries"));
+  const retryDelayMs = parseFiniteNumber(readTrimmedField(formData, "retryDelayMs"));
+  const skipSslVerify = formData.get("skipSslVerify") === "on";
+  const projectIdRaw = readTrimmedField(formData, "projectId");
+
+  if (!name) errors.name = "Name is required";
+  if (!url) errors.url = "URL is required";
+  if (!language) errors.language = "Language is required";
+  if (profileId === undefined) {
+    errors.profileId = "Profile is required";
+  }
+
+  let projectId: number | null | undefined;
+  if (!projectIdRaw) {
+    projectId = options.isEdit ? null : undefined;
+  } else {
+    projectId = parseFiniteNumber(projectIdRaw);
+    if (projectId === undefined) {
+      errors.projectId = "Project ID must be a number";
+    }
+  }
+
+  const parsedHeaders = parseCustomHeaders(readTrimmedField(formData, "customHeaders"));
+  if (parsedHeaders.error) {
+    errors.customHeaders = parsedHeaders.error;
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { errors };
+  }
+
+  if (options.isEdit) {
+    return {
+      payload: {
+        name,
+        url,
+        language: language as ShellLanguage,
+        projectId,
+        profileId: profileId as number,
+        proxyUrl,
+        customHeaders: parsedHeaders.value,
+        connectTimeoutMs,
+        readTimeoutMs,
+        skipSslVerify: skipSslVerify || undefined,
+        maxRetries,
+        retryDelayMs,
+      },
+    };
+  }
+
+  return {
+    payload: {
+      name: name as string,
+      url: url as string,
+      language: language as ShellLanguage,
+      projectId: projectId ?? undefined,
+      profileId: profileId as number,
+      proxyUrl,
+      customHeaders: parsedHeaders.value,
+      connectTimeoutMs,
+      readTimeoutMs,
+      skipSslVerify: skipSslVerify || undefined,
+      maxRetries,
+      retryDelayMs,
+    },
+  };
+}
+
+function parseCustomHeaders(raw: string | undefined) {
+  if (!raw) {
+    return { value: undefined };
+  }
+
+  try {
+    return { value: JSON.parse(raw) as Record<string, string> };
+  } catch {
+    return { error: "Invalid JSON format for custom headers" };
+  }
+}
+
+function readTrimmedField(formData: FormData, name: string) {
+  const value = formData.get(name);
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function parseFiniteNumber(raw: string | undefined) {
+  if (!raw) {
+    return undefined;
+  }
+
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function parseLanguage(raw: string | undefined) {
+  return raw && isShellLanguage(raw) ? raw : undefined;
+}
+
+function isShellLanguage(value: string): value is ShellLanguage {
+  return value === "java" || value === "nodejs" || value === "dotnet";
 }

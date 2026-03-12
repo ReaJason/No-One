@@ -28,11 +28,10 @@ export interface ShellConnection {
   language: ShellLanguage;
   shellType: ShellType;
   status: ShellStatus;
-  group?: string;
   projectId?: number | null;
-  createTime: string;
-  connectTime?: string;
-  updateTime: string;
+  createdAt: string;
+  lastOnlineAt?: string;
+  updatedAt: string;
 
   // Profile related fields
   profileId: number;

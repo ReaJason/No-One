@@ -109,11 +109,8 @@ public class Shell {
     private Map<String, Object> basicInfo;
 
     @CreatedDate
-    @Column(name = "create_time", nullable = false, updatable = false)
-    private LocalDateTime createTime;
-
-    @Column(name = "connect_time")
-    private LocalDateTime connectTime;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Column(name = "last_online_at")
     private LocalDateTime lastOnlineAt;
@@ -122,8 +119,8 @@ public class Shell {
     private Long lastOperatorId;
 
     @LastModifiedDate
-    @Column(name = "update_time")
-    private LocalDateTime updateTime;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @Column(length = 2000)
     private String remark;

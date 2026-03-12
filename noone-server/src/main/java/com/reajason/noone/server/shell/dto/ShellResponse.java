@@ -15,14 +15,15 @@ import java.util.Map;
 @Data
 public class ShellResponse {
     private Long id;
+    private String name;
     private String url;
     private ShellLanguage language;
     private String shellType;
     private String status;
     private Long projectId;
-    private LocalDateTime createTime;
-    private LocalDateTime connectTime;
-    private LocalDateTime updateTime;
+    private LocalDateTime createdAt;
+    private LocalDateTime lastOnlineAt;
+    private LocalDateTime updatedAt;
 
     // Profile related fields
     private Long profileId;

@@ -116,7 +116,6 @@ export function createAuthFetch(
           setAuthRefreshPromise(null);
         }
       });
-      console.log("refresh successful");
 
       if (!newTokens) {
         console.debug("refresh failed no authenticated, so redirect");

@@ -163,7 +163,7 @@ public class ShellService {
 
             if (connected) {
                 shell.setStatus(ShellStatus.CONNECTED);
-                shell.setConnectTime(LocalDateTime.now());
+                shell.setLastOnlineAt(LocalDateTime.now());
             } else {
                 shell.setStatus(ShellStatus.ERROR);
             }

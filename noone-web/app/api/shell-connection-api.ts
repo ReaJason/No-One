@@ -57,7 +57,7 @@ export async function getShellConnections(
     projectId,
     page = 1,
     perPage = 10,
-    sortBy = "createTime",
+    sortBy = "createdAt",
     sortOrder = "desc",
   } = filters;
 

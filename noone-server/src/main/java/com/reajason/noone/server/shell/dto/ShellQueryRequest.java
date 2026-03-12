@@ -16,6 +16,6 @@ public class ShellQueryRequest {
     private Long projectId;
     private int page = 0;
     private int pageSize = 20;
-    private String sortBy = "createTime";
+    private String sortBy = "createdAt";
     private String sortOrder = "desc";
 }

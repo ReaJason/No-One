@@ -319,31 +319,31 @@ export function getShellColumns({
       },
     },
     {
-      id: "connectTime",
-      accessorKey: "connectTime",
-      header: ({ column }) => <DataTableColumnHeader column={column} label="Last Connected" />,
+      id: "lastOnlineAt",
+      accessorKey: "lastOnlineAt",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Last Online" />,
       cell: ({ row }) => {
-        const connectTime = row.getValue("connectTime") as string | undefined;
-        return connectTime ? (
-          <span className="text-sm text-muted-foreground">{formatDate(connectTime)}</span>
+        const lastOnlineAt = row.getValue("lastOnlineAt") as string | undefined;
+        return lastOnlineAt ? (
+          <span className="text-sm text-muted-foreground">{formatDate(lastOnlineAt)}</span>
         ) : (
-          <span className="text-sm text-muted-foreground">Never connected</span>
+          <span className="text-sm text-muted-foreground">Never online</span>
         );
       },
       meta: {
-        label: "Last Connected",
+        label: "Last Online",
       },
     },
     {
-      id: "createTime",
-      accessorKey: "createTime",
+      id: "createdAt",
+      accessorKey: "createdAt",
       header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
       cell: ({ row }) => {
-        const createTime = row.getValue("createTime") as string | undefined;
-        return <span className="text-sm text-muted-foreground">{formatDate(createTime)}</span>;
+        const createdAt = row.getValue("createdAt") as string | undefined;
+        return <span className="text-sm text-muted-foreground">{formatDate(createdAt)}</span>;
       },
       meta: {
-        label: "Created Time",
+        label: "Created At",
       },
     },
     {

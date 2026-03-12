@@ -22,7 +22,6 @@ export default [
     route("/shells", "routes/shell/shell-list.tsx"),
     route("/shells/create", "routes/shell/create-shell.tsx"),
     route("/shells/edit/:shellId", "routes/shell/create-shell.tsx", { id: "shells-edit" }),
-    route("/shells/update/:shellId", "routes/shell/update.$shellId.tsx"),
     route("/generator", "routes/generator.tsx", [
       index("routes/generator/memshell.tsx"),
       route("webshell", "routes/generator/webshell.tsx"),

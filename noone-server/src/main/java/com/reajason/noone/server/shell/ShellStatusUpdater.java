@@ -26,13 +26,13 @@ public class ShellStatusUpdater {
         updateStatus(shellId, ShellStatus.ERROR, null);
     }
 
-    private void updateStatus(Long shellId, ShellStatus status, LocalDateTime connectTime) {
+    private void updateStatus(Long shellId, ShellStatus status, LocalDateTime lastOnlineAt) {
         try {
             Shell shell = shellRepository.findById(shellId)
                     .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
             shell.setStatus(status);
-            if (connectTime != null) {
-                shell.setConnectTime(connectTime);
+            if (lastOnlineAt != null) {
+                shell.setLastOnlineAt(lastOnlineAt);
             }
             shellRepository.save(shell);
         } catch (Exception e) {
@@ -40,4 +40,3 @@ public class ShellStatusUpdater {
         }
     }
 }
-
