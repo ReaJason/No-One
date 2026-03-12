@@ -6,6 +6,7 @@ import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.User;
 import com.reajason.noone.server.admin.user.UserRepository;
+import com.reajason.noone.server.admin.user.UserStatus;
 import com.reajason.noone.server.admin.user.dto.ResetPasswordRequest;
 import com.reajason.noone.server.admin.user.dto.UserCreateRequest;
 import com.reajason.noone.server.admin.user.dto.UserResponse;
@@ -56,7 +57,7 @@ class UserControllerTest {
         UserCreateRequest request = new UserCreateRequest();
         request.setUsername("testuser");
         request.setPassword("password123");
-        request.setEnabled(true);
+        request.setStatus(UserStatus.ENABLED);
 
         // When
         ResponseEntity<UserResponse> response = restTemplate.postForEntity(
@@ -67,7 +68,7 @@ class UserControllerTest {
         UserResponse userResponse = response.getBody();
         assertThat(userResponse).isNotNull();
         assertThat(userResponse.getUsername()).isEqualTo("testuser");
-        assertThat(userResponse.isEnabled()).isTrue();
+        assertThat(userResponse.getStatus()).isEqualTo(UserStatus.ENABLED);
         assertThat(userResponse.getId()).isNotNull();
     }
 
@@ -88,7 +89,8 @@ class UserControllerTest {
         User existingUser = User.builder()
                 .username("testuser")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
+                .status(UserStatus.ENABLED)
                 .build();
         userRepository.save(existingUser);
 
@@ -107,7 +109,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -120,7 +122,7 @@ class UserControllerTest {
         UserResponse userResponse = response.getBody();
         assertThat(userResponse).isNotNull();
         assertThat(userResponse.getUsername()).isEqualTo("testuser");
-        assertThat(userResponse.isEnabled()).isTrue();
+        assertThat(userResponse.getStatus()).isEqualTo(UserStatus.ENABLED);
         assertThat(userResponse.getId()).isEqualTo(savedUser.getId());
     }
 
@@ -137,7 +139,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password(passwordEncoder.encode("oldpassword"))
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -165,7 +167,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("oldpassword")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -190,7 +192,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("oldpassword")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -233,7 +235,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("oldpassword")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -258,7 +260,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("oldpassword")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -283,7 +285,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("oldpassword")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -308,7 +310,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -340,12 +342,12 @@ class UserControllerTest {
         User user1 = User.builder()
                 .username("user1")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User user2 = User.builder()
                 .username("user2")
                 .password("password")
-                .enabled(false)
+                .status(UserStatus.DISABLED)
                 .build();
         userRepository.save(user1);
         userRepository.save(user2);
@@ -371,12 +373,12 @@ class UserControllerTest {
         User enabledUser = User.builder()
                 .username("enableduser")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User disabledUser = User.builder()
                 .username("disableduser")
                 .password("password")
-                .enabled(false)
+                .status(UserStatus.DISABLED)
                 .build();
         userRepository.save(enabledUser);
         userRepository.save(disabledUser);
@@ -400,7 +402,7 @@ class UserControllerTest {
         User user = User.builder()
                 .username("testuser")
                 .password("password")
-                .enabled(true)
+                .status(UserStatus.ENABLED)
                 .build();
         User savedUser = userRepository.save(user);
 
@@ -415,8 +417,8 @@ class UserControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         UserResponse userResponse = response.getBody();
         assertThat(userResponse).isNotNull();
-        assertThat(userResponse.isEnabled()).isFalse(); // Should be toggled from true to false
-    }
+        assertThat(userResponse.getStatus()).isEqualTo(UserStatus.DISABLED);
+        }
 
     @Test
     void toggleUserStatus_WithNonExistentId_ShouldReturnNotFound() {
@@ -438,7 +440,7 @@ class UserControllerTest {
         UserCreateRequest request = new UserCreateRequest();
         request.setUsername("testuser");
         request.setPassword("password123");
-        request.setEnabled(true);
+        request.setStatus(UserStatus.ENABLED);
         request.setRoleIds(Set.of(savedRole.getId()));
 
         // When

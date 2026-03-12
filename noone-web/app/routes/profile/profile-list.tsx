@@ -1,9 +1,10 @@
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
-import { getProfiles, loadProfileSearchParams } from "@/api/profile-api";
+import { createAuthFetch } from "@/api.server";
+import { deleteProfile, getProfiles, loadProfileSearchParams } from "@/api/profile-api";
+import type { PaginatedResponse } from "@/types/api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -14,18 +15,43 @@ import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import type { Profile } from "@/types/profile";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, protocolType, page, perPage, sortBy, sortOrder } = loadProfileSearchParams(request);
-  return {
-    profileResponse: getProfiles({
+  const authFetch = createAuthFetch(request, context);
+  const profileResponse = await getProfiles(
+    {
       name,
       protocolType,
       page,
       perPage,
       sortBy,
       sortOrder,
-    }),
+    },
+    authFetch,
+  );
+
+  return {
+    profileResponse: Promise.resolve(profileResponse),
   };
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  if (formData.get("intent") !== "delete") {
+    return { errors: { general: "Unsupported action" } };
+  }
+  const profileId = String(formData.get("profileId") ?? "").trim();
+  if (!profileId) {
+    return { errors: { general: "Invalid profile ID" } };
+  }
+
+  try {
+    const authFetch = createAuthFetch(request, context);
+    await deleteProfile(profileId, authFetch);
+    return { success: true };
+  } catch (error: any) {
+    return { errors: { general: error?.message || "Failed to delete profile" } };
+  }
 }
 
 export const handle = createBreadcrumb(() => ({

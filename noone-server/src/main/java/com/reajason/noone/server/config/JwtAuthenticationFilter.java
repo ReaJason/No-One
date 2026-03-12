@@ -1,6 +1,7 @@
 package com.reajason.noone.server.config;
 
 import com.reajason.noone.server.admin.user.UserService;
+import com.reajason.noone.server.admin.user.UserSessionService;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,11 +24,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final JwtConfig jwtConfig;
     private final UserService userService;
+    private final UserSessionService userSessionService;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil, JwtConfig jwtConfig, UserService userService) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, JwtConfig jwtConfig, UserService userService,
+            UserSessionService userSessionService) {
         this.jwtUtil = jwtUtil;
         this.jwtConfig = jwtConfig;
         this.userService = userService;
+        this.userSessionService = userSessionService;
     }
 
     @Override
@@ -38,21 +42,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = jwtUtil.getTokenFromHeader(authHeader);
 
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(token) && jwtUtil.isTokenNotExpired(token)) {
+            if (jwtUtil.validateToken(token)
+                    && jwtUtil.isTokenNotExpired(token)
+                    && "access".equals(jwtUtil.getTokenType(token))) {
                 try {
+                    String sessionId = jwtUtil.getSessionId(token);
                     String username = jwtUtil.getUsernameFromToken(token);
-                    if (username != null) {
+                    if (username != null && sessionId != null && userSessionService.isSessionValid(sessionId)) {
                         Set<GrantedAuthority> authorities = userService.getAuthorities(username);
-                        UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(username, null, authorities);
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                username, null, authorities);
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                        userSessionService.touchSession(
+                                sessionId,
+                                request.getRemoteAddr(),
+                                request.getHeader("User-Agent"),
+                                request.getHeader("User-Agent"));
                     }
                 } catch (Exception e) {
                     log.error("JWT authentication failed: {}", e.getMessage());
                     SecurityContextHolder.clearContext();
                 }
             } else {
-                log.debug("JWT token is invalid or expired");
+                log.info("JWT token is invalid, expired, or session revoked");
             }
         }
         filterChain.doFilter(request, response);

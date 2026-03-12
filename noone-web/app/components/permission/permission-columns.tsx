@@ -33,9 +33,7 @@ export const permissionColumns: ColumnDef<Permission>[] = [
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
+        checked={table.getIsAllPageRowsSelected() || table.getIsSomePageRowsSelected()}
         onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
         className="translate-y-0.5"
@@ -128,11 +126,7 @@ export const permissionColumns: ColumnDef<Permission>[] = [
                   View Roles
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setIsOpen(true)}
-                  className="text-destructive"
-                  disabled={permission.code === "system:manage"}
-                >
+                <DropdownMenuItem onClick={() => setIsOpen(true)} className="text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>

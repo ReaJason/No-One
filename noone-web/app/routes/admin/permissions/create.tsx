@@ -1,14 +1,15 @@
 import { ArrowLeft, Plus, Shield } from "lucide-react";
 import type { ActionFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useNavigate } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { createPermission } from "@/api/permission-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Permission } from "@/types/admin";
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
@@ -31,17 +32,16 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const permissionData = {
+    const authFetch = createAuthFetch(request, context);
+    const permissionData: Pick<Permission, "name" | "code"> = {
       name: name.trim(),
       code: code.trim(),
     };
 
-    await createPermission(permissionData);
-    toast.success("Permission created successfully");
+    await createPermission(permissionData, authFetch);
     return redirect("/admin/permissions");
   } catch (error: any) {
     console.error("Error creating permission:", error);
-    toast.error(error.message || "Failed to create permission");
     return {
       errors: { general: error.message || "Failed to create permission" },
       success: false,

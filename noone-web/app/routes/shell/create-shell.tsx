@@ -1,8 +1,17 @@
 import { ArrowLeft, Edit, Plus, Wifi } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router";
+import {
+  Form,
+  redirect,
+  useActionData,
+  useFetcher,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
 import { Button } from "@/components/ui/button";
@@ -37,12 +46,16 @@ import type { Profile } from "@/types/profile";
 import type { Project } from "@/types/project";
 import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const shellId = params.shellId;
-  const [projects, profiles] = await Promise.all([getAllProjects(), getAllProfiles()]);
+  const authFetch = createAuthFetch(request, context);
+  const [projects, profiles] = await Promise.all([
+    getAllProjects(authFetch),
+    getAllProfiles(authFetch),
+  ]);
 
   if (shellId) {
-    const shell = await getShellConnectionById(shellId);
+    const shell = await getShellConnectionById(shellId, authFetch);
     if (!shell) {
       throw new Response("Shell connection not found", { status: 404 });
     }
@@ -80,8 +93,69 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
+  const intent = formData.get("intent");
+  const authFetch = createAuthFetch(request, context);
+
+  if (intent === "test-config") {
+    const url = (formData.get("url") as string)?.trim();
+    const languageRaw = (formData.get("language") as string)?.trim();
+    const language = languageRaw as ShellLanguage;
+    const profileIdRaw = (formData.get("profileId") as string)?.trim();
+    const profileId = profileIdRaw ? Number(profileIdRaw) : undefined;
+    const proxyUrl = (formData.get("proxyUrl") as string)?.trim() || undefined;
+    const connectTimeoutMsRaw = (formData.get("connectTimeoutMs") as string)?.trim();
+    const readTimeoutMsRaw = (formData.get("readTimeoutMs") as string)?.trim();
+    const maxRetriesRaw = (formData.get("maxRetries") as string)?.trim();
+    const retryDelayMsRaw = (formData.get("retryDelayMs") as string)?.trim();
+    const skipSslVerify = formData.get("skipSslVerify") === "on";
+    const connectTimeoutMs = connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined;
+    const readTimeoutMs = readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined;
+    const maxRetries = maxRetriesRaw ? Number(maxRetriesRaw) : undefined;
+    const retryDelayMs = retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined;
+
+    if (!url || profileId === undefined || !Number.isFinite(profileId)) {
+      return { errors: { general: "URL and Profile are required to test connection" } };
+    }
+
+    const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
+    let customHeaders: Record<string, string> | undefined;
+    if (customHeadersRaw) {
+      try {
+        customHeaders = JSON.parse(customHeadersRaw);
+      } catch {
+        return { errors: { general: "Invalid JSON format for custom headers" } };
+      }
+    }
+
+    try {
+      const result = await testShellConfig(
+        {
+          url,
+          language,
+          profileId,
+          proxyUrl,
+          customHeaders,
+          connectTimeoutMs,
+          readTimeoutMs,
+          skipSslVerify: skipSslVerify || undefined,
+          maxRetries,
+          retryDelayMs,
+        },
+        authFetch,
+      );
+      return { success: result.connected };
+    } catch (error: any) {
+      return {
+        errors: {
+          general: error?.message || "Connection test failed",
+        },
+      };
+    }
+  }
+
+  const name = (formData.get("name") as string)?.trim();
   const url = (formData.get("url") as string)?.trim();
   const languageRaw = (formData.get("language") as string)?.trim();
   const language = languageRaw as ShellLanguage;
@@ -131,24 +205,26 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    await createShellConnection({
-      url,
-      language,
-      group: group || undefined,
-      projectId,
-      profileId,
-      proxyUrl,
-      customHeaders,
-      connectTimeoutMs,
-      readTimeoutMs,
-      skipSslVerify: skipSslVerify || undefined,
-      maxRetries,
-      retryDelayMs,
-    });
-    toast.success("Shell connection created successfully");
+    await createShellConnection(
+      {
+        name,
+        url,
+        language,
+        group: group || undefined,
+        projectId,
+        profileId,
+        proxyUrl,
+        customHeaders,
+        connectTimeoutMs,
+        readTimeoutMs,
+        skipSslVerify: skipSslVerify || undefined,
+        maxRetries,
+        retryDelayMs,
+      },
+      authFetch,
+    );
     return redirect("/shells");
   } catch (error: any) {
-    toast.error(error?.message || "Failed to create shell connection");
     return {
       errors: {
         general: error?.message || "Failed to create shell connection",
@@ -183,8 +259,15 @@ export default function CreateOrEditShell() {
     profileIdParam?: string;
     languageParam?: ShellLanguage;
   };
-  const { shell, projects, profiles, initialProjectId, shellUrlParam, profileIdParam, languageParam } =
-    loaderData;
+  const {
+    shell,
+    projects,
+    profiles,
+    initialProjectId,
+    shellUrlParam,
+    profileIdParam,
+    languageParam,
+  } = loaderData;
   const params = useParams();
   const isEdit = Boolean(params.shellId);
 
@@ -199,74 +282,54 @@ export default function CreateOrEditShell() {
   const actionData = useActionData() as
     | { errors?: Record<string, string>; success?: boolean }
     | undefined;
+  const testFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
   const errors = actionData?.errors;
   const navigate = useNavigate();
 
   const [projectId, setProjectId] = useState<string>(
-    shell?.projectId
-      ? String(shell.projectId)
-      : initialProjectId
-        ? String(initialProjectId)
-        : "",
+    shell?.projectId ? String(shell.projectId) : initialProjectId ? String(initialProjectId) : "",
   );
   const [profileId, setProfileId] = useState<string>(
     shell ? String(shell.profileId) : (profileIdParam ?? ""),
   );
-  const [language, setLanguage] = useState<ShellLanguage>(shell?.language ?? languageParam ?? "java");
+  const [language, setLanguage] = useState<ShellLanguage>(
+    shell?.language ?? languageParam ?? "java",
+  );
   const [skipSslVerify, setSkipSslVerify] = useState(shell?.skipSslVerify ?? false);
   const [url, setUrl] = useState(shell?.url ?? shellUrlParam ?? "");
-  const [isTesting, setIsTesting] = useState(false);
+  const [name, setName] = useState(shell?.name ?? "");
+  const isTesting = testFetcher.state !== "idle";
 
-  const handleTestConnection = async () => {
+  useEffect(() => {
+    if (testFetcher.state !== "idle" || !testFetcher.data) {
+      return;
+    }
+
+    if (testFetcher.data.success) {
+      toast.success("Connection test successful");
+      return;
+    }
+
+    if (testFetcher.data.errors?.general) {
+      toast.error(testFetcher.data.errors.general);
+    }
+  }, [testFetcher.data, testFetcher.state]);
+
+  const handleTestConnection = () => {
     if (!url || !profileId) {
       toast.error("URL and Profile are required to test connection");
       return;
     }
 
-    setIsTesting(true);
-    try {
-      const formElement = document.querySelector("form") as HTMLFormElement;
-      const formData = new FormData(formElement);
-      const languageRaw = (formData.get("language") as string)?.trim();
-      const language = languageRaw as ShellLanguage;
-
-      let customHeaders: Record<string, string> | undefined;
-      const customHeadersRaw = (formData.get("customHeaders") as string)?.trim();
-      if (customHeadersRaw) {
-        try {
-          customHeaders = JSON.parse(customHeadersRaw);
-        } catch {
-          toast.error("Invalid JSON format for custom headers");
-          setIsTesting(false);
-          return;
-        }
-      }
-
-      const connectTimeoutMsRaw = formData.get("connectTimeoutMs") as string;
-      const readTimeoutMsRaw = formData.get("readTimeoutMs") as string;
-      const maxRetriesRaw = formData.get("maxRetries") as string;
-      const retryDelayMsRaw = formData.get("retryDelayMs") as string;
-
-      const result = await testShellConfig({
-        url,
-        language,
-        profileId: Number(profileId),
-        proxyUrl: (formData.get("proxyUrl") as string)?.trim() || undefined,
-        customHeaders,
-        connectTimeoutMs: connectTimeoutMsRaw ? Number(connectTimeoutMsRaw) : undefined,
-        readTimeoutMs: readTimeoutMsRaw ? Number(readTimeoutMsRaw) : undefined,
-        skipSslVerify: skipSslVerify || undefined,
-        maxRetries: maxRetriesRaw ? Number(maxRetriesRaw) : undefined,
-        retryDelayMs: retryDelayMsRaw ? Number(retryDelayMsRaw) : undefined,
-      });
-      if (result.connected) {
-        toast.success("Connection test successful");
-      }
-    } catch (error: any) {
-      toast.error(error?.message || "Connection test failed");
-    } finally {
-      setIsTesting(false);
+    const formElement = document.querySelector("form") as HTMLFormElement | null;
+    if (!formElement) {
+      toast.error("Unable to read shell form");
+      return;
     }
+
+    const formData = new FormData(formElement);
+    formData.set("intent", "test-config");
+    testFetcher.submit(formData, { method: "post" });
   };
 
   const TitleIcon = isEdit ? Edit : Plus;
@@ -316,6 +379,21 @@ export default function CreateOrEditShell() {
             <FieldSet>
               <FieldLegend>Basic</FieldLegend>
               <FieldGroup>
+                <Field data-invalid={Boolean(errors?.name)}>
+                  <FieldLabel htmlFor="url">Name *</FieldLabel>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="TestShell"
+                    aria-invalid={Boolean(errors?.name) || undefined}
+                    required
+                  />
+                  <FieldDescription id="url-description">Shell Name for search.</FieldDescription>
+                  <FieldError>{errors?.name}</FieldError>
+                </Field>
                 <Field data-invalid={Boolean(errors?.url)}>
                   <FieldLabel htmlFor="url">Shell URL *</FieldLabel>
                   <Input
@@ -464,9 +542,7 @@ export default function CreateOrEditShell() {
                     id="customHeaders"
                     name="customHeaders"
                     type="text"
-                    defaultValue={
-                      shell?.customHeaders ? JSON.stringify(shell.customHeaders) : ""
-                    }
+                    defaultValue={shell?.customHeaders ? JSON.stringify(shell.customHeaders) : ""}
                     placeholder='{"Cookie": "session=xxx", "Authorization": "Bearer xxx"}'
                     aria-invalid={Boolean(errors?.customHeaders) || undefined}
                   />

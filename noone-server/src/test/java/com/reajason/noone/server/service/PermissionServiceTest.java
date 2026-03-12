@@ -364,6 +364,7 @@ class PermissionServiceTest {
         permissionRepository.save(permission2);
 
         PermissionQueryRequest request = new PermissionQueryRequest();
+        request.setCategory("user");
         request.setPage(0);
         request.setPageSize(10);
 
@@ -391,6 +392,7 @@ class PermissionServiceTest {
         permissionRepository.save(rolePermission);
 
         PermissionQueryRequest request = new PermissionQueryRequest();
+        request.setCategory("user");
         request.setPage(0);
         request.setPageSize(10);
 
@@ -421,6 +423,7 @@ class PermissionServiceTest {
         permissionRepository.save(permission2);
 
         PermissionQueryRequest request = new PermissionQueryRequest();
+        request.setCategory("user");
         request.setRoleId(adminRole.getId());
         request.setPage(0);
         request.setPageSize(10);
@@ -721,6 +724,7 @@ class PermissionServiceTest {
         permissionRepository.save(permission3);
 
         PermissionQueryRequest request = new PermissionQueryRequest();
+        request.setCategory("user");
         request.setRoleId(adminRole.getId());
         request.setPage(0);
         request.setPageSize(10);
@@ -734,9 +738,6 @@ class PermissionServiceTest {
         assertThat(result.getContent().get(0).getCode()).isEqualTo("user:create");
     }
 }
-
-
-
 
 
 

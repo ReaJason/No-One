@@ -2,7 +2,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useNavigate } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { createProfile } from "@/api/profile-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +45,7 @@ export async function loader(_args: LoaderFunctionArgs) {
   return {};
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const name = (formData.get("name") as string)?.trim();
   const password = (formData.get("password") as string) ?? "";
@@ -170,6 +170,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (Object.keys(errors).length > 0) return { errors, success: false };
 
   try {
+    const authFetch = createAuthFetch(request, context);
     const payload: CreateProfileRequest = {
       name,
       password,
@@ -179,11 +180,9 @@ export async function action({ request }: ActionFunctionArgs) {
       requestTransformations: requestTransformations.length ? requestTransformations : null,
       responseTransformations: responseTransformations.length ? responseTransformations : null,
     };
-    await createProfile(payload);
-    toast.success("Profile created successfully");
+    await createProfile(payload, authFetch);
     return redirect("/profiles");
   } catch (error: any) {
-    toast.error(error?.message || "Failed to create profile");
     return {
       errors: { general: error?.message || "Failed to create profile" },
       success: false,

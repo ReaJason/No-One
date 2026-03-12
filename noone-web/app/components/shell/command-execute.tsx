@@ -1,7 +1,8 @@
 import "@xterm/xterm/css/xterm.css";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as shellApi from "@/api/shell-api";
+import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
+import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
 
 interface CommandExecuteProps {
   shellId: number;
+  actionPath: string;
   osName?: string;
   cwdHint?: string;
 }
@@ -172,7 +174,12 @@ const getDefaultTemplateByOs = (osFamily: OsFamily): TemplatePreset | null => {
   return null;
 };
 
-export default function CommandExecute({ shellId, osName, cwdHint }: CommandExecuteProps) {
+export default function CommandExecute({
+  shellId,
+  actionPath,
+  osName,
+  cwdHint,
+}: CommandExecuteProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<{
     write: (data: string) => void;
@@ -190,6 +197,7 @@ export default function CommandExecute({ shellId, osName, cwdHint }: CommandExec
   const handleTerminalDataRef = useRef<(data: string) => void>(() => {});
   const loadedStorageKeyRef = useRef<string | null>(null);
   const { resolvedTheme, theme } = useTheme();
+  const { submit: submitCommandRequest } = useShellRouteFetcher<Record<string, unknown>>();
 
   const [configLoaded, setConfigLoaded] = useState(false);
   const [cwdInput, setCwdInput] = useState("");
@@ -399,13 +407,15 @@ export default function CommandExecute({ shellId, osName, cwdHint }: CommandExec
           requestArgs.charset = normalizedCharset;
         }
 
-        const data = await shellApi.dispatchPlugin({
-          id: shellId,
-          pluginId: "command-execute",
-          args: requestArgs,
-        });
-
-        const result = data?.data ?? data?.result ?? data;
+        const requestId = createShellRouteRequestId();
+        const result = await submitCommandRequest(
+          buildShellRouteFormData("run-command", requestArgs, requestId),
+          {
+            method: "post",
+            action: actionPath,
+          },
+          requestId,
+        );
         const stdout = toPrintable(result?.stdout);
         const stderr = toPrintable(result?.stderr);
         const error = toPrintable(result?.error);
@@ -459,9 +469,10 @@ export default function CommandExecute({ shellId, osName, cwdHint }: CommandExec
       cwdInput,
       enhanceStderr,
       enhanceStdout,
+      actionPath,
       parseTemplateArgs,
       parseTemplateEnv,
-      shellId,
+      submitCommandRequest,
       templateArgs,
       templateEnv,
       templateExecutable,

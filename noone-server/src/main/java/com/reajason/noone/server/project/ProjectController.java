@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -21,7 +22,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
-//    @PreAuthorize("hasAuthority('project:create')")
+    @PreAuthorize("@authorizationService.hasSystemPermission('project:create')")
     public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
         log.info("Creating project: {}", request.getName());
         ProjectResponse response = projectService.create(request);
@@ -29,14 +30,14 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
-//    @PreAuthorize("hasAuthority('project:read')")
+    @PreAuthorize("@authorizationService.canAccessProject(#id)")
     public ResponseEntity<ProjectResponse> getById(@PathVariable Long id) {
         log.info("Getting project by id: {}", id);
         return ResponseEntity.ok(projectService.getById(id));
     }
 
     @PutMapping("/{id}")
-//    @PreAuthorize("hasAuthority('project:update')")
+    @PreAuthorize("@authorizationService.hasSystemPermission('project:update')")
     public ResponseEntity<ProjectResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody ProjectUpdateRequest request) {
@@ -46,7 +47,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{id}")
-//    @PreAuthorize("hasAuthority('project:delete')")
+    @PreAuthorize("@authorizationService.hasSystemPermission('project:delete')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         log.info("Deleting project id: {}", id);
         projectService.delete(id);
@@ -54,10 +55,8 @@ public class ProjectController {
     }
 
     @GetMapping
-//    @PreAuthorize("hasAuthority('project:list')")
     public ResponseEntity<Page<ProjectResponse>> query(ProjectQueryRequest request) {
         return ResponseEntity.ok(projectService.query(request));
     }
 }
-
 

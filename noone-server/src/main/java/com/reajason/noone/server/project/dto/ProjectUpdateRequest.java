@@ -11,5 +11,3 @@ public class ProjectUpdateRequest {
     private String status;
     private Set<Long> memberIds;
 }
-
-

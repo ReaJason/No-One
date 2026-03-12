@@ -34,6 +34,25 @@ export interface ApiError {
   details?: any;
 }
 
+export class ApiClientError extends Error implements ApiError {
+  code?: number;
+  details?: any;
+
+  constructor(
+    message: string,
+    options: {
+      code?: number;
+      details?: any;
+      cause?: unknown;
+    } = {},
+  ) {
+    super(message, { cause: options.cause });
+    this.name = "ApiClientError";
+    this.code = options.code;
+    this.details = options.details;
+  }
+}
+
 export interface ApiClientConfig {
   baseURL: string;
   timeout?: number;
@@ -51,6 +70,65 @@ export interface RequestConfig {
   timeout?: number;
   retries?: number;
   retryDelay?: number;
+  auth?: RequestAuthConfig;
+}
+
+export interface RequestAuthConfig {
+  accessTokenOverride?: string;
+  serverCookieHeader?: string | null;
+  serverRequest?: Request;
+  skipAuthHeader?: boolean;
+}
+
+export function buildRequestConfig(request?: Request): Pick<RequestConfig, "headers"> {
+  return {};
+}
+
+export function mergeRequestConfig(
+  request: Request | undefined,
+  config: RequestConfig = {},
+): RequestConfig {
+  const requestConfig = buildRequestConfig(request);
+  return {
+    ...requestConfig,
+    ...config,
+    headers: {
+      ...requestConfig.headers,
+      ...config.headers,
+    },
+    auth: config.auth,
+  };
+}
+
+export async function buildServerRequestConfig(
+  request?: Request,
+): Promise<Pick<RequestConfig, "headers">> {
+  return {};
+}
+
+export async function mergeServerRequestConfig(
+  request: Request | undefined,
+  config: RequestConfig = {},
+): Promise<RequestConfig> {
+  if (!request) {
+    return mergeRequestConfig(undefined, config);
+  }
+
+  const cookieHeader = request.headers.get("Cookie");
+  const requestConfig = await buildServerRequestConfig(request);
+  return {
+    ...requestConfig,
+    ...config,
+    headers: {
+      ...requestConfig.headers,
+      ...config.headers,
+    },
+    auth: {
+      ...config.auth,
+      serverCookieHeader: cookieHeader,
+      serverRequest: request,
+    },
+  };
 }
 
 export function isAbortError(error: unknown): boolean {
@@ -97,6 +175,7 @@ export class ApiClient {
       timeout: this.config.timeout,
       retry: this.config.retries,
       retryDelay: this.config.retryDelay,
+      credentials: "include",
       headers: this.config.headers,
       onRequest: this.onRequest.bind(this),
       onRequestError: this.onRequestError.bind(this),
@@ -107,42 +186,36 @@ export class ApiClient {
 
   // 请求拦截器
   private async onRequest({ request, options }: any) {
+    const auth = options.auth as RequestAuthConfig | undefined;
+    const headers = new Headers(options.headers);
+
     // 添加认证 token
-    const token = this.getAuthToken();
-    if (token) {
-      options.headers = {
-        ...options.headers,
-        Authorization: `Bearer ${token}`,
-      };
+    if (!auth?.skipAuthHeader) {
+      let token: string | null = null;
+      if (auth?.accessTokenOverride) {
+        token = auth.accessTokenOverride;
+      }
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
     }
 
     // 添加请求 ID 用于追踪
-    options.headers = {
-      ...options.headers,
-      "X-Request-ID": this.generateRequestId(),
-    };
+    headers.set("X-Request-ID", this.generateRequestId());
 
-    console.log(`[API] ${options.method || "GET"} ${request}`, {
-      headers: options.headers,
-      params: options.params,
-      body: options.body,
-    });
+    options.headers = headers;
   }
 
   // 请求错误拦截器
   private onRequestError({ request, error }: any) {
     console.error(`[API] Request error for ${request}:`, error);
-    throw new Error(`Request failed: ${error.message}`);
+    throw new ApiClientError(`Request failed: ${error.message}`, {
+      cause: error,
+    });
   }
 
   // 响应拦截器
-  private onResponse({ request, response }: any) {
-    console.log(`[API] ${response.status} ${request}`, {
-      status: response.status,
-      statusText: response.statusText,
-      data: response._data,
-    });
-  }
+  private onResponse({ request, response }: any) {}
 
   // 响应错误拦截器
   private onResponseError({ request, response }: any) {
@@ -152,17 +225,17 @@ export class ApiClient {
       data: response._data,
     });
 
-    const error: ApiError = {
-      message:
-        response._data?.message || response._data?.error || response.statusText || "Unknown error",
-      code: response.status,
-      details: response._data,
-    };
+    const error = new ApiClientError(
+      response._data?.message || response._data?.error || response.statusText || "Unknown error",
+      {
+        code: response.status,
+        details: response._data,
+      },
+    );
 
     // 处理特定的 HTTP 状态码
     switch (response.status) {
       case 401:
-        this.handleUnauthorized();
         break;
       case 403:
         if (!response._data?.message && !response._data?.error) {
@@ -189,42 +262,9 @@ export class ApiClient {
     throw error;
   }
 
-  // 获取认证 token
-  private getAuthToken(): string | null {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("auth_token");
-    }
-    // 在 SSR 模式下，从 cookies 或其他服务端存储获取 token
-    return this.getTokenFromCookies();
-  }
-
-  // 从 cookies 获取 token（SSR 模式）
-  private getTokenFromCookies(): string | null {
-    if (typeof document !== "undefined") {
-      const cookies = document.cookie.split(";");
-      const tokenCookie = cookies.find((cookie) => cookie.trim().startsWith("auth_token="));
-      if (tokenCookie) {
-        return tokenCookie.split("=")[1];
-      }
-    }
-    return null;
-  }
-
   // 生成请求 ID
   private generateRequestId(): string {
     return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  // 处理未授权错误
-  private handleUnauthorized() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      // 清除 cookie
-      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
-      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-      // 重定向到登录页面
-      window.location.href = "/auth/login";
-    }
   }
 
   // 通用请求方法
@@ -239,6 +279,7 @@ export class ApiClient {
         timeout: config.timeout,
         retry: config.retries,
         retryDelay: config.retryDelay,
+        auth: config.auth,
       });
 
       return {
@@ -247,18 +288,8 @@ export class ApiClient {
         message: "Success",
       };
     } catch (error: any) {
-      console.error(`[API] Request failed for ${url}:`, error);
       if (isAbortError(error)) {
         throw error;
-      }
-
-      // 处理403错误，重定向到登录页面
-      if (error?.status === 403 || error?.statusCode === 403) {
-        console.warn("[API] 403 Forbidden detected, redirecting to login");
-        // 使用setTimeout避免在错误处理中直接导航
-        setTimeout(() => {
-          window.location.href = "/auth/login";
-        }, 100);
       }
 
       const details = error?.details;
@@ -405,24 +436,6 @@ export class ApiClient {
     }
   }
 
-  setAuthToken(token: string) {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("auth_token", token);
-      // 同时设置 cookie 以支持 SSR
-      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
-      document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Strict`;
-    }
-  }
-
-  clearAuthToken() {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("auth_token");
-      // 清除 cookie
-      // biome-ignore lint/suspicious/noDocumentCookie: Necessary for cookie management in SSR
-      document.cookie = "auth_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    }
-  }
-
   updateConfig(newConfig: Partial<ApiClientConfig>) {
     this.config = { ...this.config, ...newConfig };
     this.ofetchInstance = ofetch.create({
@@ -430,6 +443,7 @@ export class ApiClient {
       timeout: this.config.timeout,
       retry: this.config.retries,
       retryDelay: this.config.retryDelay,
+      credentials: "include",
       headers: this.config.headers,
       onRequest: this.onRequest.bind(this),
       onRequestError: this.onRequestError.bind(this),

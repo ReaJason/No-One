@@ -1,11 +1,13 @@
 package com.reajason.noone.server.admin.plugin.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 import java.util.Map;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PluginCreateRequest {
     @NotBlank
     private String id;

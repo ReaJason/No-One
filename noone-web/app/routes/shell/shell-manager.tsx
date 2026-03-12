@@ -1,24 +1,16 @@
 import { Separator } from "@radix-ui/react-separator";
-import {
-  ArrowLeft,
-  ClipboardList,
-  Database,
-  Files,
-  Info,
-  Loader,
-  Puzzle,
-  Terminal,
-} from "lucide-react";
+import { ArrowLeft, ClipboardList, Files, Info, Loader, Puzzle, Terminal } from "lucide-react";
 import type { ComponentType } from "react";
 import {
   Link,
-  NavLink,
   type LoaderFunctionArgs,
+  NavLink,
   Outlet,
   useLoaderData,
   useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -39,12 +31,13 @@ import {
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import type { ShellConnection } from "@/types/shell-connection";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;
   if (!shellId) {
     throw new Response("Invalid shell ID", { status: 400 });
   }
-  const shell = await getShellConnectionById(shellId);
+  const authFetch = createAuthFetch(request, context);
+  const shell = await getShellConnectionById(shellId, authFetch);
   if (!shell) {
     throw new Response("Shell connection not found", { status: 404 });
   }

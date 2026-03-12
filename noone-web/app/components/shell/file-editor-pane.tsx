@@ -187,10 +187,13 @@ export default function FileEditorPane({
             </div>
           </div>
         ) : (
-          <> 
+          <>
             {MonacoEditor && !monacoLoadError ? (
               <MonacoEditor
-                className={cn("h-full transition-opacity duration-200", isLoading ? "opacity-0" : "opacity-100")}
+                className={cn(
+                  "h-full transition-opacity duration-200",
+                  isLoading ? "opacity-0" : "opacity-100",
+                )}
                 path={filePath}
                 defaultLanguage={language}
                 defaultValue={value}

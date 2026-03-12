@@ -1,7 +1,8 @@
 import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { CreateProfileRequest, Profile } from "@/types/profile";
-import type { PaginatedResponse } from "./api-client";
-import { apiClient } from "./api-client";
 
 const baseUrl = "/profiles";
 
@@ -25,30 +26,47 @@ export const loadProfileSearchParams = createLoader({
 
 export async function getProfiles(
   filters: ProfileSearchParams,
+  authFetch: AuthFetch,
 ): Promise<PaginatedResponse<Profile>> {
-  return await apiClient.getPaginated<Profile>(baseUrl, filters);
+  const response = await authFetch<ServerPaginatedResponse<Profile>>(baseUrl, {
+    query: { ...filters, page: (filters.page ?? 1) - 1, pageSize: filters.perPage },
+  });
+  return mapPaginatedResponse(response);
 }
 
-export async function getProfileById(id: string): Promise<Profile | null> {
-  return (await apiClient.get<Profile>(`${baseUrl}/${id}`)).data;
+export async function getProfileById(id: string, authFetch: AuthFetch): Promise<Profile | null> {
+  return await authFetch<Profile>(`${baseUrl}/${id}`);
 }
 
-export async function createProfile(payload: CreateProfileRequest): Promise<Profile> {
-  return (await apiClient.post<Profile>(baseUrl, payload)).data;
+export async function createProfile(
+  payload: CreateProfileRequest,
+  authFetch: AuthFetch,
+): Promise<Profile> {
+  return await authFetch<Profile>(baseUrl, {
+    method: "POST",
+    body: payload,
+  });
 }
 
 export async function updateProfile(
   id: string,
   payload: Partial<CreateProfileRequest>,
+  authFetch: AuthFetch,
 ): Promise<Profile | null> {
-  return (await apiClient.put<Profile>(`${baseUrl}/${id}`, payload)).data;
+  return await authFetch<Profile>(`${baseUrl}/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
 }
 
-export async function deleteProfile(id: string): Promise<boolean> {
-  await apiClient.delete(`${baseUrl}/${id}`);
+export async function deleteProfile(id: string, authFetch: AuthFetch): Promise<boolean> {
+  await authFetch(`${baseUrl}/${id}`, { method: "DELETE" });
   return true;
 }
 
-export async function getAllProfiles(): Promise<Profile[]> {
-  return (await apiClient.getPaginated<Profile>(baseUrl, { page: 1, perPage: 1000 })).content;
+export async function getAllProfiles(authFetch: AuthFetch): Promise<Profile[]> {
+  const response = await authFetch<ServerPaginatedResponse<Profile>>(baseUrl, {
+    query: { page: 0, pageSize: 1000 },
+  });
+  return response.content;
 }

@@ -77,9 +77,11 @@ export function useBreadcrumbs(): BreadcrumbDescriptor[] {
       return;
     }
 
+    const handle = match.handle as Partial<BreadcrumbHandle> | undefined;
+
     const crumbDefinitions = asArray(
-      typeof match.handle?.crumb === "function"
-        ? match.handle.crumb({
+      typeof handle?.crumb === "function"
+        ? handle.crumb({
             data: match.data,
             params: match.params,
             pathname: match.pathname,

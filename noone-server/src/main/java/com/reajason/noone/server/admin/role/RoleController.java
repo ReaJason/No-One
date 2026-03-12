@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Set;
@@ -28,6 +29,7 @@ public class RoleController {
     private final RoleService roleService;
 
     @PostMapping
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:create')")
     public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody RoleCreateRequest request) {
         log.info("Creating role with name: {}", request.getName());
         RoleResponse response = roleService.createRole(request);
@@ -35,12 +37,14 @@ public class RoleController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:read')")
     public ResponseEntity<RoleResponse> getRoleById(@PathVariable Long id) {
         log.info("Getting role by id: {}", id);
         return ResponseEntity.ok(roleService.getRoleById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
     public ResponseEntity<RoleResponse> updateRole(
             @PathVariable Long id,
             @Valid @RequestBody RoleUpdateRequest request) {
@@ -50,6 +54,7 @@ public class RoleController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:delete')")
     public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
         log.info("Deleting role with id: {}", id);
         roleService.deleteRole(id);
@@ -57,12 +62,14 @@ public class RoleController {
     }
 
     @GetMapping
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:list')")
     public ResponseEntity<Page<RoleResponse>> queryRoles(RoleQueryRequest request) {
         log.info("Querying roles with params: {}", request);
         return ResponseEntity.ok(roleService.queryRoles(request));
     }
 
     @PutMapping("/{id}/permissions")
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
     public ResponseEntity<RoleResponse> assignPermissions(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds) {
@@ -72,6 +79,7 @@ public class RoleController {
     }
 
     @DeleteMapping("/{id}/permissions")
+    @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
     public ResponseEntity<RoleResponse> removePermissions(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds) {

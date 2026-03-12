@@ -1,9 +1,9 @@
 import type { ActionFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { updatePermission } from "@/api/permission-api";
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
   const permissionId = parseInt(params.permissionId as string, 10);
 
   if (Number.isNaN(permissionId)) {
@@ -32,17 +32,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   try {
+    const authFetch = createAuthFetch(request, context);
     const permissionData = {
       name: name.trim(),
       code: code.trim(),
     };
 
-    await updatePermission(permissionId, permissionData);
-    toast.success("Permission updated successfully");
+    await updatePermission(permissionId, permissionData, authFetch);
     return redirect("/admin/permissions");
   } catch (error: any) {
     console.error("Error updating permission:", error);
-    toast.error(error.message || "Failed to update permission");
     return {
       errors: { general: error.message || "Failed to update permission" },
       success: false,

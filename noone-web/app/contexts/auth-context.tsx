@@ -1,35 +1,33 @@
-import { useLoaderData } from "react-router";
-import type { AuthState } from "@/lib/auth-context";
-import type { User } from "@/types/admin";
+import { useCallback } from "react";
+import { useRouteLoaderData, useSubmit } from "react-router";
+import { type AuthState, EMPTY_AUTH_STATE } from "@/lib/authz";
 
-// 权限验证Hook - 基于loader数据
-export function useAuth(): AuthState {
-  const loaderData = useLoaderData() as { auth: AuthState } | undefined;
-  return loaderData?.auth ?? { user: null, isAuthenticated: false };
+export interface AuthLayoutLoaderData {
+  auth: AuthState;
 }
 
-// 便捷的Hook用于获取用户信息
-export function useUser(): User | null {
+export function useAuth(): AuthState {
+  const loaderData = useRouteLoaderData("app-layout") as AuthLayoutLoaderData | undefined;
+  return loaderData?.auth ?? EMPTY_AUTH_STATE;
+}
+
+export function useUser() {
   const { user } = useAuth();
   return user;
 }
 
-// 便捷的Hook用于检查认证状态
 export function useIsAuthenticated(): boolean {
   const { isAuthenticated } = useAuth();
   return isAuthenticated;
 }
 
-// 登出功能
 export function useLogout() {
-  const logout = async () => {
-    try {
-      // 在SSR模式下，登出需要重定向到登出页面
-      window.location.href = "/auth/logout";
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
+  const submit = useSubmit();
 
-  return logout;
+  return useCallback(async () => {
+    await submit(null, {
+      method: "post",
+      action: "/auth/logout",
+    });
+  }, [submit]);
 }

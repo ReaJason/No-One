@@ -2,6 +2,7 @@ import { ArrowLeft, Edit, FolderTree } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getAllPermissions } from "@/api/permission-api";
 import { getRoleById } from "@/api/role-api";
 import { Button } from "@/components/ui/button";
@@ -12,13 +13,17 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Permission, Role } from "@/types/admin";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const roleId = parseInt(params.roleId as string, 10);
   if (Number.isNaN(roleId)) {
     throw new Response("Invalid role ID", { status: 400 });
   }
 
-  const [role, permissions] = await Promise.all([getRoleById(roleId), getAllPermissions()]);
+  const authFetch = createAuthFetch(request, context);
+  const [role, permissions] = await Promise.all([
+    getRoleById(roleId, authFetch),
+    getAllPermissions(authFetch),
+  ]);
 
   if (!role) {
     throw new Response("Role not found", { status: 404 });

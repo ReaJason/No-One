@@ -1,19 +1,61 @@
 import { Puzzle, X } from "lucide-react";
 import { useCallback, useState } from "react";
-import { type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import PluginCatalog from "@/components/shell/plugin-catalog";
 import PluginTabPanel, { type PluginTabState } from "@/components/shell/plugin-tab-panel";
+import {
+  dispatchShellPluginFromRoute,
+  parseShellIdParam,
+  parseShellRouteFormData,
+  shellRouteError,
+  shellRouteSuccess,
+} from "@/lib/shell-route.server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Plugin } from "@/types/plugin";
 import { useShellManagerContext } from "./shell-manager-context";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string;
-  const shell = await getShellConnectionById(shellId);
-  const result = await pluginApi.getPlugins({ type: "Extension", language: shell.language });
+  const authFetch = createAuthFetch(request, context);
+  const shell = await getShellConnectionById(shellId, authFetch);
+  const result = await pluginApi.getPlugins(
+    { type: "Extension", language: shell.language },
+    authFetch,
+  );
   return { extensionPlugins: result.content };
+}
+
+export async function action({ context, params, request }: ActionFunctionArgs) {
+  try {
+    const shellId = parseShellIdParam(params.shellId);
+    const { intent, payload, requestId } = await parseShellRouteFormData<{
+      pluginId?: string;
+      action?: string;
+      args?: Record<string, unknown>;
+    }>(request);
+    if (intent !== "execute-plugin" && intent !== "cancel-plugin") {
+      return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
+    }
+    if (!payload.pluginId) {
+      return Response.json({ ok: false, error: "Missing pluginId", requestId }, { status: 400 });
+    }
+
+    const data = await dispatchShellPluginFromRoute(request, context, shellId, {
+      pluginId: payload.pluginId,
+      action: payload.action,
+      args: payload.args,
+    });
+    return shellRouteSuccess(data, requestId);
+  } catch (error) {
+    if (error instanceof Response) {
+      const message = (await error.text()) || error.statusText || "Invalid request";
+      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+    }
+    return shellRouteError(error, "Plugin execution failed");
+  }
 }
 
 export default function ShellExtensionsRoute() {
@@ -118,7 +160,8 @@ export default function ShellExtensionsRoute() {
               {pluginStates[plugin.id] && (
                 <PluginTabPanel
                   plugin={plugin}
-                  shellId={shell.id}
+                  actionPath={`/shells/${shell.id}/extensions`}
+                  statusPath={`/shells/${shell.id}/extensions/status`}
                   state={pluginStates[plugin.id]}
                   onStateChange={(update) => updatePluginState(plugin.id, update)}
                 />

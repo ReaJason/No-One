@@ -1,9 +1,9 @@
 import type { ActionFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { updateRole } from "@/api/role-api";
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
   const roleId = parseInt(params.roleId as string, 10);
   if (Number.isNaN(roleId)) {
     throw new Response("Invalid role ID", { status: 400 });
@@ -23,12 +23,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   try {
-    await updateRole(roleId, { name, permissionIds });
-    toast.success("Role updated successfully");
+    const authFetch = createAuthFetch(request, context);
+    await updateRole(roleId, { name, permissionIds }, authFetch);
     return redirect("/admin/roles");
   } catch (error: any) {
     console.error("Error updating role:", error);
-    toast.error(error?.message || "Failed to update role");
     return {
       errors: { general: error?.message || "Failed to update role" },
       success: false,

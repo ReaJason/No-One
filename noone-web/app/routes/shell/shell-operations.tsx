@@ -1,6 +1,7 @@
 import { CheckCircle, ChevronLeft, ChevronRight, Filter, XCircle } from "lucide-react";
 import { useState } from "react";
 import { type LoaderFunctionArgs, useLoaderData, useSearchParams } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import * as opLogApi from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ function summarizeArgs(log: ShellOperationLog): string | null {
   return null;
 }
 
-export async function loader({ params, request }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string;
   const url = new URL(request.url);
   const page = Number(url.searchParams.get("page")) || 1;
@@ -59,7 +60,8 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
     filters.pluginId = pluginId;
   }
 
-  const result = await opLogApi.getShellOperationLogs(Number(shellId), filters);
+  const authFetch = createAuthFetch(request, context);
+  const result = await opLogApi.getShellOperationLogs(Number(shellId), filters, authFetch);
   return {
     logs: result.content,
     totalPages: result.totalPages,

@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -27,17 +28,20 @@ public class ShellController {
     private final ShellService shellService;
 
     @PostMapping
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:create')")
     public ResponseEntity<ShellResponse> create(@Valid @RequestBody ShellCreateRequest request) {
         ShellResponse response = shellService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:list')")
     public ResponseEntity<ShellResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(shellService.getById(id));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:update')")
     public ResponseEntity<ShellResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody ShellUpdateRequest request) {
@@ -46,6 +50,7 @@ public class ShellController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:delete')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         shellService.delete(id);
         return ResponseEntity.noContent().build();
@@ -57,6 +62,7 @@ public class ShellController {
     }
 
     @PostMapping("/{id}/test")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:test')")
     public ResponseEntity<Map<String, Object>> testConnection(@PathVariable Long id) {
         boolean connected = shellService.testConnection(id);
         return ResponseEntity.ok(Map.of(
@@ -72,6 +78,7 @@ public class ShellController {
     }
 
     @PostMapping("/{id}/dispatch")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
     public ResponseEntity<Map<String, Object>> dispatch(@PathVariable Long id, @RequestBody ShellPluginDispatchRequest pluginDispatchRequest) {
         Map<String, Object> args = pluginDispatchRequest.getArgs();
         if (StringUtils.isNotBlank(pluginDispatchRequest.getAction())) {

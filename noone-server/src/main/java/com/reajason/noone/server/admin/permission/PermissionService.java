@@ -37,13 +37,10 @@ public class PermissionService {
         }
 
         Permission permission = permissionMapper.toEntity(request);
-
-        if (!CollectionUtils.isEmpty(request.getRoleIds())) {
-            Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
-            permission.setRoles(roles);
-        }
-
         Permission savedPermission = permissionRepository.save(permission);
+        if (!CollectionUtils.isEmpty(request.getRoleIds())) {
+            updateOwningRoles(savedPermission, new HashSet<>(roleRepository.findAllById(request.getRoleIds())));
+        }
         return permissionMapper.toResponse(savedPermission);
     }
 
@@ -65,12 +62,8 @@ public class PermissionService {
 
         permissionMapper.updateEntity(permission, request);
 
-        // 处理角色关联更新
         if (request.getRoleIds() != null) {
-            Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
-            permission.setRoles(roles);
-        } else {
-            permission.setRoles(new HashSet<>(permission.getRoles()));
+            updateOwningRoles(permission, new HashSet<>(roleRepository.findAllById(request.getRoleIds())));
         }
 
         Permission savedPermission = permissionRepository.save(permission);
@@ -96,6 +89,7 @@ public class PermissionService {
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize(), sort);
 
         Specification<Permission> spec = PermissionSpecifications.hasName(request.getName())
+                .and(PermissionSpecifications.hasCategory(request.getCategory()))
                 .and(PermissionSpecifications.hasRole(request.getRoleId()));
 
         return permissionRepository.findAll(spec, pageable).map(permissionMapper::toResponse);
@@ -112,9 +106,7 @@ public class PermissionService {
         Permission permission = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new IllegalArgumentException("权限不存在：" + permissionId));
 
-        Set<Role> roles = new HashSet<>(roleRepository.findAllById(roleIds));
-        permission.setRoles(roles);
-
+        updateOwningRoles(permission, new HashSet<>(roleRepository.findAllById(roleIds)));
         Permission savedPermission = permissionRepository.save(permission);
         return permissionMapper.toResponse(savedPermission);
     }
@@ -123,9 +115,28 @@ public class PermissionService {
         Permission permission = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new IllegalArgumentException("权限不存在：" + permissionId));
 
-        permission.setRoles(permission.getRoles().stream().filter(role -> !roleIds.contains(role.getId())).collect(Collectors.toSet()));
-
+        Set<Role> remainingRoles = roleRepository.findAll().stream()
+                .filter(role -> role.getPermissions().stream().anyMatch(existing -> existing.getId().equals(permissionId)))
+                .filter(role -> !roleIds.contains(role.getId()))
+                .collect(Collectors.toSet());
+        updateOwningRoles(permission, remainingRoles);
         Permission savedPermission = permissionRepository.save(permission);
         return permissionMapper.toResponse(savedPermission);
+    }
+
+    private void updateOwningRoles(Permission permission, Set<Role> targetRoles) {
+        Set<Role> currentRoles = roleRepository.findAll().stream()
+                .filter(role -> role.getPermissions().stream().anyMatch(existing -> existing.getId().equals(permission.getId())))
+                .collect(Collectors.toSet());
+
+        currentRoles.stream()
+                .filter(role -> !targetRoles.contains(role))
+                .forEach(role -> role.getPermissions().removeIf(existing -> existing.getId().equals(permission.getId())));
+
+        targetRoles.forEach(role -> role.getPermissions().add(permission));
+
+        roleRepository.saveAll(currentRoles);
+        roleRepository.saveAll(targetRoles);
+        permission.setRoles(targetRoles);
     }
 }

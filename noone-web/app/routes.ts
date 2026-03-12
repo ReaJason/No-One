@@ -1,4 +1,4 @@
-import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes";
+import { index, layout, prefix, route, type RouteConfig } from "@react-router/dev/routes";
 
 export default [
   route("/shells/:shellId/connect", "routes/shell/shell-connect.tsx"),
@@ -6,20 +6,27 @@ export default [
     index("routes/shell/shell-manager-index.tsx"),
     route("info", "routes/shell/shell-info.tsx"),
     route("files", "routes/shell/shell-files.tsx"),
+    route("files/data", "routes/shell/shell-files-data.ts"),
     route("command", "routes/shell/shell-command.tsx"),
     route("extensions", "routes/shell/shell-extensions.tsx"),
+    route("extensions/status", "routes/shell/shell-extension-task-status.ts"),
     route("operations", "routes/shell/shell-operations.tsx"),
   ]),
   route("/auth/login", "routes/auth/login.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),
+  route("/auth/setup", "routes/auth/setup/route.tsx"),
+  route("/auth/password-change", "routes/auth/password-change.tsx"),
   route("/test", "routes/test.tsx"),
-  layout("routes/layout.tsx", [
+  layout("routes/layout.tsx", { id: "app-layout" }, [
     index("routes/home.tsx"),
     route("/shells", "routes/shell/shell-list.tsx"),
     route("/shells/create", "routes/shell/create-shell.tsx"),
     route("/shells/edit/:shellId", "routes/shell/create-shell.tsx", { id: "shells-edit" }),
     route("/shells/update/:shellId", "routes/shell/update.$shellId.tsx"),
-    route("/generator", "routes/generator.tsx"),
+    route("/generator", "routes/generator.tsx", [
+      index("routes/generator/memshell.tsx"),
+      route("webshell", "routes/generator/webshell.tsx"),
+    ]),
     ...prefix("profiles", [
       index("routes/profile/profile-list.tsx"),
       route("/create", "routes/profile/create-profile.tsx"),

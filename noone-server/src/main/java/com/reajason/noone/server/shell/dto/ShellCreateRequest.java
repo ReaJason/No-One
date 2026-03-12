@@ -1,10 +1,9 @@
 package com.reajason.noone.server.shell.dto;
 
+import com.reajason.noone.server.shell.ShellLanguage;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import com.reajason.noone.server.shell.ShellLanguage;
 
 import java.util.Map;
 
@@ -16,6 +15,9 @@ import java.util.Map;
  */
 @Data
 public class ShellCreateRequest {
+    @NotBlank(message = "Name cannot be blank")
+    private String name;
+
     @NotBlank(message = "URL cannot be blank")
     private String url;
 

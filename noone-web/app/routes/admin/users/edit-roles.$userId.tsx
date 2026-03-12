@@ -1,21 +1,25 @@
 import { ArrowLeft, User, Users } from "lucide-react";
+import { useState } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { getUserById } from "@/api/user-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Role, User as UserType } from "@/types/admin";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const userId = parseInt(params.userId as string, 10);
 
   if (Number.isNaN(userId)) {
     throw new Response("Invalid user ID", { status: 400 });
   }
-  const [user, roles] = await Promise.all([getUserById(userId), getAllRoles()]);
+  const authFetch = createAuthFetch(request, context);
+  const [user, roles] = await Promise.all([getUserById(userId, authFetch), getAllRoles(authFetch)]);
 
   if (!user) {
     throw new Response("User not found", { status: 404 });
@@ -32,6 +36,7 @@ export default function EditUserRoles() {
   const navigate = useNavigate();
   const fetcher = useFetcher();
   const currentRoleIds = user.roles?.map((role) => role.id);
+  const [verificationPassword, setVerificationPassword] = useState("");
 
   return (
     <div className="container mx-auto max-w-2xl p-6">
@@ -78,7 +83,7 @@ export default function EditUserRoles() {
                     <Checkbox
                       id={`role-${role.id}`}
                       name="roleIds"
-                      value={role.id}
+                      value={String(role.id)}
                       defaultChecked={currentRoleIds?.includes(role.id)}
                       className="rounded border-gray-300"
                     />
@@ -93,6 +98,21 @@ export default function EditUserRoles() {
               )}
               <p className="text-sm text-muted-foreground">
                 Select one or more roles for this user
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="verificationPassword">Current admin password *</Label>
+              <Input
+                id="verificationPassword"
+                name="verificationPassword"
+                type="password"
+                required
+                value={verificationPassword}
+                onChange={(event) => setVerificationPassword(event.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                Role changes are treated as sensitive security updates
               </p>
             </div>
 

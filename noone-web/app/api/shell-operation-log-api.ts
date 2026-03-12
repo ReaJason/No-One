@@ -1,30 +1,38 @@
-import { apiClient, type PaginatedResponse } from "./api-client";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { ShellOperationLog, ShellOperationLogQuery } from "@/types/shell-operation-log";
 
 export async function getShellOperationLogs(
   shellId: number,
   filters: ShellOperationLogQuery = {},
+  authFetch: AuthFetch,
 ): Promise<PaginatedResponse<ShellOperationLog>> {
-  return apiClient.getPaginated<ShellOperationLog>(`/shells/${shellId}/operations`, {
-    page: filters.page,
-    perPage: filters.pageSize,
-    sortBy: filters.sortBy,
-    sortOrder: filters.sortOrder,
-    pluginId: filters.pluginId,
-    operation: filters.operation,
-    success: filters.success,
-  });
+  const response = await authFetch<ServerPaginatedResponse<ShellOperationLog>>(
+    `/shells/${shellId}/operations`,
+    {
+      query: {
+        page: (filters.page ?? 1) - 1,
+        pageSize: filters.pageSize,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
+        pluginId: filters.pluginId,
+        operation: filters.operation,
+        success: filters.success,
+      },
+    },
+  );
+  return mapPaginatedResponse(response);
 }
 
 export async function getLatestShellOperation(
   shellId: number,
   pluginId: string,
+  authFetch: AuthFetch,
 ): Promise<ShellOperationLog | null> {
-  const response = await apiClient.get<ShellOperationLog>(`/shells/${shellId}/operations/latest`, {
-    pluginId,
+  return await authFetch<ShellOperationLog | null>(`/shells/${shellId}/operations/latest`, {
+    query: {
+      pluginId,
+    },
   });
-  if (!response.data) {
-    return null;
-  }
-  return response.data;
 }

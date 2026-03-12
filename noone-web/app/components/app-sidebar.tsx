@@ -1,5 +1,4 @@
 import {
-  ArrowLeft,
   Cable,
   Command,
   Folder,
@@ -14,7 +13,9 @@ import {
   UserCheck,
   Users,
 } from "lucide-react";
-import { NavLink, useLocation, useParams } from "react-router";
+import { Link, NavLink, useLocation } from "react-router";
+import { useAuth } from "@/contexts/auth-context";
+import { hasAnyAuthority } from "@/lib/authz";
 import {
   Sidebar,
   SidebarContent,
@@ -33,7 +34,8 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  condition?: () => boolean;
+  visible?: boolean;
+  matchPrefix?: boolean;
 }
 
 interface NavItemRendererProps {
@@ -42,7 +44,11 @@ interface NavItemRendererProps {
 }
 
 function NavItemRenderer({ item, location }: NavItemRendererProps) {
-  const isActive = location.pathname === item.url;
+  const isActive =
+    location.pathname === item.url ||
+    (item.matchPrefix !== false &&
+      item.url !== "/" &&
+      location.pathname.startsWith(`${item.url}/`));
 
   return (
     <SidebarMenuItem>
@@ -70,116 +76,106 @@ function NavItemRenderer({ item, location }: NavItemRendererProps) {
   );
 }
 
-const adminItems: NavItem[] = [
-  {
-    title: "Users",
-    url: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Roles",
-    url: "/admin/roles",
-    icon: UserCheck,
-  },
-  {
-    title: "Permissions",
-    url: "/admin/permissions",
-    icon: Key,
-  },
-];
-
-const globalItems: NavItem[] = [
-  {
-    title: "Profiles",
-    url: "/profiles",
-    icon: Sparkles,
-  },
-  {
-    title: "Plugins",
-    url: "/plugins",
-    icon: PlugZap2,
-  },
-  {
-    title: "Audit",
-    url: "/audit",
-    icon: Shield,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-];
-
-interface AppSidebarProps {
-  projectName?: string;
+function filterVisibleItems(items: NavItem[]): NavItem[] {
+  return items.filter((item) => item.visible ?? true);
 }
 
-export function AppSidebar({ projectName }: AppSidebarProps) {
-  const params = useParams();
+export function AppSidebar() {
   const location = useLocation();
-  const projectId = params.projectId;
+  const { authorities, isAdmin } = useAuth();
+  const canAccessSystemMenu = (...codes: string[]) =>
+    isAdmin || hasAnyAuthority(authorities, codes);
 
-  const topItems: NavItem[] = [
+  const adminItems = filterVisibleItems([
+    {
+      title: "Users",
+      url: "/admin/users",
+      icon: Users,
+      visible: canAccessSystemMenu("user:list"),
+    },
+    {
+      title: "Roles",
+      url: "/admin/roles",
+      icon: UserCheck,
+      visible: canAccessSystemMenu("role:list"),
+    },
+    {
+      title: "Permissions",
+      url: "/admin/permissions",
+      icon: Key,
+      visible: canAccessSystemMenu("permission:list"),
+    },
+  ]);
+
+  const topItems = filterVisibleItems([
     {
       title: "Dashboard",
       url: "/",
       icon: Home,
+      matchPrefix: false,
     },
     {
       title: "Generator",
       url: `/generator`,
       icon: Sprout,
+      visible: canAccessSystemMenu("shell:generate"),
     },
-  ];
-
-  const projectItems: NavItem[] = projectId
-    ? [
-        {
-          title: "Shells",
-          url: `/projects/${projectId}/shells`,
-          icon: Cable,
-        },
-      ]
-    : [];
-
-  const backToProjectsItem: NavItem = {
-    title: "Back to Projects",
-    url: "/projects",
-    icon: ArrowLeft,
-    condition: () => !!projectId,
-  };
+  ]);
 
   const projectsItem: NavItem = {
     title: "Projects",
     url: "/projects",
     icon: Folder,
-    condition: () => !projectId,
   };
 
   const shellsItem: NavItem = {
     title: "Shells",
     url: "/shells",
     icon: Cable,
-    condition: () => !projectId,
   };
+
+  const managementItems = filterVisibleItems([
+    projectsItem,
+    shellsItem,
+    {
+      title: "Profiles",
+      url: "/profiles",
+      icon: Sparkles,
+      visible: canAccessSystemMenu("profile:list"),
+    },
+    {
+      title: "Plugins",
+      url: "/plugins",
+      icon: PlugZap2,
+      visible: canAccessSystemMenu("plugin:list"),
+    },
+    {
+      title: "Audit",
+      url: "/audit",
+      icon: Shield,
+      visible: canAccessSystemMenu("auth:log:read"),
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
+  ]);
 
   return (
     <Sidebar variant="inset">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <a href="/" rel="noopener noreferrer">
-              <SidebarMenuButton size="lg">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Command className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">No One</span>
-                  <span className="truncate text-xs">Professional</span>
-                </div>
-              </SidebarMenuButton>
-            </a>
+            <SidebarMenuButton size="lg" render={<Link to="/" viewTransition />}>
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Command className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">No One</span>
+                <span className="truncate text-xs">Professional</span>
+              </div>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
@@ -194,54 +190,32 @@ export function AppSidebar({ projectName }: AppSidebarProps) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <NavItemRenderer key={item.title} item={item} location={location} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
 
-        {projectId && (
-          <>
-            <SidebarGroup>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <NavItemRenderer item={backToProjectsItem} location={location} />
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>{projectName || `Project ${projectId}`}</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {projectItems.map((item) => (
-                    <NavItemRenderer key={item.title} item={item} location={location} />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {[projectsItem, shellsItem].map((item) =>
-                item.condition?.() ? (
+        {adminItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminItems.map((item) => (
                   <NavItemRenderer key={item.title} item={item} location={location} />
-                ) : null,
-              )}
-              {globalItems.map((item) => (
-                <NavItemRenderer key={item.title} item={item} location={location} />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {managementItems.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Management</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {managementItems.map((item) => (
+                  <NavItemRenderer key={item.title} item={item} location={location} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>

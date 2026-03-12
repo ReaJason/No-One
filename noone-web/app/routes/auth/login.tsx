@@ -1,77 +1,212 @@
 import { GalleryVerticalEnd } from "lucide-react";
-import { useState } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { Form, useActionData, useNavigation, useSearchParams } from "react-router";
+import {
+  type ActionFunctionArgs,
+  data,
+  Form,
+  type LoaderFunctionArgs,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+} from "react-router";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authUtils } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { commitSession, getSession } from "@/sessions.server";
+import type { User } from "@/types/admin";
+import { publicApi } from "@/api.server";
 
-// Loader 函数处理页面加载
-export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const returnTo = url.searchParams.get("returnTo");
-  return { returnTo };
+const REQUIRE_2FA_CODE = "REQUIRE_2FA";
+const INVALID_2FA_CODE = "INVALID_2FA_CODE";
+
+type LoginApiSuccess = {
+  token?: string;
+  refreshToken?: string;
+  user?: User;
+  mfaRequired?: boolean;
+  nextAction?: string;
+  actionToken?: string | null;
+};
+
+type LoginApiChallenge = {
+  code?: string;
+  message?: string;
+  status?: string;
+  mfaRequired?: boolean;
+  setupToken?: string | null;
+  actionToken?: string | null;
+};
+
+function isLoginApiSuccess(
+  response: LoginApiSuccess | LoginApiChallenge,
+): response is LoginApiSuccess &
+  Required<Pick<LoginApiSuccess, "token" | "refreshToken" | "user">> {
+  return Boolean(
+    "token" in response &&
+    "refreshToken" in response &&
+    "user" in response &&
+    response.token &&
+    response.refreshToken &&
+    response.user,
+  );
 }
 
-// Action 函数处理表单提交
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const username = formData.get("username") as string;
-  const password = formData.get("password") as string;
-  const agreedToTerms = formData.get("agreedToTerms") === "on";
-  const returnTo = formData.get("returnTo") as string;
-  if (!username || !password) {
+function getLoginMessage(
+  code?: string,
+  message?: string,
+): { tone: "error" | "info"; text: string } | null {
+  if (!message) {
+    return null;
+  }
+
+  if (code === REQUIRE_2FA_CODE) {
     return {
-      error: "用户名和密码不能为空",
-      success: false,
+      tone: "info",
+      text: message,
     };
   }
 
-  if (!agreedToTerms) {
+  return {
+    tone: "error",
+    text: message,
+  };
+}
+
+function normalizeReturnTo(returnTo: string | null): string {
+  if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
+    return "/";
+  }
+  return returnTo;
+}
+
+function getFormString(formData: FormData, key: string): string | null {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : null;
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const returnTo = normalizeReturnTo(url.searchParams.get("returnTo"));
+  const session = await getSession(request.headers.get("Cookie"));
+
+  if (session.get("accessToken")) {
+    throw redirect(returnTo);
+  }
+
+  const error = session.get("error") ?? null;
+
+  return data({ error, returnTo });
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const username = (getFormString(formData, "username") ?? "").trim();
+  const password = getFormString(formData, "password") ?? "";
+  const twoFactorCode = getFormString(formData, "twoFactorCode");
+  const returnTo = normalizeReturnTo(getFormString(formData, "returnTo"));
+
+  if (!username || !password) {
     return {
-      error: "请同意服务条款和隐私政策",
+      error: "Username and password are required",
       success: false,
     };
   }
   try {
-    const response = await authUtils.login({ username, password });
-    const authResponse = await authUtils.createAuthResponse(
-      response.token,
-      response.user,
-      response.expiresIn,
-      request,
-    );
-    console.log(`[Login] User ${response.user.username} logged in successfully`);
-    console.log(`[Login] JWT Token set: ${response.token.substring(0, 20)}...`);
-    const redirectTo = returnTo || "/";
+    const response = await publicApi<LoginApiSuccess | LoginApiChallenge>("/auth/login", {
+      method: "POST",
+      body: {
+        username,
+        password,
+        ...(twoFactorCode ? { twoFactorCode } : {}),
+      },
+    });
 
-    return new Response(null, {
-      status: 302,
+    if ("code" in response && response.code === REQUIRE_2FA_CODE) {
+      return {
+        error: response.message ?? "Enter your authenticator code to continue",
+        code: response.code,
+        mfaRequired: response.mfaRequired === true,
+        success: false,
+        formData: {
+          username,
+          password,
+        },
+      };
+    }
+
+    if (!isLoginApiSuccess(response)) {
+      return {
+        error: "Login failed. Please try again.",
+        success: false,
+      };
+    }
+    const session = await getSession(request.headers.get("Cookie"));
+    session.set("accessToken", response.token);
+    session.set("refreshToken", response.refreshToken);
+    session.set("user", response.user);
+    return redirect(returnTo, {
       headers: {
-        ...Object.fromEntries(authResponse.headers.entries()),
-        Location: redirectTo,
+        "Set-Cookie": await commitSession(session),
       },
     });
   } catch (error: any) {
-    console.error("Login error:", error);
+    const detailMessage =
+      error?.details?.message ?? error?.details?.error ?? error?.message ?? "Login failed";
+    const detailCode = error?.details?.code;
+    const mfaRequired = error?.details?.mfaRequired === true;
+    if (detailCode === "REQUIRE_SETUP") {
+      const setupToken = error?.details?.setupToken || "";
+      let setupUrl = "/auth/setup";
+      if (setupToken) {
+        setupUrl += `?token=${encodeURIComponent(setupToken)}`;
+      }
+
+      return redirect(setupUrl);
+    }
+
+    if (detailCode === "REQUIRE_PASSWORD_CHANGE") {
+      const actionToken = error?.details?.actionToken || "";
+      let changePasswordUrl = "/auth/password-change";
+      if (actionToken) {
+        changePasswordUrl += `?token=${encodeURIComponent(actionToken)}`;
+      }
+      return redirect(changePasswordUrl);
+    }
+
     return {
-      error: error.message || "登录失败，请检查用户名和密码",
+      error: detailMessage,
+      code: detailCode,
+      mfaRequired,
       success: false,
+      formData: {
+        username,
+        password,
+      },
     };
   }
 }
 
 function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [searchParams] = useSearchParams();
-  const returnTo = searchParams.get("returnTo");
-  const actionData = useActionData() as { error?: string; success?: boolean } | undefined;
+  const { returnTo } = useLoaderData<typeof loader>();
+  const actionData = useActionData() as
+    | {
+        error?: string;
+        code?: string;
+        mfaRequired?: boolean;
+        success?: boolean;
+        formData?: { username: string; password: string };
+      }
+    | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+
+  const require2FA =
+    actionData?.code === REQUIRE_2FA_CODE ||
+    actionData?.code === INVALID_2FA_CODE ||
+    actionData?.mfaRequired === true;
+  const loginMessage = getLoginMessage(actionData?.code, actionData?.error);
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -82,55 +217,67 @@ function LoginForm({ className, ...props }: React.ComponentProps<"div">) {
         </CardHeader>
         <CardContent>
           <Form method="post">
-            {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
+            <input type="hidden" name="returnTo" value={returnTo} />
             <div className="grid gap-6">
-              {actionData?.error && (
-                <div className="text-center text-sm text-red-500">{actionData.error}</div>
-              )}
+              {loginMessage ? (
+                <div
+                  className={cn(
+                    "text-center text-sm font-medium",
+                    loginMessage.tone === "error" ? "text-destructive" : "text-muted-foreground",
+                  )}
+                >
+                  {loginMessage.text}
+                </div>
+              ) : null}
               <div className="grid gap-6">
-                <div className="grid gap-3">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    type="text"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="grid gap-3">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <a
-                      href="/auth/reset-password"
-                      className="ml-auto text-sm underline-offset-4 hover:underline"
-                    >
-                      Forgot your password?
-                    </a>
-                  </div>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="terms"
-                    name="agreedToTerms"
-                    checked={agreedToTerms}
-                    onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-                    required
-                    disabled={isSubmitting}
-                  />
-                  <div className="text-xs text-balance text-muted-foreground *:[a]:underline *:[a]:underline-offset-4 *:[a]:hover:text-primary">
-                    I agree to the <a href="/auth/terms-of-service">Terms of Service</a> and{" "}
-                    <a href="/auth/privacy-policy">Privacy Policy</a>.
-                  </div>
-                </div>
-                <Button type="submit" className="w-full" disabled={!agreedToTerms || isSubmitting}>
+                {!require2FA ? (
+                  <>
+                    <div className="grid gap-3">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        name="username"
+                        type="text"
+                        required
+                        disabled={isSubmitting}
+                        defaultValue={actionData?.formData?.username}
+                      />
+                    </div>
+                    <div className="grid gap-3">
+                      <div className="flex items-center">
+                        <Label htmlFor="password">Password</Label>
+                      </div>
+                      <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        disabled={isSubmitting}
+                        defaultValue={actionData?.formData?.password}
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <input type="hidden" name="username" value={actionData?.formData?.username} />
+                    <input type="hidden" name="password" value={actionData?.formData?.password} />
+                    <div className="grid gap-3">
+                      <Label htmlFor="twoFactorCode">Authenticator Code</Label>
+                      <Input
+                        id="twoFactorCode"
+                        name="twoFactorCode"
+                        type="text"
+                        required
+                        disabled={isSubmitting}
+                        autoFocus
+                        placeholder="123456"
+                        maxLength={6}
+                      />
+                    </div>
+                  </>
+                )}
+
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? "Logging in..." : "Login"}
                 </Button>
               </div>

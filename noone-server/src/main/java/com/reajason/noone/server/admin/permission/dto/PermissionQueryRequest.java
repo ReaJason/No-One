@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class PermissionQueryRequest {
     private String name;
+    private String category;
     private Long roleId;
     private int page = 0;
     private int pageSize = 10;

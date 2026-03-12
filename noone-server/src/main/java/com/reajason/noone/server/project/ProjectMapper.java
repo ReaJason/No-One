@@ -57,7 +57,10 @@ public class ProjectMapper {
         response.setStatus(project.getStatus().name());
         response.setCreatedAt(project.getCreatedAt());
         response.setUpdatedAt(project.getUpdatedAt());
-        response.setMembers(project.getMembers().stream().map(this::toMemberDTO).collect(Collectors.toSet()));
+        response.setOwnerId(project.getOwner() == null ? null : project.getOwner().getId());
+        response.setMembers(project.getMembers().stream()
+                .map(this::toMemberDTO)
+                .collect(Collectors.toSet()));
         return response;
     }
 
@@ -68,5 +71,3 @@ public class ProjectMapper {
         return dto;
     }
 }
-
-

@@ -1,5 +1,6 @@
 package com.reajason.noone.server.admin.user.dto;
 
+import com.reajason.noone.server.admin.user.UserStatus;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -9,6 +10,11 @@ import java.time.LocalDateTime;
 public class UserQueryRequest {
     private String username;
     private Long roleId;
+    private UserStatus status;
+    /**
+     * Backward-compatible query parameter.
+     * true -> ENABLED, false -> DISABLED when status is not provided.
+     */
     private Boolean enabled;
     private LocalDateTime createdAfter;
     private LocalDateTime createdBefore;

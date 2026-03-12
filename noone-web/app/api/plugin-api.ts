@@ -1,6 +1,8 @@
 import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Plugin } from "@/types/plugin";
-import { apiClient, type PaginatedResponse } from "./api-client";
 
 const baseUrl = "/plugins";
 
@@ -24,11 +26,22 @@ export const loadPluginSearchParams = createLoader({
   sortOrder: parseAsStringEnum(["asc", "desc"]).withDefault("desc"),
 });
 
-export async function getPlugins(filters: PluginSearchParams): Promise<PaginatedResponse<Plugin>> {
-  return await apiClient.getPaginated<Plugin>(baseUrl, filters);
+export async function getPlugins(
+  filters: PluginSearchParams,
+  authFetch: AuthFetch,
+): Promise<PaginatedResponse<Plugin>> {
+  const response = await authFetch<ServerPaginatedResponse<Plugin>>(baseUrl, {
+    query: { ...filters, page: (filters.page ?? 1) - 1, pageSize: filters.perPage },
+  });
+  return mapPaginatedResponse(response);
 }
 
-export async function createPlugin(data: Record<string, unknown>): Promise<Plugin> {
-  const response = await apiClient.post<Plugin>(baseUrl, data);
-  return response.data;
+export async function createPlugin(
+  data: Record<string, unknown>,
+  authFetch: AuthFetch,
+): Promise<Plugin> {
+  return await authFetch<Plugin>(baseUrl, {
+    method: "POST",
+    body: data,
+  });
 }

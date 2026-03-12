@@ -5,6 +5,7 @@ import com.reajason.noone.server.shell.oplog.dto.ShellOperationLogResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -17,6 +18,7 @@ public class ShellOperationLogController {
     private final ShellOperationLogService shellOperationLogService;
 
     @GetMapping
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:operation:read')")
     public ResponseEntity<Page<ShellOperationLogResponse>> query(
             @PathVariable Long shellId,
             ShellOperationLogQueryRequest request) {
@@ -24,6 +26,7 @@ public class ShellOperationLogController {
     }
 
     @GetMapping("/latest")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:operation:read')")
     public ResponseEntity<ShellOperationLogResponse> getLatest(
             @PathVariable Long shellId,
             @RequestParam String pluginId) {

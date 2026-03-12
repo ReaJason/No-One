@@ -2,7 +2,7 @@ import { ArrowLeft, Edit } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useLoaderData, useNavigate } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { getProfileById, updateProfile } from "@/api/profile-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,15 +41,16 @@ import {
   type WebSocketProtocolConfig,
 } from "@/types/profile";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const profileId = params.profileId as string | undefined;
   if (!profileId) throw new Response("Invalid profile ID", { status: 400 });
-  const profile = await getProfileById(profileId);
+  const authFetch = createAuthFetch(request, context);
+  const profile = await getProfileById(profileId, authFetch);
   if (!profile) throw new Response("Profile not found", { status: 404 });
   return { profile };
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
   const profileId = params.profileId as string | undefined;
   if (!profileId) throw new Response("Invalid profile ID", { status: 400 });
 
@@ -176,19 +177,22 @@ export async function action({ request, params }: ActionFunctionArgs) {
   if (Object.keys(errors).length > 0) return { errors, success: false };
 
   try {
-    await updateProfile(profileId, {
-      name,
-      password,
-      protocolType,
-      identifier,
-      protocolConfig,
-      requestTransformations: requestTransformations.length ? requestTransformations : null,
-      responseTransformations: responseTransformations.length ? responseTransformations : null,
-    });
-    toast.success("Profile updated successfully");
+    const authFetch = createAuthFetch(request, context);
+    await updateProfile(
+      profileId,
+      {
+        name,
+        password,
+        protocolType,
+        identifier,
+        protocolConfig,
+        requestTransformations: requestTransformations.length ? requestTransformations : null,
+        responseTransformations: responseTransformations.length ? responseTransformations : null,
+      },
+      authFetch,
+    );
     return redirect("/profiles");
   } catch (error: any) {
-    toast.error(error?.message || "Failed to update profile");
     return {
       errors: { general: error?.message || "Failed to update profile" },
       success: false,

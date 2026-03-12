@@ -1,6 +1,8 @@
 import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Role } from "@/types/admin";
-import { apiClient, type PaginatedResponse } from "./api-client";
 
 const baseUrl = "/roles";
 
@@ -20,12 +22,18 @@ export const loadRoleSearchParams = createLoader({
   sortOrder: parseAsStringEnum(["asc", "desc"]).withDefault("desc"),
 });
 
-export async function getRoles(filters: RoleSearchParams): Promise<PaginatedResponse<Role>> {
-  return apiClient.getPaginated<Role>(baseUrl, filters);
+export async function getRoles(
+  filters: RoleSearchParams,
+  authFetch: AuthFetch,
+): Promise<PaginatedResponse<Role>> {
+  const response = await authFetch<ServerPaginatedResponse<Role>>(baseUrl, {
+    query: { ...filters, page: (filters.page ?? 1) - 1, pageSize: filters.perPage },
+  });
+  return mapPaginatedResponse(response);
 }
 
-export async function getRoleById(id: number): Promise<Role | null> {
-  return (await apiClient.get<Role>(`${baseUrl}/${id}`)).data;
+export async function getRoleById(id: number, authFetch: AuthFetch): Promise<Role | null> {
+  return await authFetch<Role>(`${baseUrl}/${id}`);
 }
 
 export interface CreateRoleRequest {
@@ -33,22 +41,32 @@ export interface CreateRoleRequest {
   permissionIds: number[];
 }
 
-export async function createRole(roleData: CreateRoleRequest): Promise<Role> {
-  return (await apiClient.post<Role>(baseUrl, roleData)).data;
+export async function createRole(roleData: CreateRoleRequest, authFetch: AuthFetch): Promise<Role> {
+  return await authFetch<Role>(baseUrl, {
+    method: "POST",
+    body: roleData,
+  });
 }
 
 export async function updateRole(
   id: number,
   roleData: Partial<Role> | { name?: string; permissionIds?: number[] },
+  authFetch: AuthFetch,
 ): Promise<Role | null> {
-  return (await apiClient.put<Role>(`${baseUrl}/${id}`, roleData)).data;
+  return await authFetch<Role>(`${baseUrl}/${id}`, {
+    method: "PUT",
+    body: roleData,
+  });
 }
 
-export async function deleteRole(id: number): Promise<boolean> {
-  await apiClient.delete(`${baseUrl}/${id}`);
+export async function deleteRole(id: number, authFetch: AuthFetch): Promise<boolean> {
+  await authFetch(`${baseUrl}/${id}`, { method: "DELETE" });
   return true;
 }
 
-export async function getAllRoles(): Promise<Role[]> {
-  return (await apiClient.getPaginated<Role>(baseUrl, { page: 1, perPage: 100 })).content;
+export async function getAllRoles(authFetch: AuthFetch): Promise<Role[]> {
+  const response = await authFetch<ServerPaginatedResponse<Role>>(baseUrl, {
+    query: { page: 0, pageSize: 100 },
+  });
+  return response.content;
 }

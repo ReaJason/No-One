@@ -2,8 +2,9 @@ import { ArrowLeft, FolderTree, Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getAllPermissions } from "@/api/permission-api";
-import { type CreateRoleRequest, createRole } from "@/api/role-api";
+import { createRole, type CreateRoleRequest } from "@/api/role-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,12 +17,13 @@ type LoaderData = {
   permissions: Permission[];
 };
 
-export async function loader(_args: LoaderFunctionArgs): Promise<LoaderData> {
-  const permissions = await getAllPermissions();
+export async function loader({ request, context }: LoaderFunctionArgs): Promise<LoaderData> {
+  const authFetch = createAuthFetch(request, context);
+  const permissions = await getAllPermissions(authFetch);
   return { permissions };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const name = (formData.get("name") as string)?.trim();
   const permissionIds = (formData.getAll("permissionIds") as string[])
@@ -38,7 +40,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
   try {
     const payload: CreateRoleRequest = { name, permissionIds };
-    await createRole(payload);
+    const authFetch = createAuthFetch(request, context);
+    await createRole(payload, authFetch);
     return redirect("/admin/roles");
   } catch (error: any) {
     console.error("Error creating role:", error);

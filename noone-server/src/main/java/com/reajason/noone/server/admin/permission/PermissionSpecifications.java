@@ -28,4 +28,16 @@ public class PermissionSpecifications {
             return predicate;
         };
     }
+
+    public static Specification<Permission> hasCategory(String category) {
+        return (root, query, criteriaBuilder) -> {
+            if (StringUtils.isBlank(category)) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.like(
+                    criteriaBuilder.lower(root.get("code")),
+                    category.toLowerCase() + ":%"
+            );
+        };
+    }
 }

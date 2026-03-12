@@ -7,5 +7,3 @@ public class ProjectMemberDTO {
     private Long id;
     private String username;
 }
-
-

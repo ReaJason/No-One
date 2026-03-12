@@ -28,7 +28,10 @@ public class Shell {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
+    private String name;
+
+    @Column(nullable = false, length = 1000)
     private String url;
 
     @Enumerated(EnumType.STRING)
@@ -39,15 +42,17 @@ public class Shell {
     @Column(nullable = false)
     private ShellStatus status = ShellStatus.DISCONNECTED;
 
-    @Column(name = "group_name")
-    private String group;
+    @Column(length = 500)
+    private String tags;
 
     @Column(name = "project_id")
     private Long projectId;
 
-    /**
-     * Profile ID - required, determines request format configuration.
-     */
+//    @ManyToOne(fetch = FetchType.LAZY)
+//    @JoinColumn(name = "project_id", nullable = false)
+//    private Project project;
+
+
     @Column(name = "profile_id", nullable = false)
     private Long profileId;
 
@@ -110,7 +115,19 @@ public class Shell {
     @Column(name = "connect_time")
     private LocalDateTime connectTime;
 
+    @Column(name = "last_online_at")
+    private LocalDateTime lastOnlineAt;
+
+    @Column(name = "last_operator_id")
+    private Long lastOperatorId;
+
     @LastModifiedDate
     @Column(name = "update_time")
     private LocalDateTime updateTime;
+
+    @Column(length = 2000)
+    private String remark;
+
+    @Column
+    private boolean deleted;
 }

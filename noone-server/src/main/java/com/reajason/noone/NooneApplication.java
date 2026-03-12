@@ -1,11 +1,16 @@
 package com.reajason.noone;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.reajason.noone.server.admin.auth.TwoFactorAuthService;
 import com.reajason.noone.server.admin.permission.Permission;
 import com.reajason.noone.server.admin.permission.PermissionRepository;
+import com.reajason.noone.server.admin.plugin.PluginService;
+import com.reajason.noone.server.admin.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.User;
 import com.reajason.noone.server.admin.user.UserRepository;
+import com.reajason.noone.server.admin.user.UserStatus;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
 import com.reajason.noone.server.profile.config.*;
@@ -17,11 +22,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -41,6 +50,7 @@ public class NooneApplication {
      * @since 2025/9/9
      */
     @Component
+    @org.springframework.context.annotation.Profile("!test")
     @Slf4j
     @RequiredArgsConstructor
     public static class DataInitializer implements CommandLineRunner {
@@ -50,91 +60,148 @@ public class NooneApplication {
         private final PermissionRepository permissionRepository;
         private final PasswordEncoder passwordEncoder;
         private final ProfileRepository profileRepository;
+        private final TwoFactorAuthService twoFactorAuthService;
+        private final PluginService pluginService;
+        private final ObjectMapper objectMapper;
 
         @Override
         public void run(String... args) {
             initializeDefaultPermissions();
-            initializeAdminRole();
+            initializeDefaultRoles();
+            initializePlugins();
             initializeAdminAccount();
             initializeProject();
             initializeProfile();
         }
 
         private void initializeAdminAccount() {
-            if (userRepository.count() > 0) {
-                log.info("Database already contains data. Skipping initialization.");
+            if (userRepository.findByUsername("admin").isPresent()) {
                 return;
             }
 
             log.info("Creating default administrator user...");
             User adminUser = new User();
             adminUser.setUsername("admin");
-            adminUser.setRoles(new HashSet<>(roleRepository.findAll()));
+            adminUser.setRoles(new HashSet<>(List.of(findRoleByName("Super Admin"))));
             String randomPassword = UUID.randomUUID().toString().substring(0, 16);
             adminUser.setPassword(passwordEncoder.encode(randomPassword));
-            adminUser.setEnabled(true);
+            adminUser.setEmail("admin@123.com");
+            adminUser.setStatus(UserStatus.UNACTIVATED);
+            adminUser.setMustChangePassword(true);
+            adminUser.setMfaSecret(twoFactorAuthService.generateSecret());
             userRepository.save(adminUser);
             printSummary(adminUser.getUsername(), randomPassword);
         }
 
-        private void initializeAdminRole() {
-            if (roleRepository.count() > 0) {
-                return;
-            }
-            Role role = new Role();
-            role.setPermissions(new HashSet<>(permissionRepository.findAll()));
-            role.setName("admin");
-            roleRepository.save(role);
+        private void initializeDefaultRoles() {
+            Map<String, Permission> permissionsByCode = permissionRepository.findAll().stream()
+                    .collect(Collectors.toMap(Permission::getCode, permission -> permission));
+            Set<Permission> allPermissions = new HashSet<>(permissionsByCode.values());
 
-            Role role1 = new Role();
-            role1.setName("user");
-            role1.setPermissions(permissionRepository.findAll()
-                    .stream()
-                    .filter(p -> p.getCode().endsWith("list"))
-                    .collect(Collectors.toSet()));
-            roleRepository.save(role1);
+            seedRole("Super Admin", allPermissions);
+            seedRole("Admin", selectPermissions(permissionsByCode,
+                    "user:create", "user:read", "user:update", "user:delete", "user:list",
+                    "role:create", "role:read", "role:update", "role:delete", "role:list",
+                    "permission:create", "permission:read", "permission:update", "permission:delete", "permission:list",
+                    "profile:create", "profile:read", "profile:update", "profile:delete", "profile:list",
+                    "plugin:create", "plugin:list",
+                    "auth:log:read", "auth:session:manage"));
+            seedRole("System Auditor", selectPermissions(permissionsByCode,
+                    "auth:log:read",
+                    "user:read", "user:list",
+                    "role:read", "role:list",
+                    "permission:read", "permission:list",
+                    "profile:read", "profile:list",
+                    "plugin:list"));
+            seedRole("Team Leader", selectPermissions(permissionsByCode,
+                    "project:create", "project:list", "project:update", "project:delete", "project:member:manage",
+                    "shell:create", "shell:list", "shell:update", "shell:delete", "shell:test",
+                    "shell:dispatch", "shell:operation:read", "shell:generate",
+                    "plugin:list"));
+            seedRole("Team Operator", selectPermissions(permissionsByCode,
+                    "project:list",
+                    "shell:create", "shell:list", "shell:update", "shell:delete", "shell:test",
+                    "shell:dispatch", "shell:operation:read", "shell:generate",
+                    "plugin:list"));
+            seedRole("Guest", selectPermissions(permissionsByCode,
+                    "project:list", "shell:list", "shell:operation:read"));
+        }
+
+        private void initializePlugins() {
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            try {
+                Resource[] resources = resolver.getResources("classpath*:plugins/*.json");
+                Arrays.sort(resources, Comparator.comparing(Resource::getFilename, Comparator.nullsLast(String::compareTo)));
+                for (Resource resource : resources) {
+                    try (var inputStream = resource.getInputStream()) {
+                        PluginCreateRequest request = objectMapper.readValue(inputStream, PluginCreateRequest.class);
+                        pluginService.create(request);
+                    }
+                }
+                log.info("Imported {} plugins from classpath resources", resources.length);
+            } catch (IOException e) {
+                throw new IllegalStateException("Failed to import plugins from noone-server resources", e);
+            }
         }
 
         private void initializeDefaultPermissions() {
-            if (permissionRepository.count() > 0) {
-                log.info("Permissions already exist, skipping initialization");
-                return;
-            }
-
-            log.info("Initializing default permissions...");
-
             List<Permission> defaultPermissions = Arrays.asList(
-                    // 用户管理权限
-                    createPermission("user:create", "创建用户"),
-                    createPermission("user:read", "查看用户"),
-                    createPermission("user:update", "更新用户"),
-                    createPermission("user:delete", "删除用户"),
-                    createPermission("user:list", "用户列表"),
+                    createPermission("user:create", "CreateUser"),
+                    createPermission("user:read", "ReadUser"),
+                    createPermission("user:update", "UpdateUser"),
+                    createPermission("user:delete", "DeleteUser"),
+                    createPermission("user:list", "ListUser"),
 
-                    // 角色管理权限
-                    createPermission("role:create", "创建角色"),
-                    createPermission("role:read", "查看角色"),
-                    createPermission("role:update", "更新角色"),
-                    createPermission("role:delete", "删除角色"),
-                    createPermission("role:list", "角色列表"),
+                    createPermission("role:create", "CreateRole"),
+                    createPermission("role:read", "ReadRole"),
+                    createPermission("role:update", "UpdateRole"),
+                    createPermission("role:delete", "DeleteRole"),
+                    createPermission("role:list", "ListRole"),
 
-                    // 权限管理权限
-                    createPermission("permission:create", "创建权限"),
-                    createPermission("permission:read", "查看权限"),
-                    createPermission("permission:update", "更新权限"),
-                    createPermission("permission:delete", "删除权限"),
-                    createPermission("permission:list", "权限列表"),
+                    createPermission("permission:create", "CreatePermission"),
+                    createPermission("permission:read", "ReadPermission"),
+                    createPermission("permission:update", "UpdatePermission"),
+                    createPermission("permission:delete", "DeletePermission"),
+                    createPermission("permission:list", "ListPermission"),
 
-                    // 项目管理权限
-                    createPermission("project:create", "创建项目"),
-                    createPermission("project:read", "查看项目"),
-                    createPermission("project:update", "更新项目"),
-                    createPermission("project:delete", "删除项目"),
-                    createPermission("project:list", "项目列表")
+                    createPermission("profile:create", "CreateProfile"),
+                    createPermission("profile:read", "ReadProfile"),
+                    createPermission("profile:update", "UpdateProfile"),
+                    createPermission("profile:delete", "DeleteProfile"),
+                    createPermission("profile:list", "ListProfile"),
+
+                    createPermission("plugin:create", "CreatePlugin"),
+                    createPermission("plugin:list", "ListPlugin"),
+
+                    createPermission("auth:log:read", "ReadAuth"),
+                    createPermission("auth:session:manage", "ManageAuth"),
+
+                    createPermission("project:create", "CreateProject"),
+                    createPermission("project:list", "ReadProject"),
+                    createPermission("project:update", "UpdateProject"),
+                    createPermission("project:delete", "DeleteProject"),
+                    createPermission("project:member:manage", "ManageProjectMember"),
+                    createPermission("shell:create", "CreateShell"),
+                    createPermission("shell:list", "ReadShell"),
+                    createPermission("shell:update", "UpdateShell"),
+                    createPermission("shell:delete", "DeleteShell"),
+                    createPermission("shell:test", "TestShell"),
+                    createPermission("shell:dispatch", "DispatchShell"),
+                    createPermission("shell:operation:read", "ReadShellOperation"),
+                    createPermission("shell:generate", "GenerateShell")
             );
 
-            permissionRepository.saveAll(defaultPermissions);
-            log.info("Initialized {} default permissions", defaultPermissions.size());
+            Map<String, Permission> existing = permissionRepository.findAll().stream()
+                    .collect(Collectors.toMap(Permission::getCode, permission -> permission));
+            for (Permission permission : defaultPermissions) {
+                Permission existingPermission = existing.get(permission.getCode());
+                if (existingPermission == null) {
+                    permissionRepository.save(permission);
+                    continue;
+                }
+                existingPermission.setName(permission.getName());
+                permissionRepository.save(existingPermission);
+            }
         }
 
         private Permission createPermission(String code, String name) {
@@ -144,6 +211,40 @@ public class NooneApplication {
                     .build();
         }
 
+        private void seedRole(String name, Set<Permission> permissions) {
+            Role role = roleRepository.findAll().stream()
+                    .filter(existingRole -> name.equalsIgnoreCase(existingRole.getName()))
+                    .findFirst()
+                    .orElseGet(Role::new);
+            role.setName(name);
+            role.setPermissions(new HashSet<>(permissions));
+            roleRepository.save(role);
+        }
+
+        private Set<Permission> selectPermissions(Map<String, Permission> permissionsByCode, String... codes) {
+            Set<String> requiredCodes = Set.of(codes);
+            Set<Permission> permissions = requiredCodes.stream()
+                    .map(code -> {
+                        Permission permission = permissionsByCode.get(code);
+                        if (permission == null) {
+                            throw new IllegalStateException("Missing default permission: " + code);
+                        }
+                        return permission;
+                    })
+                    .collect(Collectors.toSet());
+            if (permissions.size() != requiredCodes.size()) {
+                throw new IllegalStateException("Permission selection is incomplete");
+            }
+            return permissions;
+        }
+
+        private Role findRoleByName(String name) {
+            return roleRepository.findAll().stream()
+                    .filter(role -> name.equalsIgnoreCase(role.getName()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalStateException("Missing role: " + name));
+        }
+
 
         private void initializeProject() {
             if (projectRepository.count() > 0) {
@@ -151,10 +252,16 @@ public class NooneApplication {
             }
 
             Project project = new Project();
-            project.setName("Local Vul Test");
-            project.setCode("localVulTest");
+            project.setName("Sandbox");
+            project.setCode("SANDBOX");
             project.setStatus(ProjectStatus.ACTIVE);
-            project.setMembers(Collections.singleton(userRepository.findByUsername("admin").get()));
+            project.setBizName("localhost");
+            project.setDescription("System default project for payload generation, link testing, and safe experimentation. Do not use for real client engagements.");
+            project.setStartedAt(LocalDateTime.now());
+            project.setRemark("Auto-generated during system initialization.");
+            User admin = userRepository.findByUsername("admin").orElseThrow();
+            project.setOwner(admin);
+            project.setMembers(Collections.singleton(admin));
             projectRepository.save(project);
         }
 

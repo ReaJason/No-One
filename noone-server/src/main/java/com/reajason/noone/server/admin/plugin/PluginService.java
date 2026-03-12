@@ -29,8 +29,11 @@ public class PluginService {
         if (existing.isPresent()) {
             plugin = existing.get();
             plugin.setPluginId(request.getId());
+            plugin.setName(request.getName());
+            plugin.setVersion(request.getVersion());
             plugin.setLanguage(request.getLanguage());
             plugin.setType(request.getType());
+            plugin.setRunMode(request.getRunMode());
             plugin.setPayload(request.getPayload());
             plugin.setActions(request.getActions());
         } else {

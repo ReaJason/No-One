@@ -1,6 +1,7 @@
 import { ArrowLeft, Edit, Shield } from "lucide-react";
 import type { LoaderFunctionArgs } from "react-router";
 import { useActionData, useFetcher, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getPermissionById } from "@/api/permission-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,14 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { Permission } from "@/types/admin";
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const permissionId = parseInt(params.permissionId as string, 10);
 
   if (Number.isNaN(permissionId)) {
     throw new Response("Invalid permission ID", { status: 400 });
   }
 
-  const permission = await getPermissionById(permissionId);
+  const authFetch = createAuthFetch(request, context);
+  const permission = await getPermissionById(permissionId, authFetch);
 
   if (!permission) {
     throw new Response("Permission not found", { status: 404 });

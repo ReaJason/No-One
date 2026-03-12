@@ -3,7 +3,7 @@ import * as React from "react";
 import { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
+import { createAuthFetch } from "@/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { getUsers, loadUserSearchParams } from "@/api/user-api";
 import { DataTable } from "@/components/data-table/data-table";
@@ -14,7 +14,8 @@ import { UsersTableActionBar } from "@/components/user/user-action-bar";
 import { useUserColumns } from "@/components/user/user-columns";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { User } from "@/types/admin";
+import type { PaginatedResponse } from "@/types/api";
+import type { Role, User, UserStatus } from "@/types/admin";
 
 export const handle = createBreadcrumb(() => ({
   id: "users",
@@ -22,34 +23,47 @@ export const handle = createBreadcrumb(() => ({
   to: "/admin/users",
 }));
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const {
     username,
+    roleId: explicitRoleId,
     roles: roleId,
+    status,
     enabled,
     page,
     perPage,
     sortBy,
     sortOrder,
   } = loadUserSearchParams(request);
-  return {
-    userResponse: getUsers({
+  const resolvedStatus: UserStatus | null =
+    status ?? (enabled == null ? null : enabled ? "ENABLED" : "DISABLED");
+
+  const authFetch = createAuthFetch(request, context);
+  const userResponse = await getUsers(
+    {
       username,
-      roleId,
+      roleId: explicitRoleId ?? roleId,
+      status: resolvedStatus,
       enabled,
       page,
       perPage,
       sortBy,
       sortOrder,
-    }),
-    roles: getAllRoles(),
+    },
+    authFetch,
+  );
+  const roles = await getAllRoles(authFetch);
+
+  return {
+    userResponse: Promise.resolve(userResponse),
+    roles: Promise.resolve(roles),
   };
 }
 
 export default function Users() {
   const { userResponse, roles } = useLoaderData() as {
     userResponse: Promise<PaginatedResponse<User>>;
-    roles: Promise<any[]>;
+    roles: Promise<Role[]>;
   };
 
   return (
@@ -89,12 +103,12 @@ export default function Users() {
   );
 }
 
-export function UserTable({
+function UserTable({
   userResponse,
   roles,
 }: {
   userResponse: Promise<PaginatedResponse<User>>;
-  roles: Promise<any[]>;
+  roles: Promise<Role[]>;
 }) {
   const userResponseData = use(userResponse);
   const rolesData = use(roles);

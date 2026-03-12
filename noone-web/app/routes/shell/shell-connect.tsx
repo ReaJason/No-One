@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   ArrowLeft,
   CheckCircle2,
   CircleDashed,
@@ -10,7 +9,9 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getShellConnectionById, testShellConnection } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
@@ -86,20 +87,6 @@ function resolveErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-function isAbortError(error: unknown): boolean {
-  if (!error || typeof error !== "object") {
-    return false;
-  }
-  const candidate = error as { name?: string; code?: string; message?: string };
-  if (candidate.name === "AbortError" || candidate.code === "ABORT_ERR") {
-    return true;
-  }
-  const message = (candidate.message ?? "").toLowerCase();
-  return (
-    message.includes("aborted") || message.includes("cancelled") || message.includes("canceled")
-  );
-}
-
 function statusBadgeClassName(status: StepStatus): string {
   switch (status) {
     case "success":
@@ -124,30 +111,100 @@ function logColorClassName(level: ConnectLog["level"]): string {
   }
 }
 
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
+  const shellId = params.shellId as string | undefined;
+  if (!shellId) {
+    throw new Response("Invalid shell ID", { status: 400 });
+  }
+
+  const authFetch = createAuthFetch(request, context);
+  const shell = await getShellConnectionById(shellId, authFetch);
+  if (!shell) {
+    throw new Response("Shell connection not found", { status: 404 });
+  }
+
+  return { shell };
+}
+
+export async function action({ context, params, request }: ActionFunctionArgs) {
+  const shellId = Number(params.shellId);
+  if (!Number.isInteger(shellId) || shellId <= 0) {
+    return { success: false, error: "Invalid shell ID", flowId: null };
+  }
+
+  const formData = await request.formData();
+  const flowId = String(formData.get("flowId") ?? "");
+  if (formData.get("intent") !== "test-connection") {
+    return { success: false, error: "Unsupported action", flowId };
+  }
+
+  const authFetch = createAuthFetch(request, context);
+
+  try {
+    const result = await testShellConnection(shellId, authFetch);
+    if (result.connected) {
+      return { success: true, flowId };
+    }
+  } catch (error: any) {
+    const latestFailure = await getLatestFailureReason(shellId, authFetch);
+    return {
+      success: false,
+      error: latestFailure ?? error?.message ?? "Connection test failed",
+      flowId,
+    };
+  }
+
+  const latestFailure = await getLatestFailureReason(shellId, authFetch);
+  return {
+    success: false,
+    error: latestFailure ?? "Connection test failed",
+    flowId,
+  };
+}
+
+async function getLatestFailureReason(
+  shellId: number,
+  authFetch: ReturnType<typeof createAuthFetch>,
+): Promise<string | null> {
+  try {
+    const response = await getShellOperationLogs(
+      shellId,
+      {
+        operation: "TEST",
+        success: false,
+        page: 1,
+        pageSize: 1,
+      },
+      authFetch,
+    );
+    const latest = response.content[0];
+    if (latest?.errorMessage && latest.errorMessage.trim()) {
+      return latest.errorMessage.trim();
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export default function ShellConnectPage() {
-  const { shellId } = useParams();
+  const { shell } = useLoaderData() as { shell: ShellConnection };
+  const testFetcher = useFetcher<{ success?: boolean; error?: string; flowId?: string | null }>();
   const navigate = useNavigate();
 
-  const [shell, setShell] = useState<ShellConnection | null>(null);
   const [steps, setSteps] = useState<Record<StepKey, StepStatus>>(() => createInitialStepStatus());
   const [logs, setLogs] = useState<ConnectLog[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
 
-  const mountedRef = useRef(true);
   const logIdRef = useRef(1);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const logPanelRef = useRef<HTMLDivElement | null>(null);
-
-  const parsedShellId = useMemo(() => {
-    if (!shellId) return null;
-    const value = Number(shellId);
-    if (!Number.isInteger(value) || value <= 0) {
-      return null;
-    }
-    return value;
-  }, [shellId]);
+  const handoffTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startedFlowIdRef = useRef<string | null>(null);
+  const shellId = useMemo(() => Number(shell.id), [shell.id]);
+  const currentFlowId = String(attempt);
 
   const progressValue = useMemo(() => {
     const total = CONNECT_STEPS.length;
@@ -175,31 +232,24 @@ export default function ShellConnectPage() {
     setSteps((prev) => ({ ...prev, [step]: status }));
   }, []);
 
-  const loadLatestFailureReason = useCallback(
-    async (currentShellId: number): Promise<string | null> => {
-      try {
-        const response = await getShellOperationLogs(currentShellId, {
-          operation: "TEST",
-          success: false,
-          page: 1,
-          pageSize: 1,
-        });
-        const latest = response.content[0];
-        if (latest?.errorMessage && latest.errorMessage.trim()) {
-          return latest.errorMessage.trim();
-        }
-        return null;
-      } catch {
-        return null;
+  useEffect(() => {
+    return () => {
+      if (handoffTimeoutRef.current) {
+        clearTimeout(handoffTimeoutRef.current);
       }
-    },
-    [],
-  );
+    };
+  }, []);
 
-  const runConnectionFlow = useCallback(async () => {
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+  useEffect(() => {
+    if (startedFlowIdRef.current === currentFlowId) {
+      return;
+    }
+    startedFlowIdRef.current = currentFlowId;
+
+    if (handoffTimeoutRef.current) {
+      clearTimeout(handoffTimeoutRef.current);
+      handoffTimeoutRef.current = null;
+    }
 
     setSteps(createInitialStepStatus());
     setLogs([]);
@@ -207,87 +257,69 @@ export default function ShellConnectPage() {
     setIsRunning(true);
     logIdRef.current = 1;
 
-    if (parsedShellId == null) {
-      setStepStatus("resolveShell", "error");
-      setError("Invalid shell id.");
-      appendLog("error", "Invalid shell id.");
-      setIsRunning(false);
-      return;
-    }
+    appendLog("info", `Starting connection flow for shell #${shellId}`);
+    setStepStatus("resolveShell", "running");
+    appendLog("info", "Resolving shell metadata...");
+    setStepStatus("resolveShell", "success");
+    appendLog("success", `Loaded ${shell.url} (${shell.language})`);
+    setStepStatus("testConnection", "running");
+    appendLog("info", "Running connection test...");
 
-    appendLog("info", `Starting connection flow for shell #${parsedShellId}`);
-
-    try {
-      setStepStatus("resolveShell", "running");
-      appendLog("info", "Resolving shell metadata...");
-      const shellData = await getShellConnectionById(parsedShellId, { signal: controller.signal });
-      if (!mountedRef.current || controller.signal.aborted) return;
-
-      setShell(shellData);
-      setStepStatus("resolveShell", "success");
-      appendLog("success", `Loaded ${shellData.url} (${shellData.language})`);
-
-      setStepStatus("testConnection", "running");
-      appendLog("info", "Running connection test...");
-      const testResult = await testShellConnection(parsedShellId, { signal: controller.signal });
-      if (!mountedRef.current || controller.signal.aborted) return;
-
-      if (!testResult.connected) {
-        setStepStatus("testConnection", "error");
-        appendLog("error", "Connection test returned disconnected state");
-        const reason = await loadLatestFailureReason(parsedShellId);
-        throw new Error(reason ?? "Connection test failed");
-      }
-
-      setStepStatus("testConnection", "success");
-      appendLog("success", "Connection test passed");
-
-      setStepStatus("handoff", "running");
-      appendLog("info", "Preparing shell manager handoff...");
-      await new Promise((resolve) => setTimeout(resolve, HANDOFF_DELAY_MS));
-      if (!mountedRef.current || controller.signal.aborted) return;
-
-      setStepStatus("handoff", "success");
-      appendLog("success", "Handoff complete, entering manager");
-      navigate(`/shells/${parsedShellId}/info`);
-    } catch (flowError) {
-      if (!mountedRef.current || controller.signal.aborted || isAbortError(flowError)) {
-        return;
-      }
-
-      const failureMessage = resolveErrorMessage(flowError, "Connection workflow failed.");
-      setError(failureMessage);
-      setSteps((prev) => {
-        const runningStep = (Object.keys(prev) as StepKey[]).find((key) => prev[key] === "running");
-        if (!runningStep) return prev;
-        return { ...prev, [runningStep]: "error" };
-      });
-      appendLog("error", failureMessage);
-    } finally {
-      if (mountedRef.current && abortControllerRef.current === controller) {
-        setIsRunning(false);
-      }
-    }
-  }, [appendLog, loadLatestFailureReason, navigate, parsedShellId, setStepStatus]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      abortControllerRef.current?.abort();
-    };
-  }, []);
-
-  useEffect(() => {
-    void runConnectionFlow();
-  }, [runConnectionFlow, attempt]);
+    const formData = new FormData();
+    formData.set("intent", "test-connection");
+    formData.set("flowId", currentFlowId);
+    testFetcher.submit(formData, { method: "post" });
+  }, [appendLog, currentFlowId, setStepStatus, shell.language, shell.url, shellId, testFetcher]);
 
   useEffect(() => {
     if (!logPanelRef.current) return;
     logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
   }, [logs]);
 
-  const canRetry = !isRunning && error != null && parsedShellId != null;
+  useEffect(() => {
+    if (
+      testFetcher.state !== "idle" ||
+      !testFetcher.data ||
+      !isRunning ||
+      testFetcher.data.flowId !== currentFlowId
+    ) {
+      return;
+    }
+
+    if (testFetcher.data.success) {
+      setStepStatus("testConnection", "success");
+      appendLog("success", "Connection test passed");
+      setStepStatus("handoff", "running");
+      appendLog("info", "Preparing shell manager handoff...");
+      handoffTimeoutRef.current = setTimeout(() => {
+        setStepStatus("handoff", "success");
+        appendLog("success", "Handoff complete, entering manager");
+        setIsRunning(false);
+        navigate(`/shells/${shellId}/info`);
+      }, HANDOFF_DELAY_MS);
+      return;
+    }
+
+    const failureMessage = resolveErrorMessage(
+      testFetcher.data.error,
+      "Connection workflow failed.",
+    );
+    setError(failureMessage);
+    setStepStatus("testConnection", "error");
+    appendLog("error", failureMessage);
+    setIsRunning(false);
+  }, [
+    appendLog,
+    currentFlowId,
+    isRunning,
+    navigate,
+    setStepStatus,
+    shellId,
+    testFetcher.data,
+    testFetcher.state,
+  ]);
+
+  const canRetry = !isRunning && error != null;
 
   return (
     <div className="container mx-auto max-w-4xl p-6">
@@ -303,22 +335,20 @@ export default function ShellConnectPage() {
                 Running preflight checks before entering shell manager.
               </CardDescription>
             </div>
-            <Badge variant="secondary">#{shellId ?? "unknown"}</Badge>
+            <Badge variant="secondary">#{shell.id}</Badge>
           </div>
-          {shell && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <Server className="h-3.5 w-3.5" />
-                {shell.url}
-              </span>
-              <Badge variant="outline" className="text-[11px]">
-                {shell.language}
-              </Badge>
-              <Badge variant="outline" className="text-[11px]">
-                {shell.status}
-              </Badge>
-            </div>
-          )}
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <Server className="h-3.5 w-3.5" />
+              {shell.url}
+            </span>
+            <Badge variant="outline" className="text-[11px]">
+              {shell.language}
+            </Badge>
+            <Badge variant="outline" className="text-[11px]">
+              {shell.status}
+            </Badge>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-5 pt-4">
@@ -433,12 +463,6 @@ export default function ShellConnectPage() {
           </div>
         </CardFooter>
       </Card>
-      {parsedShellId == null && (
-        <div className="mx-auto mt-4 flex max-w-4xl items-center gap-2 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-500">
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          The provided shell id is invalid.
-        </div>
-      )}
     </div>
   );
 }

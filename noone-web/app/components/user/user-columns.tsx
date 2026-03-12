@@ -1,9 +1,12 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   CalendarIcon,
+  KeyRound,
   Loader,
+  Mail,
   MoreHorizontal,
   Settings,
+  Shield,
   Text,
   Trash2,
   UserCheck,
@@ -34,26 +37,44 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/format";
-import type { Role, User } from "@/types/admin";
+import type { Role, User, UserStatus } from "@/types/admin";
 
-const StatusBadge = React.memo(({ status }: { status: boolean }) => {
-  return status === true ? (
-    <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">
-      Active
-    </Badge>
-  ) : (
-    <Badge variant="secondary" className="bg-red-100 text-red-800 hover:bg-red-100">
-      Inactive
+const STATUS_META: Record<UserStatus, { label: string; className: string }> = {
+  ENABLED: { label: "Enabled", className: "bg-green-100 text-green-800 hover:bg-green-100" },
+  DISABLED: { label: "Disabled", className: "bg-red-100 text-red-800 hover:bg-red-100" },
+  LOCKED: { label: "Locked", className: "bg-orange-100 text-orange-800 hover:bg-orange-100" },
+  UNACTIVATED: { label: "Unactivated", className: "bg-zinc-100 text-zinc-800 hover:bg-zinc-100" },
+};
+
+const StatusBadge = React.memo(({ status }: { status: UserStatus }) => {
+  const statusMeta = STATUS_META[status];
+  return (
+    <Badge variant="secondary" className={statusMeta.className}>
+      {statusMeta.label}
     </Badge>
   );
 });
 
 const UserActionsCell = React.memo(({ user }: { user: User }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const fetcher = useFetcher();
-  const deleteFetcher = useFetcher();
+  const [isResetOpen, setIsResetOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [verificationPassword, setVerificationPassword] = useState("");
+
+  const statusFetcher = useFetcher<{ errors?: Record<string, string> }>();
+  const deleteFetcher = useFetcher<{ errors?: Record<string, string> }>();
+  const resetPasswordFetcher = useFetcher<{ errors?: Record<string, string> }>();
+
+  const nextStatus: UserStatus = user.status === "ENABLED" ? "DISABLED" : "ENABLED";
+  const statusActionLabel = user.status === "ENABLED" ? "Disable User" : "Enable User";
+  const statusError = statusFetcher.data?.errors?.general;
+  const deleteError = deleteFetcher.data?.errors?.general;
+  const resetPasswordError = resetPasswordFetcher.data?.errors?.general;
+
   return (
     <>
       <DropdownMenu>
@@ -65,7 +86,7 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
             </Button>
           }
         ></DropdownMenuTrigger>
-        <DropdownMenuContent className="w-38" align="start">
+        <DropdownMenuContent className="w-44" align="start">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <Link to={`/admin/users/edit-roles/${user.id}`}>
@@ -74,18 +95,28 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
                 Edit Roles
               </DropdownMenuItem>
             </Link>
-            <DropdownMenuItem onClick={() => setIsOpen(true)}>
-              {user.enabled === true ? (
+            <Link to={`/admin/users/security/${user.id}`}>
+              <DropdownMenuItem>
+                <Shield className="mr-2 h-4 w-4" />
+                Security
+              </DropdownMenuItem>
+            </Link>
+            <DropdownMenuItem onClick={() => setIsStatusOpen(true)}>
+              {user.status === "ENABLED" ? (
                 <>
                   <UserX className="mr-2 h-4 w-4" />
-                  Disable User
+                  {statusActionLabel}
                 </>
               ) : (
                 <>
                   <UserCheck className="mr-2 h-4 w-4" />
-                  Enable User
+                  {statusActionLabel}
                 </>
               )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsResetOpen(true)}>
+              <KeyRound className="mr-2 h-4 w-4" />
+              Reset Password
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-destructive">
@@ -95,40 +126,129 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-      <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
+
+      <AlertDialog open={isStatusOpen} onOpenChange={setIsStatusOpen}>
         <AlertDialogContent>
-          <fetcher.Form method="post" action={`/admin/users/update/${user.id}`}>
-            <input type="hidden" name="enabled" value={(!user.enabled).toString()} />
+          <statusFetcher.Form method="post" action={`/admin/users/${user.id}/update`}>
+            <input type="hidden" name="status" value={nextStatus} />
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                Are you sure you want to {user.enabled ? "disable" : "enable"} this user?
-              </AlertDialogTitle>
+              <AlertDialogTitle>Confirm status change</AlertDialogTitle>
               <AlertDialogDescription>
-                Make sure you want to {user.enabled ? "disable" : "enable"} this user.
+                This user status will be changed from {STATUS_META[user.status].label} to{" "}
+                {STATUS_META[nextStatus].label}.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`status-password-${user.id}`}>Current admin password</Label>
+              <Input
+                id={`status-password-${user.id}`}
+                name="verificationPassword"
+                type="password"
+                required
+                value={verificationPassword}
+                onChange={(event) => setVerificationPassword(event.target.value)}
+                disabled={statusFetcher.state !== "idle"}
+              />
+              {statusError ? <p className="text-sm text-destructive">{statusError}</p> : null}
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction>
-                <Button type="submit" className="text-sm" disabled={fetcher.state !== "idle"}>
-                  {fetcher.state !== "idle" && <Loader className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" className="text-sm" disabled={statusFetcher.state !== "idle"}>
+                  {statusFetcher.state !== "idle" && (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Confirm
                 </Button>
               </AlertDialogAction>
             </AlertDialogFooter>
-          </fetcher.Form>
+          </statusFetcher.Form>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+        <AlertDialogContent>
+          <resetPasswordFetcher.Form
+            method="post"
+            action={`/admin/users/${user.id}/reset-password`}
+            className="space-y-4"
+          >
+            <input type="hidden" name="forceChangeOnNextLogin" value="true" />
+            <AlertDialogHeader>
+              <AlertDialogTitle>Reset user password</AlertDialogTitle>
+              <AlertDialogDescription>
+                A temporary password will be set for this user.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`new-password-${user.id}`}>Temporary password</Label>
+              <Input
+                id={`new-password-${user.id}`}
+                name="newPassword"
+                type="password"
+                minLength={6}
+                required
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                disabled={resetPasswordFetcher.state !== "idle"}
+              />
+              {resetPasswordError ? (
+                <p className="text-sm text-destructive">{resetPasswordError}</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={`reset-password-verify-${user.id}`}>Current admin password</Label>
+              <Input
+                id={`reset-password-verify-${user.id}`}
+                name="verificationPassword"
+                type="password"
+                required
+                value={verificationPassword}
+                onChange={(event) => setVerificationPassword(event.target.value)}
+                disabled={resetPasswordFetcher.state !== "idle"}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction>
+                <Button
+                  type="submit"
+                  className="text-sm"
+                  disabled={resetPasswordFetcher.state !== "idle" || newPassword.length < 6}
+                >
+                  {resetPasswordFetcher.state !== "idle" && (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Confirm
+                </Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </resetPasswordFetcher.Form>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
-          <deleteFetcher.Form method="post" action={`/admin/users/delete/${user.id}`}>
+          <deleteFetcher.Form method="post" action={`/admin/users/${user.id}/delete`}>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete your account and remove
-                your data from our servers.
+                This action cannot be undone. The user account will be permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor={`delete-password-${user.id}`}>Current admin password</Label>
+              <Input
+                id={`delete-password-${user.id}`}
+                name="verificationPassword"
+                type="password"
+                required
+                value={verificationPassword}
+                onChange={(event) => setVerificationPassword(event.target.value)}
+                disabled={deleteFetcher.state !== "idle"}
+              />
+              {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+            </div>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction>
@@ -154,11 +274,8 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
         id: "select",
         header: ({ table }) => (
           <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value: any) => table.toggleAllPageRowsSelected(!!value)}
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value: boolean) => table.toggleAllPageRowsSelected(Boolean(value))}
             aria-label="Select all"
             className="translate-y-0.5"
           />
@@ -166,7 +283,7 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
-            onCheckedChange={(value: any) => row.toggleSelected(!!value)}
+            onCheckedChange={(value: boolean) => row.toggleSelected(Boolean(value))}
             aria-label="Select row"
             className="translate-y-0.5"
           />
@@ -179,7 +296,19 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
         id: "username",
         accessorKey: "username",
         header: ({ column }) => <DataTableColumnHeader column={column} label="User" />,
-        cell: ({ cell }) => cell.getValue<string>(),
+        cell: ({ row }) => {
+          const currentUser = row.original;
+          return (
+            <div className="space-y-1">
+              <div>{currentUser.username}</div>
+              {currentUser.mustChangePassword ? (
+                <Badge variant="outline" className="text-[10px] tracking-wide uppercase">
+                  Password reset required
+                </Badge>
+              ) : null}
+            </div>
+          );
+        },
         meta: {
           label: "User",
           variant: "text",
@@ -187,7 +316,21 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
           icon: Text,
         },
         enableColumnFilter: true,
-        size: 80,
+        size: 120,
+      },
+      {
+        id: "email",
+        accessorKey: "email",
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Email" />,
+        cell: ({ cell }) => cell.getValue<string>(),
+        meta: {
+          label: "Email",
+          variant: "text",
+          placeholder: "Search by email...",
+          icon: Mail,
+        },
+        enableColumnFilter: false,
+        size: 180,
       },
       {
         id: "roles",
@@ -216,22 +359,35 @@ export const useUserColumns = (roles: Role[]): ColumnDef<User>[] => {
         enableColumnFilter: true,
       },
       {
-        id: "enabled",
-        accessorKey: "enabled",
+        id: "status",
+        accessorKey: "status",
         header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
         cell: ({ row }) => {
-          const status = row.getValue("enabled") as boolean;
+          const status = row.getValue("status") as UserStatus;
           return <StatusBadge status={status} />;
         },
         meta: {
           label: "Status",
           variant: "select",
+          icon: Shield,
           options: [
-            { label: "Active", value: "true" },
-            { label: "Inactive", value: "false" },
+            { label: "Enabled", value: "ENABLED" },
+            { label: "Disabled", value: "DISABLED" },
+            { label: "Locked", value: "LOCKED" },
+            { label: "Unactivated", value: "UNACTIVATED" },
           ],
         },
         enableColumnFilter: true,
+      },
+      {
+        id: "lastLogin",
+        accessorKey: "lastLogin",
+        header: ({ column }) => <DataTableColumnHeader column={column} label="Last Login" />,
+        cell: ({ cell }) => {
+          const value = cell.getValue<string | null>();
+          return value ? formatDate(value) : "--";
+        },
+        enableColumnFilter: false,
       },
       {
         id: "createdAt",

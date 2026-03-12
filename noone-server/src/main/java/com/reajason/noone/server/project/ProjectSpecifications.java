@@ -2,6 +2,7 @@ package com.reajason.noone.server.project;
 
 import com.reajason.noone.server.admin.user.User;
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.ObjectUtils;
 
@@ -58,6 +59,26 @@ public class ProjectSpecifications {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), createdBefore);
+        };
+    }
+
+    public static Specification<Project> isOwnerOrMember(User user) {
+        return (root, query, criteriaBuilder) -> {
+            Join<Project, User> members = root.join("members");
+            return criteriaBuilder.or(
+                    criteriaBuilder.equal(root.get("owner").get("id"), user.getId()),
+                    criteriaBuilder.equal(members.get("id"), user.getId())
+            );
+        };
+    }
+
+    public static Specification<Project> isOwnerOrMember(Long projectId, User user) {
+        return (root, query, criteriaBuilder) -> {
+            Join<Project, User> members = root.join("members");
+            Predicate matchesProject = criteriaBuilder.equal(root.get("id"), projectId);
+            Predicate isOwner = criteriaBuilder.equal(root.get("owner").get("id"), user.getId());
+            Predicate isMember = criteriaBuilder.equal(members.get("id"), user.getId());
+            return criteriaBuilder.and(matchesProject, criteriaBuilder.or(isOwner, isMember));
         };
     }
 }

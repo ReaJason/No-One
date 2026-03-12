@@ -9,43 +9,53 @@ import {
   useLoaderData,
   useNavigate,
 } from "react-router";
-import { toast } from "sonner";
-import { type CreateProjectRequest, createProject } from "@/api/project-api";
+import { createAuthFetch } from "@/api.server";
+import { createProject, type CreateProjectRequest } from "@/api/project-api";
 import { getAllUsers } from "@/api/user-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User } from "@/types/admin";
 
-export async function loader(_args: LoaderFunctionArgs) {
-  const users = await getAllUsers();
-  return { users } as { users: User[] };
+interface LoaderData {
+  users: User[];
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs): Promise<LoaderData> {
+  const authFetch = createAuthFetch(request, context);
+  const users = await getAllUsers(authFetch);
+  return { users };
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const name = (formData.get("name") as string)?.trim();
   const code = (formData.get("code") as string)?.trim();
   const memberIds = (formData.getAll("memberIds") as string[])
     .map((id) => Number(id))
     .filter((n) => Number.isFinite(n));
+
   const errors: Record<string, string> = {};
   if (!name) errors.name = "Project name is required";
   if (!code) errors.code = "Project code is required";
-  if (Object.keys(errors).length > 0) return { errors, success: false };
+
+  if (Object.keys(errors).length > 0) {
+    return { errors, success: false };
+  }
+
   try {
+    const authFetch = createAuthFetch(request, context);
     const payload: CreateProjectRequest = {
       name,
       code,
       memberIds: memberIds.length > 0 ? memberIds : undefined,
     };
-    await createProject(payload);
-    toast.success("Project created successfully");
+    await createProject(payload, authFetch);
     return redirect("/projects");
   } catch (error: any) {
-    toast.error(error?.message || "Failed to create project");
     return {
       errors: { general: error?.message || "Failed to create project" },
       success: false,
@@ -54,20 +64,34 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function CreateProject() {
-  const { users } = useLoaderData() as { users: User[] };
+  const { users } = useLoaderData() as LoaderData;
   const navigate = useNavigate();
   const actionData = useActionData() as
     | { errors?: Record<string, string>; success?: boolean }
     | undefined;
   const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<number>>(new Set());
+
+  const filteredUsers = useMemo(() => {
     if (!query) return users;
-    const q = query.toLowerCase();
-    return users.filter((u) => u.username.toLowerCase().includes(q));
+    const lowerQuery = query.toLowerCase();
+    return users.filter((user) => user.username.toLowerCase().includes(lowerQuery));
   }, [users, query]);
 
+  const toggleMember = (userId: number, checked: boolean) => {
+    setSelectedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(userId);
+      } else {
+        next.delete(userId);
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="container mx-auto max-w-2xl p-6">
+    <div className="container mx-auto max-w-3xl p-6">
       <div className="mb-8">
         <Button
           variant="ghost"
@@ -79,7 +103,7 @@ export default function CreateProject() {
         </Button>
 
         <h1 className="text-3xl font-bold text-balance">Create New Project</h1>
-        <p className="mt-2 text-muted-foreground">Fill in project basic information</p>
+        <p className="mt-2 text-muted-foreground">Create the project and assign members</p>
       </div>
 
       <Card>
@@ -91,27 +115,29 @@ export default function CreateProject() {
         </CardHeader>
         <CardContent>
           <Form method="post" className="space-y-6">
-            {actionData?.errors?.general && (
+            {[...selectedMemberIds].map((memberId) => (
+              <input key={memberId} type="hidden" name="memberIds" value={memberId} />
+            ))}
+
+            {actionData?.errors?.general ? (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
                 {actionData.errors.general}
               </div>
-            )}
+            ) : null}
+
             <div className="space-y-2">
               <Label htmlFor="name">Project Name *</Label>
               <Input
                 id="name"
                 name="name"
                 type="text"
-                placeholder="Please enter project name"
-                className={actionData?.errors?.name ? "border-destructive" : "w-full"}
+                placeholder="Project name"
+                className={actionData?.errors?.name ? "border-destructive" : undefined}
                 required
               />
-              {actionData?.errors?.name && (
+              {actionData?.errors?.name ? (
                 <p className="text-sm text-destructive">{actionData.errors.name}</p>
-              )}
-              <p className="text-sm text-muted-foreground">
-                The project name will be used to identify and manage your project
-              </p>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -121,49 +147,56 @@ export default function CreateProject() {
                 name="code"
                 type="text"
                 placeholder="Unique code"
-                className={actionData?.errors?.code ? "border-destructive" : "w-full"}
+                className={actionData?.errors?.code ? "border-destructive" : undefined}
                 required
               />
-              {actionData?.errors?.code && (
+              {actionData?.errors?.code ? (
                 <p className="text-sm text-destructive">{actionData.errors.code}</p>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-1">
                   <Label>Members</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Select one or more users for this project
-                  </p>
+                  <p className="text-sm text-muted-foreground">Select the users for this project</p>
                 </div>
                 <div className="relative">
                   <Input
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
+                    onChange={(event) => setQuery(event.target.value)}
                     placeholder="Search users..."
                     className="h-8 w-56 pl-8"
                   />
                   <Search className="absolute top-1/2 left-2 size-4 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
+
               <div className="rounded-md border">
-                <ScrollArea className="h-[280px] p-3">
-                  <div className="space-y-2">
-                    {filtered.map((u) => (
-                      <label key={u.id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="memberIds"
-                          value={u.id}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        <span className="text-sm">{u.username}</span>
-                      </label>
-                    ))}
-                    {filtered.length === 0 && (
+                <ScrollArea className="h-[420px] p-3">
+                  <div className="space-y-4">
+                    {filteredUsers.map((user) => {
+                      const isSelected = selectedMemberIds.has(user.id);
+
+                      return (
+                        <div key={user.id} className="rounded-lg border p-3">
+                          <label className="flex items-center gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={(checked) => toggleMember(user.id, Boolean(checked))}
+                            />
+                            <div>
+                              <div className="font-medium">{user.username}</div>
+                              <div className="text-sm text-muted-foreground">{user.email}</div>
+                            </div>
+                          </label>
+                        </div>
+                      );
+                    })}
+
+                    {filteredUsers.length === 0 ? (
                       <div className="text-sm text-muted-foreground">No users</div>
-                    )}
+                    ) : null}
                   </div>
                 </ScrollArea>
               </div>

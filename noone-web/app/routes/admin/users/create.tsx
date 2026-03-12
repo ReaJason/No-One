@@ -1,7 +1,8 @@
 import { ArrowLeft, Plus, User } from "lucide-react";
-import { useCallback } from "react";
-import type { ActionFunctionArgs } from "react-router";
+import { useCallback, useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { createUser } from "@/api/user-api";
 import { Button } from "@/components/ui/button";
@@ -9,20 +10,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Role } from "@/types/admin";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Role, UserStatus } from "@/types/admin";
 
-export async function loader() {
-  const roles = await getAllRoles();
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const authFetch = createAuthFetch(request, context);
+  const roles = await getAllRoles(authFetch);
   return {
     roles: roles.map(({ id, name }) => ({ id, name })),
   };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const username = formData.get("username") as string;
   const password = formData.get("password") as string;
-  const roleIds = formData.getAll("roleIds") as string[];
+  const email = formData.get("email") as string;
+  const status = formData.get("status") as UserStatus;
+  const roleIds = (formData.getAll("roleIds") as string[]).map((id) => Number.parseInt(id, 10));
 
   const errors: Record<string, string> = {};
 
@@ -34,8 +45,18 @@ export async function action({ request }: ActionFunctionArgs) {
   } else if (password.length < 6) {
     errors.password = "Password must be at least 6 characters";
   }
+  if (!email?.trim()) {
+    errors.email = "Email is required";
+  } else if (!email.includes("@")) {
+    errors.email = "Email format is invalid";
+  }
+  if (!status) {
+    errors.status = "Status is required";
+  }
   if (roleIds.length === 0) {
     errors.roleIds = "At least one role must be selected";
+  } else if (roleIds.some(Number.isNaN)) {
+    errors.roleIds = "Invalid role id";
   }
 
   if (Object.keys(errors).length > 0) {
@@ -43,13 +64,15 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
+    const authFetch = createAuthFetch(request, context);
     const userData = {
       username: username.trim(),
-      password: password,
-      enabled: true,
+      password,
+      email: email.trim(),
+      status,
       roleIds,
     };
-    await createUser(userData);
+    await createUser(userData, authFetch);
     return redirect("/admin/users");
   } catch (error: any) {
     return {
@@ -65,6 +88,7 @@ export default function CreateUser() {
     | { errors?: Record<string, string>; success?: boolean }
     | undefined;
   const navigate = useNavigate();
+  const [status] = useState<UserStatus>("UNACTIVATED");
 
   const handleNavigateToUsers = useCallback(() => {
     navigate("/admin/users");
@@ -84,7 +108,7 @@ export default function CreateUser() {
 
         <h1 className="text-3xl font-bold text-balance">Create New User</h1>
         <p className="mt-2 text-muted-foreground">
-          Fill in user basic information and assign roles
+          Create an administrator-managed account with a temporary password and assigned roles
         </p>
       </div>
 
@@ -131,7 +155,41 @@ export default function CreateUser() {
                 <p className="text-sm text-destructive">{actionData.errors.password}</p>
               ) : null}
               <p className="text-sm text-muted-foreground">
-                Password must be at least 6 characters long
+                The user must replace this temporary password during first login
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter email"
+                required
+                className={actionData?.errors?.email ? "border-destructive" : ""}
+              />
+              {actionData?.errors?.email ? (
+                <p className="text-sm text-destructive">{actionData.errors.email}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Initial Status *</Label>
+              <input type="hidden" name="status" value={status} />
+              <Select value={status} disabled>
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UNACTIVATED">Unactivated</SelectItem>
+                </SelectContent>
+              </Select>
+              {actionData?.errors?.status ? (
+                <p className="text-sm text-destructive">{actionData.errors.status}</p>
+              ) : null}
+              <p className="text-sm text-muted-foreground">
+                Newly created accounts must complete password change and 2FA binding before access
               </p>
             </div>
 
@@ -143,7 +201,7 @@ export default function CreateUser() {
                     <Checkbox
                       id={`role-${role.id}`}
                       name="roleIds"
-                      value={role.id}
+                      value={String(role.id)}
                       className="rounded border-gray-300"
                     />
                     <Label htmlFor={`role-${role.id}`} className="text-sm font-normal">

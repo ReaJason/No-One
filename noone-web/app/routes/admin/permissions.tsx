@@ -2,7 +2,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
+import { createAuthFetch } from "@/api.server";
 import { getPermissions, loadPermissionSearchParams } from "@/api/permission-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -11,18 +11,25 @@ import { PermissionTableActionBar } from "@/components/permission/permission-act
 import { permissionColumns } from "@/components/permission/permission-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
+import type { PaginatedResponse } from "@/types/api";
 import type { Permission } from "@/types/admin";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } = loadPermissionSearchParams(request);
-  return {
-    permissionResponse: getPermissions({
+  const authFetch = createAuthFetch(request, context);
+  const permissionResponse = await getPermissions(
+    {
       name,
       page,
       perPage,
       sortBy,
       sortOrder,
-    }),
+    },
+    authFetch,
+  );
+
+  return {
+    permissionResponse: Promise.resolve(permissionResponse),
   };
 }
 

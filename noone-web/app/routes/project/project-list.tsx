@@ -1,9 +1,10 @@
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
-import { getProjects, loadProjectSearchParams } from "@/api/project-api";
+import { createAuthFetch } from "@/api.server";
+import { deleteProject, getProjects, loadProjectSearchParams } from "@/api/project-api";
+import type { PaginatedResponse } from "@/types/api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -13,11 +14,33 @@ import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import type { Project } from "@/types/project";
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
+  const authFetch = createAuthFetch(request, context);
+  const projectResponse = await getProjects({ name, page, perPage, sortBy, sortOrder }, authFetch);
+
   return {
-    projectResponse: getProjects({ name, page, perPage, sortBy, sortOrder }),
+    projectResponse: Promise.resolve(projectResponse),
   };
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  if (formData.get("intent") !== "delete") {
+    return { errors: { general: "Unsupported action" } };
+  }
+  const projectId = String(formData.get("projectId") ?? "").trim();
+  if (!projectId) {
+    return { errors: { general: "Invalid project ID" } };
+  }
+
+  try {
+    const authFetch = createAuthFetch(request, context);
+    await deleteProject(projectId, authFetch);
+    return { success: true };
+  } catch (error: any) {
+    return { errors: { general: error?.message || "Failed to delete project" } };
+  }
 }
 
 export default function ProjectList() {
@@ -62,7 +85,7 @@ export default function ProjectList() {
   );
 }
 
-export function ProjectTable({
+function ProjectTable({
   projectResponse,
 }: {
   projectResponse: Promise<PaginatedResponse<Project>>;

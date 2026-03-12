@@ -1,16 +1,18 @@
 import type { ActionFunctionArgs } from "react-router";
 import { redirect } from "react-router";
-import { toast } from "sonner";
+import { createAuthFetch } from "@/api.server";
 import { updateShellConnection } from "@/api/shell-connection-api";
 import type { ShellLanguage } from "@/types/shell-connection";
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
   const shellId = params.shellId as string | undefined;
   if (!shellId) {
     throw new Response("Invalid shell ID", { status: 400 });
   }
+  const authFetch = createAuthFetch(request, context);
 
   const formData = await request.formData();
+  const name = (formData.get("name") as string)?.trim();
   const url = (formData.get("url") as string)?.trim();
   const languageRaw = (formData.get("language") as string)?.trim();
   const language = languageRaw as ShellLanguage;
@@ -65,24 +67,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   try {
-    await updateShellConnection(shellId, {
-      url,
-      language,
-      group: group || undefined,
-      projectId,
-      profileId: profileId as number,
-      proxyUrl,
-      customHeaders,
-      connectTimeoutMs,
-      readTimeoutMs,
-      skipSslVerify: skipSslVerify || undefined,
-      maxRetries,
-      retryDelayMs,
-    });
-    toast.success("Shell connection updated successfully");
+    await updateShellConnection(
+      shellId,
+      {
+        name,
+        url,
+        language,
+        group: group || undefined,
+        projectId,
+        profileId: profileId as number,
+        proxyUrl,
+        customHeaders,
+        connectTimeoutMs,
+        readTimeoutMs,
+        skipSslVerify: skipSslVerify || undefined,
+        maxRetries,
+        retryDelayMs,
+      },
+      authFetch,
+    );
     return redirect("/shells");
   } catch (error: any) {
-    toast.error(error?.message || "Failed to update shell connection");
     return {
       errors: {
         general: error?.message || "Failed to update shell connection",

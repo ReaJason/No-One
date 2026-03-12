@@ -5,10 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function downloadContent(content: Blob, fileName: string, fileExtension: string) {
+export function downloadContent(content: Blob, fileName: string, fileExtension?: string) {
   const link = document.createElement("a");
   link.href = URL.createObjectURL(content);
-  link.download = `${fileName}${fileExtension}`;
+  if (fileExtension) {
+    link.download = `${fileName}${fileExtension}`;
+  } else {
+    link.download = fileName;
+  }
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

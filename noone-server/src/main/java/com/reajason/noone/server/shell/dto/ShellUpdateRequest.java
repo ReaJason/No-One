@@ -1,9 +1,8 @@
 package com.reajason.noone.server.shell.dto;
 
+import com.reajason.noone.server.shell.ShellLanguage;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import com.reajason.noone.server.shell.ShellLanguage;
 
 import java.util.Map;
 
@@ -15,6 +14,7 @@ import java.util.Map;
  */
 @Data
 public class ShellUpdateRequest {
+    private String name;
     private String url;
     private String shellType;
     private String status;

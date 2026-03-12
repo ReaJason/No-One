@@ -3,8 +3,6 @@ package com.reajason.noone.server.shell;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.List;
-
 /**
  * Shell repository interface
  *
@@ -12,19 +10,5 @@ import java.util.List;
  * @since 2025/12/27
  */
 public interface ShellRepository extends JpaRepository<Shell, Long>, JpaSpecificationExecutor<Shell> {
-    /**
-     * Find shells by project ID
-     */
-    List<Shell> findByProjectId(Long projectId);
-
-    /**
-     * Find shells by group
-     */
-    List<Shell> findByGroup(String group);
-
-    /**
-     * Find shells by status
-     */
-    List<Shell> findByStatus(ShellStatus status);
 
 }

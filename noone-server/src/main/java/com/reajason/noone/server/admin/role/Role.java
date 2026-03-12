@@ -43,4 +43,8 @@ public class Role {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public void setPermissions(Set<Permission> permissions) {
+        this.permissions = permissions == null ? new HashSet<>() : new HashSet<>(permissions);
+    }
 }

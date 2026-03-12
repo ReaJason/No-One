@@ -1,9 +1,9 @@
 import { Download, Plus } from "lucide-react";
 import React, { use, useMemo } from "react";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
-import { getAllProjects } from "@/api/project-api";
+import { createAuthFetch } from "@/api.server";
+import { deleteShellConnection, getShellConnections } from "@/api/shell-connection-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -11,17 +11,69 @@ import { getShellColumns } from "@/components/shell/shell-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import { getShellConnections } from "@/api/shell-connection-api";
 import { loadShellConnectionSearchParams } from "@/lib/shell-connection-search-param";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { ShellConnection } from "@/types/shell-connection";
 import type { Project } from "@/types/project";
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  const params = await loadShellConnectionSearchParams(request);
-  return {
-    shellConnectionResponse: getShellConnections(params),
-    projectsResponse: getAllProjects(),
+async function getAllProject(authFetch: ReturnType<typeof createAuthFetch>) {
+  const params: Record<string, any> = {
+    page: 1,
+    perPage: 1000,
+    sortBy: "createdAt",
+    sortOrder: "desc",
   };
+  const response = await authFetch<ServerPaginatedResponse<Project>>("/projects", {
+    query: { ...params, page: (params?.page ?? 1) - 1, pageSize: params?.perPage },
+  });
+  return {
+    content: response.content,
+    total: response.page.totalElements,
+    page: response.page.number + 1,
+    pageSize: response.page.size,
+    totalPages: response.page.totalPages,
+  }.content;
+}
+
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const params = await loadShellConnectionSearchParams(request);
+  const authFetch = createAuthFetch(request, context);
+  const [shellConnectionResponse, projectsResponse] = await Promise.all([
+    getShellConnections(params, authFetch),
+    getAllProject(authFetch),
+  ]);
+
+  return {
+    shellConnectionResponse: Promise.resolve(shellConnectionResponse),
+    projectsResponse: Promise.resolve(projectsResponse),
+  };
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const intent = formData.get("intent");
+
+  if (intent !== "delete") {
+    return { errors: { general: "Unsupported action" } };
+  }
+
+  const shellIdRaw = formData.get("shellId");
+  const shellId = Number(shellIdRaw);
+  if (!Number.isInteger(shellId) || shellId <= 0) {
+    return { errors: { general: "Invalid shell ID" } };
+  }
+
+  try {
+    const authFetch = createAuthFetch(request, context);
+    await deleteShellConnection(shellId, authFetch);
+    return { success: true };
+  } catch (error: any) {
+    return {
+      errors: {
+        general: error?.message || "Failed to delete shell connection",
+      },
+    };
+  }
 }
 
 export const handle = createBreadcrumb(() => ({
@@ -115,7 +167,6 @@ export function ShellConnectionTable({
     shallow: false,
     clearOnDefault: true,
   });
-
   return (
     <DataTable table={table}>
       <DataTableToolbar table={table} />

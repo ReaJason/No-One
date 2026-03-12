@@ -21,9 +21,9 @@ public class ShellMapper {
 
     public Shell toEntity(ShellCreateRequest request) {
         Shell shell = new Shell();
+        shell.setName(request.getName());
         shell.setUrl(request.getUrl());
         shell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
-        shell.setGroup(request.getGroup());
         shell.setProjectId(request.getProjectId());
         shell.setStatus(ShellStatus.DISCONNECTED);
 
@@ -44,11 +44,11 @@ public class ShellMapper {
         if (request.getUrl() != null && !request.getUrl().isBlank()) {
             shell.setUrl(request.getUrl());
         }
+        if (request.getName() != null && !request.getName().isBlank()) {
+            shell.setName(request.getName());
+        }
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             shell.setStatus(ShellStatus.valueOf(request.getStatus().toUpperCase()));
-        }
-        if (request.getGroup() != null) {
-            shell.setGroup(request.getGroup());
         }
         if (request.getProjectId() != null) {
             shell.setProjectId(request.getProjectId());
@@ -91,7 +91,6 @@ public class ShellMapper {
         response.setUrl(shell.getUrl());
         response.setLanguage(shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA);
         response.setStatus(shell.getStatus().name());
-        response.setGroup(shell.getGroup());
         response.setProjectId(shell.getProjectId());
         response.setCreateTime(shell.getCreateTime());
         response.setConnectTime(shell.getConnectTime());

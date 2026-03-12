@@ -1,7 +1,7 @@
 import { Separator } from "@radix-ui/react-separator";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import React from "react";
-import { Link, Outlet, useParams } from "react-router";
+import { data, Link, type LoaderFunctionArgs, Outlet } from "react-router";
 import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Icons } from "@/components/icons";
@@ -18,27 +18,28 @@ import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
 import { Shield } from "lucide-react";
+import { buildAuthState } from "@/lib/authz";
+import { authMiddleware } from "@/middleware/auth.server";
+import { getSession } from "@/sessions.server";
+import type { User } from "@/types/admin";
+import type { Route } from "../+types/root";
 
-// 模拟项目数据
-const mockProjects = {
-  "1": { name: "RASP VUL" },
-  "2": { name: "Tomcat Server" },
-  "3": { name: "TongWeb Server" },
-  "4": { name: "Mobile System" },
-};
+export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
+
+export async function loader({ request }: LoaderFunctionArgs) {
+  const session = await getSession(request.headers.get("Cookie"));
+  const user = (session.get("user") as User | null | undefined) ?? null;
+
+  return data({
+    auth: buildAuthState(user),
+  });
+}
 
 export default function Layout() {
-  const params = useParams();
-  const projectId = params.projectId;
-  const projectName = projectId
-    ? mockProjects[projectId as keyof typeof mockProjects]?.name
-    : undefined;
-
   const breadcrumbs = useBreadcrumbs();
-
   return (
     <SidebarProvider>
-      <AppSidebar projectName={projectName} />
+      <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2">
           <div className="flex items-center gap-2 px-4">

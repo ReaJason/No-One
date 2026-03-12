@@ -1,6 +1,8 @@
 import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Project } from "@/types/project";
-import { apiClient, type PaginatedResponse } from "./api-client";
 
 const baseUrl = "/projects";
 
@@ -22,12 +24,16 @@ export const loadProjectSearchParams = createLoader({
 
 export async function getProjects(
   filters: ProjectSearchParams,
+  authFetch: AuthFetch,
 ): Promise<PaginatedResponse<Project>> {
-  return await apiClient.getPaginated<Project>(baseUrl, filters);
+  const response = await authFetch<ServerPaginatedResponse<Project>>(baseUrl, {
+    query: { ...filters, page: (filters.page ?? 1) - 1, pageSize: filters.perPage },
+  });
+  return mapPaginatedResponse(response);
 }
 
-export async function getProjectById(id: string): Promise<Project | null> {
-  return (await apiClient.get<Project>(`${baseUrl}/${id}`)).data;
+export async function getProjectById(id: string, authFetch: AuthFetch): Promise<Project | null> {
+  return await authFetch<Project>(`${baseUrl}/${id}`);
 }
 
 export interface CreateProjectRequest {
@@ -37,22 +43,35 @@ export interface CreateProjectRequest {
   memberIds?: number[];
 }
 
-export async function createProject(projectData: CreateProjectRequest): Promise<Project> {
-  return (await apiClient.post<Project>(baseUrl, projectData)).data;
+export async function createProject(
+  projectData: CreateProjectRequest,
+  authFetch: AuthFetch,
+): Promise<Project> {
+  return await authFetch<Project>(baseUrl, {
+    method: "POST",
+    body: projectData,
+  });
 }
 
 export async function updateProject(
   id: string,
   projectData: Partial<Project> & { memberIds?: number[] },
+  authFetch: AuthFetch,
 ): Promise<Project | null> {
-  return (await apiClient.put<Project>(`${baseUrl}/${id}`, projectData)).data;
+  return await authFetch<Project>(`${baseUrl}/${id}`, {
+    method: "PUT",
+    body: projectData,
+  });
 }
 
-export async function deleteProject(id: string): Promise<boolean> {
-  await apiClient.delete(`${baseUrl}/${id}`);
+export async function deleteProject(id: string, authFetch: AuthFetch): Promise<boolean> {
+  await authFetch(`${baseUrl}/${id}`, { method: "DELETE" });
   return true;
 }
 
-export async function getAllProjects(): Promise<Project[]> {
-  return (await apiClient.getPaginated<Project>(baseUrl, { page: 1, perPage: 1000 })).content;
+export async function getAllProjects(authFetch: AuthFetch): Promise<Project[]> {
+  const response = await authFetch<ServerPaginatedResponse<Project>>(baseUrl, {
+    query: { page: 0, pageSize: 1000 },
+  });
+  return response.content;
 }

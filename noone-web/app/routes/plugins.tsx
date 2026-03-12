@@ -4,7 +4,7 @@ import * as React from "react";
 import { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
-import type { PaginatedResponse } from "@/api/api-client";
+import { createAuthFetch } from "@/api.server";
 import { getPlugins, loadPluginSearchParams } from "@/api/plugin-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { formatDate } from "@/lib/format";
+import type { PaginatedResponse } from "@/types/api";
 import type { Plugin } from "@/types/plugin";
 
 const LANGUAGE_TABS = [
@@ -24,11 +25,12 @@ const LANGUAGE_TABS = [
   { value: "dotnet", label: ".NET" },
 ] as const;
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, language, type, page, perPage, sortBy, sortOrder } =
     loadPluginSearchParams(request);
-  return {
-    pluginResponse: getPlugins({
+  const authFetch = createAuthFetch(request, context);
+  const pluginResponse = await getPlugins(
+    {
       name,
       language,
       type,
@@ -36,7 +38,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
       perPage,
       sortBy,
       sortOrder,
-    }),
+    },
+    authFetch,
+  );
+
+  return {
+    pluginResponse: Promise.resolve(pluginResponse),
   };
 }
 

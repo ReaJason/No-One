@@ -94,7 +94,7 @@ export function DataTableFacetedFilter({
 }: {
   column?: Column<any, unknown>;
   title?: string;
-  options: { label: string; value: string; icon?: React.ComponentType }[];
+  options: { label: string; value: string; icon?: React.ComponentType<{ className?: string }> }[];
 }) {
   const facets = column?.getFacetedUniqueValues();
   const selectedValues = new Set(column?.getFilterValue() as string[]);

@@ -20,11 +20,11 @@ import {
   TerminalSquare,
   Upload,
 } from "lucide-react";
-import {useVirtualizer} from "@tanstack/react-virtual";
-import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
-import {toast} from "sonner";
-import * as shellApi from "@/api/shell-api";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import FileEditorPane from "@/components/shell/file-editor-pane";
+import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -33,7 +33,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {Button} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -49,14 +49,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {Input} from "@/components/ui/input";
-import {Progress} from "@/components/ui/progress";
-import {ScrollArea} from "@/components/ui/scroll-area";
-import {Separator} from "@/components/ui/separator";
-import {Spinner} from "@/components/ui/spinner";
-import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow,} from "@/components/ui/table";
-import type {FileManagerInitialState} from "@/lib/file-manager-initial-state";
-import {cn} from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { FileManagerInitialState } from "@/lib/file-manager-initial-state";
+import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
+import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
+import { cn } from "@/lib/utils";
 
 type LocationKind = "cwd" | "home" | "disk";
 type EntryType = "file" | "directory";
@@ -77,8 +86,9 @@ type OperationKind = "upload" | "download" | "compress" | "extract" | "other";
 type OperationStatus = "running" | "success" | "error" | "cancelled";
 
 interface FileManagerProps {
-  shellId: number;
   initialState: FileManagerInitialState;
+  initialDirectory: Record<string, unknown>;
+  dataPath: string;
 }
 
 interface FileManagerLocation {
@@ -254,6 +264,10 @@ function throwIfAborted(signal?: AbortSignal) {
   if (signal?.aborted) {
     throw createAbortError();
   }
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof Error && error.name === "AbortError";
 }
 
 function buildTransferSummary(
@@ -501,20 +515,6 @@ function toDatetimeLocalValue(value: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function extractDataContainer(payload: unknown): Record<string, unknown> {
-  if (!payload || typeof payload !== "object") {
-    return {};
-  }
-  const p = payload as Record<string, unknown>;
-  if (p.data && typeof p.data === "object") {
-    return p.data as Record<string, unknown>;
-  }
-  if (p.result && typeof p.result === "object") {
-    return p.result as Record<string, unknown>;
-  }
-  return p;
-}
-
 function inferFileType(name: string, entryType: EntryType) {
   if (entryType === "directory") return "Folder";
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
@@ -703,32 +703,44 @@ function downloadBinaryFile(filename: string, bytes: Uint8Array) {
 }
 
 function ensureResultPayload(payload: unknown): Record<string, unknown> {
-  const container = extractDataContainer(payload);
-  const code = container.code;
-  if (typeof code === "number" && code !== 0) {
-    throw new Error(
-      typeof container.error === "string" ? container.error : "Plugin dispatch failed",
-    );
-  }
-  const result = (container.data as Record<string, unknown> | undefined) ?? container;
-  if (typeof result.error === "string" && result.error.length > 0) {
-    throw new Error(result.error);
-  }
-  return result;
+  return ensureShellDispatchPayload(payload);
+}
+
+function parseDirectoryListingResult(
+  result: Record<string, unknown>,
+  fallbackPath: string,
+  osFamily: OsFamily,
+) {
+  const parsedPathRaw = typeof result.path === "string" ? result.path : fallbackPath;
+  const parsedPath = normalizeAbsolutePath(parsedPathRaw, osFamily);
+  const rawEntries = Array.isArray(result.entries) ? result.entries : [];
+  const entries = rawEntries
+    .map((item) => parseFileNode(item, osFamily))
+    .filter((item): item is FileNode => item != null);
+
+  return {
+    path: parsedPath,
+    entries,
+  };
 }
 
 export default function FileManager({
-  shellId,
   initialState,
+  initialDirectory,
+  dataPath,
 }: FileManagerProps) {
   const osFamily = initialState.osFamily;
   const locations: FileManagerLocation[] = initialState.locations;
-  const [entries, setEntries] = useState<FileNode[]>([]);
+  const initialDirectoryState = useMemo(
+    () => parseDirectoryListingResult(initialDirectory, initialState.cwd, osFamily),
+    [initialDirectory, initialState.cwd, osFamily],
+  );
+  const [entries, setEntries] = useState<FileNode[]>(initialDirectoryState.entries);
   const [fileBuffersByPath, setFileBuffersByPath] = useState<Map<string, FileBufferState>>(
     new Map(),
   );
-  const [currentPath, setCurrentPath] = useState(initialState.cwd);
-  const [pathInput, setPathInput] = useState(initialState.cwd);
+  const [currentPath, setCurrentPath] = useState(initialDirectoryState.path);
+  const [pathInput, setPathInput] = useState(initialDirectoryState.path);
   const [activeLocationId, setActiveLocationId] = useState<string | null>(
     initialState.activeLocationId,
   );
@@ -754,6 +766,8 @@ export default function FileManager({
   const activeOperationIdRef = useRef<number | null>(null);
   const operationSeqRef = useRef(0);
   const operationClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { submit: submitFileAction } = useShellRouteFetcher<Record<string, unknown>>();
+  const { load: loadFileData } = useShellRouteFetcher<Record<string, unknown>>();
 
   const homePath = useMemo(() => {
     return (
@@ -1008,7 +1022,7 @@ export default function FileManager({
         }
         return true;
       } catch (error) {
-        if (shellApi.isAbortError(error) || controller.signal.aborted) {
+        if (isAbortError(error) || controller.signal.aborted) {
           markOperationCancelled(operationId);
           return false;
         }
@@ -1027,17 +1041,44 @@ export default function FileManager({
 
   const dispatchFileManager = useCallback(
     async (args: Record<string, unknown>, options: PluginRequestOptions = {}) => {
-      const payload = await shellApi.dispatchPlugin(
+      const { signal } = options;
+      const op = String(args.op ?? "");
+      throwIfAborted(signal);
+
+      if (op === "list" || op === "read-all" || op === "read-chunk") {
+        const requestId = createShellRouteRequestId();
+        const url = new URL(dataPath, window.location.origin);
+        url.searchParams.set("intent", op);
+        url.searchParams.set("requestId", requestId);
+        const path = args.path;
+        if (typeof path !== "string" || !path.trim()) {
+          throw new Error("Missing path");
+        }
+        url.searchParams.set("path", path);
+        for (const [key, value] of Object.entries(args)) {
+          if (key === "op" || key === "path" || value == null) {
+            continue;
+          }
+          url.searchParams.set(key, String(value));
+        }
+        const payload = await loadFileData(`${url.pathname}${url.search}`, requestId);
+        throwIfAborted(signal);
+        return ensureResultPayload(payload);
+      }
+
+      const requestId = createShellRouteRequestId();
+      const payload = await submitFileAction(
+        buildShellRouteFormData(op || "file-manager", args, requestId),
         {
-          id: shellId,
-          pluginId: "file-manager",
-          args,
+          method: "post",
+          action: dataPath,
         },
-        options,
+        requestId,
       );
+      throwIfAborted(signal);
       return ensureResultPayload(payload);
     },
-    [shellId],
+    [dataPath, loadFileData, submitFileAction],
   );
 
   const listDirectory = useCallback(
@@ -1047,25 +1088,20 @@ export default function FileManager({
       if (requestId !== latestListRequestIdRef.current) {
         return normalizeAbsolutePath(path, osFamily);
       }
-      const parsedPathRaw = typeof result.path === "string" ? result.path : path;
-      const parsedPath = normalizeAbsolutePath(parsedPathRaw, osFamily);
-      const rawEntries = Array.isArray(result.entries) ? result.entries : [];
-      const nextEntries = rawEntries
-        .map((item) => parseFileNode(item, osFamily))
-        .filter((item): item is FileNode => item != null);
+      const nextDirectory = parseDirectoryListingResult(result, path, osFamily);
       // Reset scroll position before setting state so the virtualizer sees
       // scrollTop=0 during the next render and computes correct virtual items.
       if (listScrollRef.current) {
         listScrollRef.current.scrollTop = 0;
       }
-      setEntries(nextEntries);
-      setCurrentPath(parsedPath);
-      setPathInput(parsedPath);
+      setEntries(nextDirectory.entries);
+      setCurrentPath(nextDirectory.path);
+      setPathInput(nextDirectory.path);
       setSelection(EMPTY_SELECTION);
       setContextMenuTargetPath(null);
       setNameFilter("");
       setListVersion((prev) => prev + 1);
-      return parsedPath;
+      return nextDirectory.path;
     },
     [dispatchFileManager, osFamily],
   );
@@ -1187,32 +1223,16 @@ export default function FileManager({
   );
 
   useEffect(() => {
-    let disposed = false;
-
-    const bootstrap = async () => {
-      setActiveLocationId(initialState.activeLocationId);
-      setLoading(true);
-      try {
-        await listDirectory(initialState.cwd);
-      } catch (error) {
-        if (!disposed) {
-          const message =
-            error instanceof Error ? error.message : "Failed to initialize file manager";
-          toast.error(message);
-        }
-      } finally {
-        if (!disposed) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void bootstrap();
-
-    return () => {
-      disposed = true;
-    };
-  }, [initialState.activeLocationId, initialState.cwd, listDirectory]);
+    setActiveLocationId(initialState.activeLocationId);
+    setEntries(initialDirectoryState.entries);
+    setCurrentPath(initialDirectoryState.path);
+    setPathInput(initialDirectoryState.path);
+    setSelection(EMPTY_SELECTION);
+    setContextMenuTargetPath(null);
+    setNameFilter("");
+    setLoading(false);
+    setListVersion((prev) => prev + 1);
+  }, [initialDirectoryState.entries, initialDirectoryState.path, initialState.activeLocationId]);
 
   useLayoutEffect(() => {
     if (listVersion <= 0) {
@@ -2466,7 +2486,7 @@ export default function FileManager({
         >
           <div className="relative min-h-0 flex-1">
             {loadingFile || (openedFilePath && !isEditorMounted) ? (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm text-muted-foreground p-8">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-background/80 p-8 text-muted-foreground backdrop-blur-sm">
                 <Spinner className="size-8" />
                 <p>Loading file content...</p>
               </div>

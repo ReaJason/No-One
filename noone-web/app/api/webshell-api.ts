@@ -1,4 +1,4 @@
-import { type ApiResponse, apiClient } from "./api-client";
+import type { AuthFetch } from "@/api.server";
 
 const baseUrl = "/webshell";
 
@@ -20,6 +20,10 @@ export interface WebShellGenerateResponse {
 
 export async function generateWebShell(
   body: WebShellGenerateRequest,
-): Promise<ApiResponse<WebShellGenerateResponse>> {
-  return await apiClient.post<WebShellGenerateResponse>(`${baseUrl}/generate`, body);
+  authFetch: AuthFetch,
+): Promise<WebShellGenerateResponse> {
+  return await authFetch<WebShellGenerateResponse>(`${baseUrl}/generate`, {
+    method: "POST",
+    body,
+  });
 }

@@ -1,13 +1,5 @@
-import {
-  Loader2,
-  Play,
-  Puzzle,
-  Square,
-  RefreshCw,
-  Clock,
-} from "lucide-react";
+import { Clock, Loader2, Play, Puzzle, RefreshCw, Square } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
-import * as shellApi from "@/api/shell-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
+import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
 import type { Plugin, TaskStatus } from "@/types/plugin";
 
 export interface PluginTabState {
@@ -33,16 +27,13 @@ export interface PluginTabState {
 
 interface PluginTabPanelProps {
   plugin: Plugin;
-  shellId: number;
+  actionPath: string;
+  statusPath: string;
   state: PluginTabState;
   onStateChange: (update: Partial<PluginTabState>) => void;
 }
 
-const TERMINAL_STATUSES: TaskStatus[] = [
-  "COMPLETED",
-  "FAILED",
-  "CANCELLED",
-];
+const TERMINAL_STATUSES: TaskStatus[] = ["COMPLETED", "FAILED", "CANCELLED"];
 
 function isAsyncMode(plugin: Plugin): boolean {
   return plugin.runMode === "async";
@@ -67,7 +58,8 @@ function formatResult(data: any): string {
 
 export default function PluginTabPanel({
   plugin,
-  shellId,
+  actionPath,
+  statusPath,
   state,
   onStateChange,
 }: PluginTabPanelProps) {
@@ -75,6 +67,9 @@ export default function PluginTabPanel({
   const actionKeys = Object.keys(actions);
   const currentAction = actions[state.selectedAction];
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { submit: submitPluginAction } = useShellRouteFetcher<Record<string, unknown>>();
+  const { fetcher: taskStatusFetcher, load: loadTaskStatus } =
+    useShellRouteFetcher<Record<string, unknown>>();
 
   const handleActionSelect = (action: string | null) => {
     if (!action) return;
@@ -103,13 +98,15 @@ export default function PluginTabPanel({
   const pollTaskStatus = useCallback(
     async (taskId: string) => {
       try {
-        const data = await shellApi.dispatchPlugin({
-          id: shellId,
-          pluginId: plugin.id,
-          action: "_task_status",
-          args: { taskId },
-        });
-        const taskResult = data?.data ?? data?.result ?? data;
+        if (taskStatusFetcher.state !== "idle") {
+          return;
+        }
+        const requestId = createShellRouteRequestId();
+        const url = new URL(statusPath, window.location.origin);
+        url.searchParams.set("pluginId", plugin.id);
+        url.searchParams.set("taskId", taskId);
+        url.searchParams.set("requestId", requestId);
+        const taskResult = await loadTaskStatus(`${url.pathname}${url.search}`, requestId);
         const status = taskResult?.status as TaskStatus | undefined;
         const partialResult = taskResult?.partialResult;
         const finalResult = taskResult?.result;
@@ -140,7 +137,7 @@ export default function PluginTabPanel({
         onStateChange({ polling: false, loading: false });
       }
     },
-    [shellId, plugin.id, onStateChange, stopPolling],
+    [loadTaskStatus, onStateChange, plugin.id, statusPath, stopPolling, taskStatusFetcher.state],
   );
 
   const startPolling = useCallback(
@@ -164,13 +161,23 @@ export default function PluginTabPanel({
       polling: false,
     });
     try {
-      const data = await shellApi.dispatchPlugin({
-        id: shellId,
-        pluginId: plugin.id,
-        action: state.selectedAction,
-        args: state.args as any,
-      });
-      const result = data?.data ?? data?.result ?? data;
+      const requestId = createShellRouteRequestId();
+      const result = await submitPluginAction(
+        buildShellRouteFormData(
+          "execute-plugin",
+          {
+            pluginId: plugin.id,
+            action: state.selectedAction,
+            args: state.args as any,
+          },
+          requestId,
+        ),
+        {
+          method: "post",
+          action: actionPath,
+        },
+        requestId,
+      );
 
       if (isAsyncLike(plugin) && result?.taskId) {
         const taskId = String(result.taskId);
@@ -193,25 +200,28 @@ export default function PluginTabPanel({
         loading: false,
       });
     }
-  }, [
-    shellId,
-    plugin,
-    state.selectedAction,
-    state.args,
-    onStateChange,
-    startPolling,
-    stopPolling,
-  ]);
+  }, [plugin, state.selectedAction, state.args, onStateChange, startPolling, stopPolling]);
 
   const cancelTask = useCallback(async () => {
     if (!state.taskId) return;
     try {
-      await shellApi.dispatchPlugin({
-        id: shellId,
-        pluginId: plugin.id,
-        action: "_task_cancel",
-        args: { taskId: state.taskId },
-      });
+      const requestId = createShellRouteRequestId();
+      await submitPluginAction(
+        buildShellRouteFormData(
+          "cancel-plugin",
+          {
+            pluginId: plugin.id,
+            action: "_task_cancel",
+            args: { taskId: state.taskId },
+          },
+          requestId,
+        ),
+        {
+          method: "post",
+          action: actionPath,
+        },
+        requestId,
+      );
       stopPolling();
       onStateChange({
         taskStatus: "CANCELLED",
@@ -223,7 +233,7 @@ export default function PluginTabPanel({
         result: `Cancel failed: ${err.message}`,
       });
     }
-  }, [shellId, plugin.id, state.taskId, onStateChange, stopPolling]);
+  }, [actionPath, onStateChange, plugin.id, state.taskId, stopPolling, submitPluginAction]);
 
   const firstActionDescription =
     actionKeys.length > 0 ? actions[actionKeys[0]]?.description : undefined;
@@ -255,19 +265,14 @@ export default function PluginTabPanel({
         </div>
       </div>
       {firstActionDescription && (
-        <p className="text-sm text-muted-foreground">
-          {firstActionDescription}
-        </p>
+        <p className="text-sm text-muted-foreground">{firstActionDescription}</p>
       )}
 
       {/* Action selector (only if >1 actions) */}
       {actionKeys.length > 1 && (
         <div>
           <Label className="mb-1.5 block text-sm font-medium">Action</Label>
-          <Select
-            value={state.selectedAction}
-            onValueChange={handleActionSelect}
-          >
+          <Select value={state.selectedAction} onValueChange={handleActionSelect}>
             <SelectTrigger>
               <SelectValue placeholder="Select an action" />
             </SelectTrigger>
@@ -289,9 +294,7 @@ export default function PluginTabPanel({
             <div key={field.name}>
               <Label className="mb-1.5 block text-sm font-medium">
                 {field.label || field.name}
-                {field.required && (
-                  <span className="ml-1 text-red-500">*</span>
-                )}
+                {field.required && <span className="ml-1 text-red-500">*</span>}
               </Label>
               <Input
                 value={state.args[field.name] ?? field.default ?? ""}
@@ -331,11 +334,7 @@ export default function PluginTabPanel({
 
       {/* Action buttons */}
       <div className="flex gap-2">
-        <Button
-          onClick={executePlugin}
-          disabled={state.loading || isRunning}
-          className="flex-1"
-        >
+        <Button onClick={executePlugin} disabled={state.loading || isRunning} className="flex-1">
           {state.loading && !isRunning ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -360,20 +359,18 @@ export default function PluginTabPanel({
       {/* Task status indicator */}
       {state.taskId && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {isRunning && (
-            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-          )}
+          {isRunning && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
           <span>
             Task #{state.taskId} &mdash;{" "}
             <span
               className={
                 state.taskStatus === "COMPLETED"
-                  ? "text-green-500 font-medium"
+                  ? "font-medium text-green-500"
                   : state.taskStatus === "FAILED"
-                    ? "text-red-500 font-medium"
+                    ? "font-medium text-red-500"
                     : state.taskStatus === "CANCELLED"
-                      ? "text-yellow-500 font-medium"
-                      : "text-blue-500 font-medium"
+                      ? "font-medium text-yellow-500"
+                      : "font-medium text-blue-500"
               }
             >
               {state.taskStatus}

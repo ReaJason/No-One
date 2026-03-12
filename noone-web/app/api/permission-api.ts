@@ -1,6 +1,8 @@
 import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+import type { AuthFetch } from "@/api.server";
+import { mapPaginatedResponse } from "@/api/server-api-utils";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Permission } from "@/types/admin";
-import { apiClient, type PaginatedResponse } from "./api-client";
 
 export interface PermissionSearchParams {
   name?: string | null;
@@ -22,37 +24,50 @@ export const loadPermissionSearchParams = createLoader({
 
 export async function getPermissions(
   filters: PermissionSearchParams,
+  authFetch: AuthFetch,
 ): Promise<PaginatedResponse<Permission>> {
-  return await apiClient.getPaginated<Permission>(baseUrl, filters);
+  const response = await authFetch<ServerPaginatedResponse<Permission>>(baseUrl, {
+    query: { ...filters, page: (filters.page ?? 1) - 1, pageSize: filters.perPage },
+  });
+  return mapPaginatedResponse(response);
 }
 
-export async function getAllPermissions(): Promise<Permission[]> {
-  return (
-    await apiClient.getPaginated<Permission>(baseUrl, {
-      page: 1,
-      pageSize: 1000,
-    })
-  ).content;
+export async function getAllPermissions(authFetch: AuthFetch): Promise<Permission[]> {
+  const response = await authFetch<ServerPaginatedResponse<Permission>>(baseUrl, {
+    query: { page: 0, pageSize: 1000 },
+  });
+  return response.content;
 }
 
-export async function getPermissionById(id: number): Promise<Permission | null> {
-  return (await apiClient.get<Permission>(`${baseUrl}/${id}`)).data;
+export async function getPermissionById(
+  id: number,
+  authFetch: AuthFetch,
+): Promise<Permission | null> {
+  return await authFetch<Permission>(`${baseUrl}/${id}`);
 }
 
 export async function createPermission(
   permissionData: Omit<Permission, "id" | "createdAt" | "updatedAt">,
+  authFetch: AuthFetch,
 ): Promise<Permission> {
-  return (await apiClient.post<Permission>(baseUrl, permissionData)).data;
+  return await authFetch<Permission>(baseUrl, {
+    method: "POST",
+    body: permissionData,
+  });
 }
 
 export async function updatePermission(
   id: number,
   permissionData: Partial<Permission>,
+  authFetch: AuthFetch,
 ): Promise<Permission | null> {
-  return (await apiClient.put<Permission>(`${baseUrl}/${id}`, permissionData)).data;
+  return await authFetch<Permission>(`${baseUrl}/${id}`, {
+    method: "PUT",
+    body: permissionData,
+  });
 }
 
-export async function deletePermission(id: number): Promise<boolean> {
-  await apiClient.delete(`${baseUrl}/${id}`);
+export async function deletePermission(id: number, authFetch: AuthFetch): Promise<boolean> {
+  await authFetch(`${baseUrl}/${id}`, { method: "DELETE" });
   return true;
 }

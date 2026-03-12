@@ -18,7 +18,7 @@ public class RoleSpecifications {
             }
             return criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("name")),
-                    "%" + name + "%"
+                    "%" + name.toLowerCase() + "%"
             );
         };
     }

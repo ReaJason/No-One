@@ -14,6 +14,6 @@ public class ProjectResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Set<ProjectMemberDTO> members;
+    private Long ownerId;
 }
-
 

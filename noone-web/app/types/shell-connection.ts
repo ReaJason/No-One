@@ -3,10 +3,12 @@ export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
 export type ShellLanguage = "java" | "nodejs" | "dotnet";
 
 export interface ShellBasicInfo {
-  os?: {
-    name?: string;
-    [key: string]: unknown;
-  } | string;
+  os?:
+    | {
+        name?: string;
+        [key: string]: unknown;
+      }
+    | string;
   process?: {
     cwd?: string;
     [key: string]: unknown;
@@ -22,6 +24,7 @@ export interface ShellBasicInfo {
 export interface ShellConnection {
   id: number;
   url: string;
+  name: string;
   language: ShellLanguage;
   shellType: ShellType;
   status: ShellStatus;

@@ -14,5 +14,3 @@ public class ProjectCreateRequest {
     private String status;
     private Set<Long> memberIds;
 }
-
-

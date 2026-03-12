@@ -5,6 +5,7 @@ import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.exception.*;
 import com.reajason.noone.server.admin.plugin.Plugin;
 import com.reajason.noone.server.admin.plugin.PluginRepository;
+import com.reajason.noone.server.config.AuthorizationService;
 import com.reajason.noone.server.shell.dto.*;
 import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import com.reajason.noone.server.shell.oplog.ShellOperationType;
@@ -53,6 +54,8 @@ public class ShellService {
 
     @Resource
     private ShellOperationLogService shellOperationLogService;
+    @Resource
+    private AuthorizationService authorizationService;
 
     // ==================== Shell Management Operations ====================
 
@@ -115,10 +118,6 @@ public class ShellService {
 
         Specification<Shell> spec = Specification.unrestricted();
 
-        if (request.getGroup() != null && !request.getGroup().isBlank()) {
-            spec = spec.and((root, query, cb) -> cb.equal(root.get("group"), request.getGroup()));
-        }
-
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             ShellStatus status = ShellStatus.valueOf(request.getStatus().toUpperCase());
             spec = spec.and((root, query, cb) -> cb.equal(root.get("status"), status));
@@ -127,6 +126,15 @@ public class ShellService {
         if (request.getProjectId() != null && request.getProjectId() != 0) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("projectId"), request.getProjectId()));
         }
+
+//        if (!authorizationService.isAdmin()) {
+//            var visibleProjectIds = authorizationService.getVisibleProjectIds();
+//            if (visibleProjectIds.isEmpty()) {
+//                spec = spec.and((root, query, cb) -> cb.disjunction());
+//            } else {
+//                spec = spec.and((root, query, cb) -> root.get("projectId").in(visibleProjectIds));
+//            }
+//        }
 
         if (request.getUrl() != null && !request.getUrl().isBlank()) {
             String urlPattern = "%" + request.getUrl().trim().toLowerCase() + "%";

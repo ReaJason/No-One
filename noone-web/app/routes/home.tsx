@@ -1,10 +1,9 @@
 import { Activity, Cable, Calendar, Folder, TrendingUp } from "lucide-react";
 import { useState } from "react";
-import { Link, type LoaderFunctionArgs } from "react-router";
+import { Link } from "react-router";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { authUtils } from "@/lib/auth";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 
 interface Project {
@@ -53,17 +52,6 @@ const mockProjects: Project[] = [
     createdAt: "2024-02-10",
   },
 ];
-
-export async function loader({ request }: LoaderFunctionArgs) {
-  const { user, token } = await authUtils.getAuthFromRequest(request);
-  if (!user) {
-    throw new Response("Unauthorized", {
-      status: 302,
-      headers: { Location: "/auth/login?returnTo=/" },
-    });
-  }
-  return { user, token };
-}
 
 const dashboardStats: DashboardStats = {
   totalProjects: 4,

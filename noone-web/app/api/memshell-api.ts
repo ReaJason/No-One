@@ -1,3 +1,4 @@
+import type { AuthFetch } from "@/api.server";
 import type {
   MainConfig,
   MemShellGenerateRequest,
@@ -5,24 +6,27 @@ import type {
   PackerConfig,
   ServerConfig,
 } from "@/types/memshell";
-import { type ApiResponse, apiClient } from "./api-client";
 
 const baseUrl = "/memshell";
 
-export async function getServers(): Promise<ServerConfig> {
-  return (await apiClient.get<ServerConfig>(`${baseUrl}/config/servers`)).data;
+export async function getServers(authFetch: AuthFetch): Promise<ServerConfig> {
+  return await authFetch<ServerConfig>(`${baseUrl}/config/servers`);
 }
 
-export async function getPackers(): Promise<PackerConfig> {
-  return (await apiClient.get<PackerConfig>(`${baseUrl}/config/packers`)).data;
+export async function getPackers(authFetch: AuthFetch): Promise<PackerConfig> {
+  return await authFetch<PackerConfig>(`${baseUrl}/config/packers`);
 }
 
-export async function getMainConfig(): Promise<MainConfig> {
-  return (await apiClient.get<MainConfig>(`${baseUrl}/config`)).data;
+export async function getMainConfig(authFetch: AuthFetch): Promise<MainConfig> {
+  return await authFetch<MainConfig>(`${baseUrl}/config`);
 }
 
 export async function generate(
   body: MemShellGenerateRequest,
-): Promise<ApiResponse<MemShellGenerateResponse>> {
-  return await apiClient.post<MemShellGenerateResponse>(`${baseUrl}/generate`, body);
+  authFetch: AuthFetch,
+): Promise<MemShellGenerateResponse> {
+  return await authFetch<MemShellGenerateResponse>(`${baseUrl}/generate`, {
+    method: "POST",
+    body,
+  });
 }

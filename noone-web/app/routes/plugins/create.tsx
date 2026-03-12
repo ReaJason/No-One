@@ -2,13 +2,14 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useCallback } from "react";
 import type { ActionFunctionArgs } from "react-router";
 import { Form, redirect, useActionData, useNavigate } from "react-router";
+import { createAuthFetch } from "@/api.server";
 import { createPlugin } from "@/api/plugin-api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const jsonText = formData.get("pluginJson") as string;
 
@@ -36,7 +37,8 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    await createPlugin(parsed);
+    const authFetch = createAuthFetch(request, context);
+    await createPlugin(parsed, authFetch);
     return redirect("/plugins");
   } catch (error: any) {
     return {

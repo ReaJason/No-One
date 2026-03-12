@@ -1,20 +1,14 @@
 package com.reajason.noone.core.generator;
 
 import com.reajason.noone.server.profile.Profile;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.HttpRequestBodyType;
-import com.reajason.noone.server.profile.config.HttpResponseBodyType;
-import com.reajason.noone.server.profile.config.IdentifierConfig;
-import com.reajason.noone.server.profile.config.IdentifierLocation;
-import com.reajason.noone.server.profile.config.IdentifierOperator;
+import com.reajason.noone.server.profile.config.*;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class NoOneDotNetWebShellGeneratorTest {
 
@@ -51,10 +45,17 @@ class NoOneDotNetWebShellGeneratorTest {
                 () -> assertTrue(content.contains("Response.AddHeader(\"X-Trace\", \"enabled\")")),
                 () -> assertTrue(content.contains("<%@ Import Namespace=\"System.Security.Cryptography\" %>")),
                 () -> assertTrue(content.contains("<%@ Import Namespace=\"System.IO.Compression\" %>")),
+                () -> assertTrue(content.contains("private static void TryDispose")),
+                () -> assertTrue(content.contains("private static void FillRandomBytes")),
                 () -> assertTrue(content.contains("private static byte[] AesDecrypt")),
                 () -> assertTrue(content.contains("private static byte[] GzipCompress")),
                 () -> assertTrue(content.contains("private static byte[] DecodeBase64")),
-                () -> assertTrue(content.contains("private static byte[] EncodeHex"))
+                () -> assertTrue(content.contains("private static byte[] EncodeHex")),
+                () -> assertFalse(content.contains("using (RandomNumberGenerator rng = RandomNumberGenerator.Create())")),
+                () -> assertFalse(content.contains("using (Aes aes = Aes.Create())")),
+                () -> assertFalse(content.contains("using (TripleDES des = TripleDES.Create())")),
+                () -> assertFalse(content.contains("using (ICryptoTransform encryptor = algo.CreateEncryptor())")),
+                () -> assertFalse(content.contains("using (ICryptoTransform decryptor = algo.CreateDecryptor())"))
         );
     }
 

@@ -391,8 +391,15 @@ function ActionBarGroup(props: DivProps) {
   );
 }
 
-interface ActionBarItemProps extends Omit<React.ComponentProps<typeof Button>, "onSelect"> {
+interface ActionBarItemProps extends Omit<
+  React.ComponentProps<typeof Button>,
+  "onSelect" | "onClick" | "onFocus" | "onKeyDown" | "onMouseDown"
+> {
   onSelect?: (event: Event) => void;
+  onClick?: React.MouseEventHandler<ItemElement>;
+  onFocus?: React.FocusEventHandler<ItemElement>;
+  onKeyDown?: React.KeyboardEventHandler<ItemElement>;
+  onMouseDown?: React.MouseEventHandler<ItemElement>;
 }
 
 function ActionBarItem(props: ActionBarItemProps) {

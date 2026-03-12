@@ -1,20 +1,23 @@
-import { authUtils } from "@/lib/auth";
+import { redirect } from "react-router";
+import { destroySession, getSession } from "@/sessions.server";
 
-export async function action({ request }: { request: Request }) {
-  try {
-    await authUtils.logout();
-  } catch (error) {
-    console.error("Logout error:", error);
-  }
-  const logoutResponse = await authUtils.createLogoutResponse(request);
-  return new Response(null, {
-    status: 302,
+async function performLogout(request: Request) {
+  const session = await getSession(request.headers.get("Cookie"));
+  return redirect("/auth/login", {
     headers: {
-      ...Object.fromEntries(logoutResponse.headers.entries()),
-      Location: "/auth/login",
+      "Set-Cookie": await destroySession(session),
     },
   });
 }
+
+export async function loader({ request }: { request: Request }) {
+  return performLogout(request);
+}
+
+export async function action({ request }: { request: Request }) {
+  return performLogout(request);
+}
+
 export default function LogoutPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">

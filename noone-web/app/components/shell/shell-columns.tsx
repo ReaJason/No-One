@@ -2,13 +2,15 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   AlertCircle,
   Edit,
+  Loader,
   MoreHorizontal,
   Terminal,
   Trash2,
   Wifi,
   WifiOff,
 } from "lucide-react";
-import { useNavigate } from "react-router";
+import { useEffect, useRef } from "react";
+import { useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import { deleteShellConnection } from "@/api/shell-connection-api";
 import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
 
 const statusLabels: Record<ShellStatus, string> = {
@@ -42,6 +43,87 @@ const statusColors: Record<ShellStatus, string> = {
 interface GetShellColumnsOptions {
   projectMap: Map<number, string>;
   projectOptions: Array<{ label: string; value: string }>;
+}
+
+function ShellActionsCell({ shell }: { shell: ShellConnection }) {
+  const navigate = useNavigate();
+  const deleteFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
+  const lastDeleteStateRef = useRef(deleteFetcher.state);
+
+  useEffect(() => {
+    if (lastDeleteStateRef.current !== "submitting" || deleteFetcher.state !== "idle") {
+      lastDeleteStateRef.current = deleteFetcher.state;
+      return;
+    }
+
+    if (deleteFetcher.data?.success) {
+      toast.success("Shell connection deleted");
+    } else if (deleteFetcher.data?.errors?.general) {
+      toast.error(deleteFetcher.data.errors.general);
+    }
+    lastDeleteStateRef.current = deleteFetcher.state;
+  }, [deleteFetcher.data, deleteFetcher.state]);
+
+  const handleEditShell = () => {
+    navigate(`/shells/edit/${shell.id}`);
+  };
+
+  const handleDeleteShell = () => {
+    if (
+      !confirm(
+        "Are you sure you want to delete this shell connection? This action cannot be undone.",
+      )
+    )
+      return;
+
+    const formData = new FormData();
+    formData.set("intent", "delete");
+    formData.set("shellId", String(shell.id));
+    deleteFetcher.submit(formData, { method: "post", action: "/shells" });
+  };
+
+  const handleConnectShell = () => {
+    window.open(`/shells/${shell.id}/connect`, "_blank");
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        }
+      ></DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={handleEditShell}>
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleConnectShell}>
+            <Terminal className="mr-2 h-4 w-4" />
+            Connect
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={handleDeleteShell}
+            className="text-destructive"
+            disabled={deleteFetcher.state !== "idle"}
+          >
+            {deleteFetcher.state !== "idle" ? (
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
 export function getShellColumns({
@@ -108,7 +190,7 @@ export function getShellColumns({
       size: 120,
       meta: {
         label: "Profile",
-      }
+      },
     },
     {
       id: "language",
@@ -121,11 +203,7 @@ export function getShellColumns({
           nodejs: "NodeJs",
           dotnet: "DotNet",
         };
-        return (
-          <Badge variant="secondary">
-            {labels[language] ?? language}
-          </Badge>
-        );
+        return <Badge variant="secondary">{labels[language] ?? language}</Badge>;
       },
       meta: {
         label: "Language",
@@ -211,7 +289,8 @@ export function getShellColumns({
         const items: [string, string][] = [];
         if (os?.name) items.push(["OS", os.name]);
         if (os?.hostname) items.push(["Host", os.hostname]);
-        if (runtime?.type) items.push(["Runtime", `${runtime.type} ${runtime.version ?? ""}`.trim()]);
+        if (runtime?.type)
+          items.push(["Runtime", `${runtime.type} ${runtime.version ?? ""}`.trim()]);
         if (proc?.pid) items.push(["PID", String(proc.pid)]);
 
         if (items.length === 0) {
@@ -223,8 +302,10 @@ export function getShellColumns({
             <tbody>
               {items.map(([label, value]) => (
                 <tr key={label}>
-                  <td className="pr-2 text-muted-foreground whitespace-nowrap">{label}</td>
-                  <td className="max-w-40 truncate" title={value}>{value}</td>
+                  <td className="pr-2 whitespace-nowrap text-muted-foreground">{label}</td>
+                  <td className="max-w-40 truncate" title={value}>
+                    {value}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -234,8 +315,8 @@ export function getShellColumns({
       enableSorting: false,
       size: 200,
       meta: {
-        label: "Basic Info"
-      }
+        label: "Basic Info",
+      },
     },
     {
       id: "connectTime",
@@ -251,7 +332,7 @@ export function getShellColumns({
       },
       meta: {
         label: "Last Connected",
-      }
+      },
     },
     {
       id: "createTime",
@@ -263,70 +344,12 @@ export function getShellColumns({
       },
       meta: {
         label: "Created Time",
-      }
+      },
     },
     {
       id: "actions",
       enableHiding: false,
-      cell: ({ row }) => {
-        const shell = row.original;
-        const navigate = useNavigate();
-
-        const handleEditShell = () => {
-          navigate(`/shells/edit/${shell.id}`);
-        };
-
-        const handleDeleteShell = async () => {
-          if (
-            !confirm(
-              "Are you sure you want to delete this shell connection? This action cannot be undone.",
-            )
-          )
-            return;
-          try {
-            await deleteShellConnection(shell.id);
-            toast.success("Shell connection deleted");
-            navigate(0);
-          } catch (e: any) {
-            toast.error(e?.message || "Failed to delete shell connection");
-          }
-        };
-
-        const handleConnectShell = () => {
-          window.open(`/shells/${shell.id}/connect`, "_blank");
-        };
-
-        return (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              }
-            ></DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem onClick={handleEditShell}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleConnectShell}>
-                  <Terminal className="mr-2 h-4 w-4" />
-                  Connect
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDeleteShell} className="text-destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        );
-      },
+      cell: ({ row }) => <ShellActionsCell shell={row.original} />,
       size: 40,
     },
   ];

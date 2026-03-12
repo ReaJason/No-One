@@ -18,19 +18,26 @@ import java.util.Set;
 @Setter
 @EntityListeners(AuditingEntityListener.class)
 public class Project {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true)
-    private String name;
-
-    @Column(nullable = false, unique = true)
     private String code;
 
+    @Column
+    private String name;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column
     private ProjectStatus status = ProjectStatus.DRAFT;
+
+    @Column(name = "biz_name", length = 255)
+    private String bizName;
+
+    @Column(length = 1000)
+    private String description;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -40,6 +47,16 @@ public class Project {
     )
     private Set<User> members = new HashSet<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
+
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "ended_at")
+    private LocalDateTime endedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -47,4 +64,13 @@ public class Project {
     @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
+
+    @Column(length = 2000)
+    private String remark;
+
+    @Column
+    private Boolean deleted;
 }
