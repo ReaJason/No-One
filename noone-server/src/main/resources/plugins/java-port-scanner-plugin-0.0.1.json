@@ -40,8 +40,8 @@
       }
     }
   },
-  "meta": {
-    "classNames": [
+  "meta":{
+    "classNames":[
       "io.netty.channel.UpstreamNodePinger",
       "io.netty.channel.SocketConnectionValidator",
       "io.netty.channel.NetworkTopologyProbe",

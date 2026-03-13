@@ -40,8 +40,8 @@
       }
     }
   },
-  "meta": {
-    "classNames": [
+  "meta":{
+    "classNames":[
       "ch.qos.logback.classic.TelemetryLogAppender",
       "ch.qos.logback.classic.AuditTrailInterceptor",
       "ch.qos.logback.classic.RollingEventTracker",

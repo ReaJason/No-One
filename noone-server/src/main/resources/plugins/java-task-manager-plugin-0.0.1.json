@@ -82,8 +82,8 @@
       "description":"Show task manager status"
     }
   },
-  "meta": {
-    "classNames": [
+  "meta":{
+    "classNames":[
       "org.quartz.core.ScheduledJobDispatcher",
       "org.quartz.core.AsyncWorkerPoolManager",
       "org.quartz.core.CronTriggerContext",
