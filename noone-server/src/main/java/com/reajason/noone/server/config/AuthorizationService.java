@@ -67,17 +67,24 @@ public class AuthorizationService {
         }
         User user = getCurrentUser();
         if (isSuperAdmin(user)) {
-            return true;
+            return projectRepository.exists(ProjectSpecifications.notDeleted().and(
+                    (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("id"), projectId)
+            ));
         }
-        return projectRepository.exists(ProjectSpecifications.isOwnerOrMember(projectId, user));
+        return projectRepository.exists(ProjectSpecifications.notDeleted().and(ProjectSpecifications.isMember(projectId, user)));
     }
 
     public Set<Long> getVisibleProjectIds() {
+        if (!isAuthenticated()) {
+            return Set.of();
+        }
         User user = getCurrentUser();
         if (isSuperAdmin(user)) {
-            return projectRepository.findAll().stream().map(Project::getId).collect(Collectors.toSet());
+            return projectRepository.findAll(ProjectSpecifications.notDeleted()).stream()
+                    .map(Project::getId)
+                    .collect(Collectors.toSet());
         }
-        return projectRepository.findAll(ProjectSpecifications.isOwnerOrMember(user)).stream()
+        return projectRepository.findAll(ProjectSpecifications.notDeleted().and(ProjectSpecifications.isMember(user))).stream()
                 .map(Project::getId)
                 .collect(Collectors.toSet());
     }

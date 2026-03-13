@@ -17,6 +17,22 @@ public class ProjectSpecifications {
         };
     }
 
+    public static Specification<Project> isMember(Long projectId, User user) {
+        return (root, query, criteriaBuilder) -> {
+            Join<Project, User> members = root.join("members");
+            Predicate matchesProject = criteriaBuilder.equal(root.get("id"), projectId);
+            Predicate isMember = criteriaBuilder.equal(members.get("id"), user.getId());
+            return criteriaBuilder.and(matchesProject, isMember);
+        };
+    }
+
+    public static Specification<Project> notDeleted() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.or(
+                criteriaBuilder.isFalse(root.get("deleted")),
+                criteriaBuilder.isNull(root.get("deleted"))
+        );
+    }
+
     public static Specification<Project> hasName(String name) {
         return (root, query, criteriaBuilder) -> {
             if (ObjectUtils.isEmpty(name)) {
@@ -62,23 +78,4 @@ public class ProjectSpecifications {
         };
     }
 
-    public static Specification<Project> isOwnerOrMember(User user) {
-        return (root, query, criteriaBuilder) -> {
-            Join<Project, User> members = root.join("members");
-            return criteriaBuilder.or(
-                    criteriaBuilder.equal(root.get("owner").get("id"), user.getId()),
-                    criteriaBuilder.equal(members.get("id"), user.getId())
-            );
-        };
-    }
-
-    public static Specification<Project> isOwnerOrMember(Long projectId, User user) {
-        return (root, query, criteriaBuilder) -> {
-            Join<Project, User> members = root.join("members");
-            Predicate matchesProject = criteriaBuilder.equal(root.get("id"), projectId);
-            Predicate isOwner = criteriaBuilder.equal(root.get("owner").get("id"), user.getId());
-            Predicate isMember = criteriaBuilder.equal(members.get("id"), user.getId());
-            return criteriaBuilder.and(matchesProject, criteriaBuilder.or(isOwner, isMember));
-        };
-    }
 }

@@ -15,9 +15,12 @@ import { useDataTable } from "@/hooks/use-data-table";
 import type { Project } from "@/types/project";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  const { name, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
+  const { name, status, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const projectResponse = await getProjects({ name, page, perPage, sortBy, sortOrder }, authFetch);
+  const projectResponse = await getProjects(
+    { name, status, page, perPage, sortBy, sortOrder },
+    authFetch,
+  );
 
   return {
     projectResponse: Promise.resolve(projectResponse),

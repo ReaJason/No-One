@@ -2,12 +2,14 @@ import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "
 import type { AuthFetch } from "@/api.server";
 import { mapPaginatedResponse } from "@/api/server-api-utils";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
-import type { Project } from "@/types/project";
+import type { Project, ProjectStatus } from "@/types/project";
 
 const baseUrl = "/projects";
+const PROJECT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;
 
 export interface ProjectSearchParams {
   name?: string | null;
+  status?: ProjectStatus | null;
   page?: number;
   perPage?: number;
   sortBy?: string;
@@ -16,6 +18,7 @@ export interface ProjectSearchParams {
 
 export const loadProjectSearchParams = createLoader({
   name: parseAsString,
+  status: parseAsStringEnum([...PROJECT_STATUSES]),
   page: parseAsInteger.withDefault(1),
   perPage: parseAsInteger.withDefault(10),
   sortBy: parseAsString.withDefault("createdAt"),
@@ -36,15 +39,20 @@ export async function getProjectById(id: string, authFetch: AuthFetch): Promise<
   return await authFetch<Project>(`${baseUrl}/${id}`);
 }
 
-export interface CreateProjectRequest {
+export interface ProjectMutationRequest {
   name: string;
   code: string;
   status?: Project["status"];
+  bizName?: string;
+  description?: string;
   memberIds?: number[];
+  startedAt?: string | null;
+  endedAt?: string | null;
+  remark?: string;
 }
 
 export async function createProject(
-  projectData: CreateProjectRequest,
+  projectData: ProjectMutationRequest,
   authFetch: AuthFetch,
 ): Promise<Project> {
   return await authFetch<Project>(baseUrl, {
@@ -55,7 +63,7 @@ export async function createProject(
 
 export async function updateProject(
   id: string,
-  projectData: Partial<Project> & { memberIds?: number[] },
+  projectData: ProjectMutationRequest,
   authFetch: AuthFetch,
 ): Promise<Project | null> {
   return await authFetch<Project>(`${baseUrl}/${id}`, {

@@ -23,7 +23,7 @@ public class Project {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String code;
 
     @Column
@@ -47,10 +47,6 @@ public class Project {
     )
     private Set<User> members = new HashSet<>();
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id")
-    private User owner;
-
     @Column(name = "started_at")
     private LocalDateTime startedAt;
 
@@ -71,6 +67,6 @@ public class Project {
     @Column(length = 2000)
     private String remark;
 
-    @Column
-    private Boolean deleted;
+    @Column(nullable = false)
+    private Boolean deleted = Boolean.FALSE;
 }

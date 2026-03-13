@@ -18,6 +18,12 @@ import {
 import { formatDate } from "@/lib/format";
 import type { Project } from "@/types/project";
 
+const PROJECT_STATUS_LABELS: Record<Project["status"], string> = {
+  ACTIVE: "Active",
+  ARCHIVED: "Archived",
+  DRAFT: "Draft",
+};
+
 function ProjectActionsCell({ project }: { project: Project }) {
   const navigate = useNavigate();
   const deleteFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
@@ -58,7 +64,7 @@ function ProjectActionsCell({ project }: { project: Project }) {
       <DropdownMenuContent align="end">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigate(`/projects/${project.id}/edit`)}>
+          <DropdownMenuItem onClick={() => navigate(`/projects/edit/${project.id}`)}>
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
@@ -130,14 +136,14 @@ export const projectColumns: ColumnDef<Project>[] = [
     id: "status",
     accessorKey: "status",
     header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
-    cell: ({ row }) => row.getValue("status") as string,
+    cell: ({ row }) => PROJECT_STATUS_LABELS[row.getValue("status") as Project["status"]],
     meta: {
       label: "Status",
       variant: "select",
       options: [
-        { label: "Active", value: "active" },
-        { label: "Inactive", value: "inactive" },
-        { label: "Archived", value: "archived" },
+        { label: "Draft", value: "DRAFT" },
+        { label: "Active", value: "ACTIVE" },
+        { label: "Archived", value: "ARCHIVED" },
       ],
     },
     enableColumnFilter: true,

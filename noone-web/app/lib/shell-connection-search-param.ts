@@ -17,7 +17,7 @@ export async function loadShellConnectionSearchParams(
     projectId: Number.isFinite(parsedProjectId) ? parsedProjectId : undefined,
     page: Number(searchParams.get("page")) || 1,
     perPage: Number(searchParams.get("perPage")) || 10,
-    sortBy: searchParams.get("sortBy") || "createTime",
+    sortBy: searchParams.get("sortBy") || "createdAt",
     sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") || "desc",
   };
 }

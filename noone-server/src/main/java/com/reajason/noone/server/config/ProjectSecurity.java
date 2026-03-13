@@ -16,7 +16,7 @@ public class ProjectSecurity {
 
     public boolean isMember(Authentication authentication, Long projectId) {
         String username = authentication.getName();
-        Project project = projectRepository.findById(projectId).orElse(null);
+        Project project = projectRepository.findByIdAndDeletedFalse(projectId).orElse(null);
         if (project == null) {
             return false;
         }

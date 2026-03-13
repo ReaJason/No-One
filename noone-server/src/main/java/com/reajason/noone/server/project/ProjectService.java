@@ -14,6 +14,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Service
@@ -28,48 +29,48 @@ public class ProjectService {
     private AuthorizationService authorizationService;
 
     public ProjectResponse create(ProjectCreateRequest request) {
-        if (projectRepository.existsByName(request.getName())) {
+        if (projectRepository.existsByNameAndDeletedFalse(request.getName())) {
             throw new IllegalArgumentException("项目名称已存在：" + request.getName());
         }
-        if (projectRepository.existsByCode(request.getCode())) {
+        if (projectRepository.existsByCodeAndDeletedFalse(request.getCode())) {
             throw new IllegalArgumentException("项目代号已存在：" + request.getCode());
         }
 
         Project project = projectMapper.toEntity(request);
-        if (authorizationService.isAuthenticated()) {
-            project.setOwner(authorizationService.getCurrentUser());
-        }
+        syncArchivedAt(project);
         Project saved = projectRepository.save(project);
-        return projectMapper.toResponse(projectRepository.findById(saved.getId()).orElseThrow());
+        return projectMapper.toResponse(projectRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow());
     }
 
     @Transactional(readOnly = true)
     public ProjectResponse getById(Long id) {
-        Project project = projectRepository.findById(id)
+        Project project = projectRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
         return projectMapper.toResponse(project);
     }
 
     public ProjectResponse update(Long id, ProjectUpdateRequest request) {
-        Project project = projectRepository.findById(id)
+        Project project = projectRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
 
-        if (request.getName() != null && projectRepository.existsByNameAndIdNot(request.getName(), id)) {
+        if (request.getName() != null && projectRepository.existsByNameAndIdNotAndDeletedFalse(request.getName(), id)) {
             throw new IllegalArgumentException("项目名称已存在：" + request.getName());
         }
-        if (request.getCode() != null && projectRepository.existsByCodeAndIdNot(request.getCode(), id)) {
+        if (request.getCode() != null && projectRepository.existsByCodeAndIdNotAndDeletedFalse(request.getCode(), id)) {
             throw new IllegalArgumentException("项目代号已存在：" + request.getCode());
         }
 
         projectMapper.updateEntity(project, request);
+        syncArchivedAt(project);
         Project saved = projectRepository.save(project);
-        return projectMapper.toResponse(projectRepository.findById(saved.getId()).orElseThrow());
+        return projectMapper.toResponse(projectRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow());
     }
 
     public void delete(Long id) {
-        Project project = projectRepository.findById(id)
+        Project project = projectRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
-        projectRepository.delete(project);
+        project.setDeleted(Boolean.TRUE);
+        projectRepository.save(project);
     }
 
     @Transactional(readOnly = true)
@@ -83,6 +84,7 @@ public class ProjectService {
 
         Specification<Project> spec = ProjectSpecifications.hasName(request.getName())
                 .or(ProjectSpecifications.hasCode(request.getName()))
+                .and(ProjectSpecifications.notDeleted())
                 .and(ProjectSpecifications.hasStatus(parseStatus(request.getStatus())))
                 .and(ProjectSpecifications.createdAfter(request.getCreatedAfter()))
                 .and(ProjectSpecifications.createdBefore(request.getCreatedBefore()));
@@ -101,5 +103,15 @@ public class ProjectService {
             return null;
         }
         return ProjectStatus.valueOf(status.toUpperCase());
+    }
+
+    private void syncArchivedAt(Project project) {
+        if (project.getStatus() == ProjectStatus.ARCHIVED) {
+            if (project.getArchivedAt() == null) {
+                project.setArchivedAt(LocalDateTime.now());
+            }
+            return;
+        }
+        project.setArchivedAt(null);
     }
 }

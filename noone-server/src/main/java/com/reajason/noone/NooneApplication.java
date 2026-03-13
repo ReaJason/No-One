@@ -260,7 +260,6 @@ public class NooneApplication {
             project.setStartedAt(LocalDateTime.now());
             project.setRemark("Auto-generated during system initialization.");
             User admin = userRepository.findByUsername("admin").orElseThrow();
-            project.setOwner(admin);
             project.setMembers(Collections.singleton(admin));
             projectRepository.save(project);
         }

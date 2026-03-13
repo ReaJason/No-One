@@ -21,6 +21,12 @@ public class ProjectMapper {
         Project project = new Project();
         project.setName(request.getName());
         project.setCode(request.getCode());
+        project.setBizName(request.getBizName());
+        project.setDescription(request.getDescription());
+        project.setStartedAt(request.getStartedAt());
+        project.setEndedAt(request.getEndedAt());
+        project.setRemark(request.getRemark());
+        project.setDeleted(Boolean.FALSE);
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             project.setStatus(ProjectStatus.valueOf(request.getStatus().toUpperCase()));
         }
@@ -42,10 +48,21 @@ public class ProjectMapper {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             project.setStatus(ProjectStatus.valueOf(request.getStatus().toUpperCase()));
         }
+        if (request.getBizName() != null) {
+            project.setBizName(request.getBizName());
+        }
+        if (request.getDescription() != null) {
+            project.setDescription(request.getDescription());
+        }
         if (request.getMemberIds() != null) {
             project.setMembers(request.getMemberIds().stream()
                     .map(userRepository::getReferenceById)
                     .collect(Collectors.toSet()));
+        }
+        project.setStartedAt(request.getStartedAt());
+        project.setEndedAt(request.getEndedAt());
+        if (request.getRemark() != null) {
+            project.setRemark(request.getRemark());
         }
     }
 
@@ -55,9 +72,14 @@ public class ProjectMapper {
         response.setName(project.getName());
         response.setCode(project.getCode());
         response.setStatus(project.getStatus().name());
+        response.setBizName(project.getBizName());
+        response.setDescription(project.getDescription());
+        response.setStartedAt(project.getStartedAt());
+        response.setEndedAt(project.getEndedAt());
         response.setCreatedAt(project.getCreatedAt());
         response.setUpdatedAt(project.getUpdatedAt());
-        response.setOwnerId(project.getOwner() == null ? null : project.getOwner().getId());
+        response.setArchivedAt(project.getArchivedAt());
+        response.setRemark(project.getRemark());
         response.setMembers(project.getMembers().stream()
                 .map(this::toMemberDTO)
                 .collect(Collectors.toSet()));

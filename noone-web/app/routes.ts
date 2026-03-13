@@ -61,7 +61,6 @@ export default [
       index("routes/project/project-list.tsx"),
       route("/create", "routes/project/create-project.tsx"),
       route("/edit/:projectId", "routes/project/edit.$projectId.tsx"),
-      route("/update/:projectId", "routes/project/update.$projectId.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;
