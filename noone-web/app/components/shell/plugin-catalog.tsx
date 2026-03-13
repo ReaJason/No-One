@@ -1,4 +1,7 @@
+import type { Plugin } from "@/types/plugin";
+
 import { ExternalLink, Puzzle } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Plugin } from "@/types/plugin";
 
 interface PluginCatalogProps {
   extensionPlugins: Plugin[];

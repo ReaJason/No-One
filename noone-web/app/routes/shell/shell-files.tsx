@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { type LoaderFunctionArgs, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { dispatchPlugin } from "@/api/shell-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
@@ -7,6 +8,7 @@ import FileManager from "@/components/shell/file-manager";
 import { deriveFileManagerInitialState } from "@/lib/file-manager-initial-state";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
 import { parseShellIdParam } from "@/lib/shell-route.server";
+
 import { useShellManagerContext } from "./shell-manager-context";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {

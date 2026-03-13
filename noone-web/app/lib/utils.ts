@@ -19,11 +19,7 @@ export function downloadContent(content: Blob, fileName: string, fileExtension?:
 }
 
 export function base64ToBytes(base64String: string) {
-  const byteCharacters = atob(base64String);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
+  const byteNumbers = Array.from(atob(base64String), (char) => char.charCodeAt(0));
   return new Uint8Array(byteNumbers);
 }
 

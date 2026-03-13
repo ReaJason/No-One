@@ -1,6 +1,10 @@
-import { GalleryVerticalEnd, KeyRound } from "lucide-react";
+import type { User } from "@/types/admin";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
+import { GalleryVerticalEnd, KeyRound } from "lucide-react";
+import React from "react";
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
+
 import { publicApi } from "@/api.server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { commitSession, getSession } from "@/sessions.server";
-import type { User } from "@/types/admin";
-import React from "react";
 
 type LoginApiSuccess = {
   token?: string;

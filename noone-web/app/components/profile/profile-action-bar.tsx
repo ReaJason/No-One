@@ -1,13 +1,15 @@
+import type { Profile } from "@/types/profile";
 import type { Table } from "@tanstack/react-table";
+
 import { Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 import {
   DataTableActionBar,
   DataTableActionBarAction,
   DataTableActionBarSelection,
 } from "@/components/data-table/data-table-action-bar";
 import { Separator } from "@/components/ui/separator";
-import type { Profile } from "@/types/profile";
 
 interface ProfileTableActionBarProps {
   table: Table<Profile>;

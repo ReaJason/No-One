@@ -1,7 +1,9 @@
 import { FileTextIcon } from "lucide-react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { type MemShellResult } from "@/types/memshell";
+
 import { CopyableField } from "../copyable-field";
 
 export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShellResult }>) {

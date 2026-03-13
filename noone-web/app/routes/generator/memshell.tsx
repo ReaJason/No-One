@@ -1,8 +1,10 @@
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
 import { LoaderCircle, WandSparklesIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { toast } from "sonner";
+
 import { createAuthFetch } from "@/api.server";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import MainConfigCard from "@/components/memshell/main-config-card";
@@ -11,6 +13,7 @@ import ShellResult from "@/components/memshell/shell-result";
 import { Button } from "@/components/ui/button";
 import { transformToPostData } from "@/lib/transformer";
 import { type MemShellResult } from "@/types/memshell";
+
 import { useGeneratorContext } from "./generator-context";
 
 // Validation helper functions

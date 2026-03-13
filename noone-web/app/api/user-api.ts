@@ -1,3 +1,7 @@
+import type { AuthFetch } from "@/api.server";
+import type { LoginLog, User, UserSession, UserStatus } from "@/types/admin";
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
+
 import {
   createLoader,
   parseAsBoolean,
@@ -5,10 +9,8 @@ import {
   parseAsString,
   parseAsStringEnum,
 } from "nuqs/server";
-import type { AuthFetch } from "@/api.server";
-import { mapPaginatedResponse, withHeaders } from "@/api/server-api-utils";
-import type { LoginLog, User, UserSession, UserStatus } from "@/types/admin";
-import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
+
+import { mapPaginatedResponse } from "@/api/server-api-utils";
 
 const baseUrl = "/users";
 const USER_STATUSES = ["ENABLED", "DISABLED", "LOCKED", "UNACTIVATED"] as const;
@@ -24,10 +26,6 @@ export interface UserSearchParams {
   sortOrder?: "asc" | "desc";
 }
 
-export interface ChallengeableRequestOptions {
-  challengeToken?: string;
-}
-
 export const loadUserSearchParams = createLoader({
   username: parseAsString,
   roles: parseAsInteger,
@@ -39,17 +37,6 @@ export const loadUserSearchParams = createLoader({
   sortBy: parseAsString.withDefault("createdAt"),
   sortOrder: parseAsStringEnum(["asc", "desc"]).withDefault("desc"),
 });
-
-function withChallengeRequest(options: ChallengeableRequestOptions = {}) {
-  return withHeaders(
-    {},
-    options.challengeToken
-      ? {
-          "X-Action-Challenge": options.challengeToken,
-        }
-      : undefined,
-  );
-}
 
 export async function getUsers(
   filters: UserSearchParams,
@@ -95,23 +82,16 @@ export async function updateUser(
   id: number,
   userData: UpdateUserRequest,
   authFetch: AuthFetch,
-  options: ChallengeableRequestOptions = {},
 ): Promise<User | null> {
   return await authFetch<User>(`${baseUrl}/${id}`, {
     method: "PUT",
     body: userData,
-    ...withChallengeRequest(options),
   });
 }
 
-export async function deleteUser(
-  id: number,
-  authFetch: AuthFetch,
-  options: ChallengeableRequestOptions = {},
-): Promise<boolean> {
+export async function deleteUser(id: number, authFetch: AuthFetch): Promise<boolean> {
   await authFetch(`${baseUrl}/${id}`, {
     method: "DELETE",
-    ...withChallengeRequest(options),
   });
   return true;
 }
@@ -120,12 +100,10 @@ export async function resetUserPassword(
   id: number,
   payload: ResetUserPasswordRequest,
   authFetch: AuthFetch,
-  options: ChallengeableRequestOptions = {},
 ): Promise<boolean> {
   await authFetch(`${baseUrl}/${id}/reset-password`, {
     method: "PUT",
     body: payload,
-    ...withChallengeRequest(options),
   });
   return true;
 }
@@ -138,14 +116,9 @@ export async function getUserSessions(id: number, authFetch: AuthFetch): Promise
   return await authFetch<UserSession[]>(`${baseUrl}/${id}/sessions`);
 }
 
-export async function revokeAllUserSessions(
-  id: number,
-  authFetch: AuthFetch,
-  options: ChallengeableRequestOptions = {},
-): Promise<void> {
+export async function revokeAllUserSessions(id: number, authFetch: AuthFetch): Promise<void> {
   await authFetch(`${baseUrl}/${id}/sessions`, {
     method: "DELETE",
-    ...withChallengeRequest(options),
   });
 }
 
@@ -153,11 +126,9 @@ export async function revokeUserSession(
   id: number,
   sessionId: string,
   authFetch: AuthFetch,
-  options: ChallengeableRequestOptions = {},
 ): Promise<void> {
   await authFetch(`${baseUrl}/${id}/sessions/${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
-    ...withChallengeRequest(options),
   });
 }
 

@@ -1,10 +1,12 @@
+import type { PackerConfig } from "@/types/memshell";
+
 import { PackageIcon } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FieldLabel, FieldSet } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Spinner } from "@/components/ui/spinner";
-import type { PackerConfig } from "@/types/memshell";
 
 interface PackageConfigCardProps {
   packerConfig: PackerConfig | undefined;

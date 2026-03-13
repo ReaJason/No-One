@@ -1,6 +1,8 @@
+import type { ShellConnection } from "@/types/shell-connection";
+import type { ComponentType } from "react";
+
 import { Separator } from "@radix-ui/react-separator";
 import { ArrowLeft, ClipboardList, Files, Info, Loader, Puzzle, Terminal } from "lucide-react";
-import type { ComponentType } from "react";
 import {
   Link,
   type LoaderFunctionArgs,
@@ -10,7 +12,9 @@ import {
   useLocation,
 } from "react-router";
 import { Toaster } from "sonner";
+
 import { createAuthFetch } from "@/api.server";
+import { getShellConnectionById } from "@/api/shell-connection-api";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +32,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { getShellConnectionById } from "@/api/shell-connection-api";
-import type { ShellConnection } from "@/types/shell-connection";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;

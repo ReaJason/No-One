@@ -1,4 +1,3 @@
-import { lazy, memo, Suspense, useMemo } from "react";
 import {
   Activity,
   Box,
@@ -13,13 +12,14 @@ import {
   Server,
   Terminal,
 } from "lucide-react";
+import { lazy, memo, Suspense, useMemo } from "react";
 
+import KeyValueList from "@/components/shell/key-value-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import KeyValueList from "@/components/shell/key-value-list";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBytes, formatUptime } from "@/lib/utils";
 
 const MemoryCharts = lazy(() => import("./system-info-memory-charts"));

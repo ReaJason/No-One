@@ -1,6 +1,7 @@
-import type { FetchOptions } from "ofetch";
 import type { AuthFetch } from "@/api.server";
 import type { ShellPluginDispatchRequest } from "@/types/shell";
+import type { FetchOptions } from "ofetch";
+
 import { resolveApiErrorMessage } from "@/lib/api-error";
 
 export type DispatchPluginOptions = FetchOptions<"json", any>;

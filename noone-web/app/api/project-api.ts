@@ -1,8 +1,10 @@
-import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { AuthFetch } from "@/api.server";
-import { mapPaginatedResponse } from "@/api/server-api-utils";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Project, ProjectStatus } from "@/types/project";
+
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+
+import { mapPaginatedResponse } from "@/api/server-api-utils";
 
 const baseUrl = "/projects";
 const PROJECT_STATUSES = ["DRAFT", "ACTIVE", "ARCHIVED"] as const;

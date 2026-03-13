@@ -1,10 +1,13 @@
+import type { PaginatedResponse } from "@/types/api";
+import type { Profile } from "@/types/profile";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { deleteProfile, getProfiles, loadProfileSearchParams } from "@/api/profile-api";
-import type { PaginatedResponse } from "@/types/api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -13,7 +16,6 @@ import { profileColumns } from "@/components/profile/profile-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { Profile } from "@/types/profile";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, protocolType, page, perPage, sortBy, sortOrder } = loadProfileSearchParams(request);

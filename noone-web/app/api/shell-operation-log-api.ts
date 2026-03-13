@@ -1,7 +1,8 @@
 import type { AuthFetch } from "@/api.server";
-import { mapPaginatedResponse } from "@/api/server-api-utils";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { ShellOperationLog, ShellOperationLogQuery } from "@/types/shell-operation-log";
+
+import { mapPaginatedResponse } from "@/api/server-api-utils";
 
 export async function getShellOperationLogs(
   shellId: number,

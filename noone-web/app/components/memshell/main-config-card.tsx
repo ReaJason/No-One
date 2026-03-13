@@ -1,5 +1,8 @@
+import type { Profile } from "@/types/profile";
+
 import { ServerIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
+
 import { NoOneTabContent } from "@/components/memshell/tabs/noone-tab";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
@@ -15,7 +18,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs } from "@/components/ui/tabs";
 import { type MainConfig, type ServerConfig, ShellToolType } from "@/types/memshell";
-import type { Profile } from "@/types/profile";
+
 import { JREVersionFormField } from "./jreversion-field";
 import { ServerVersionFormField } from "./serverversion-field";
 

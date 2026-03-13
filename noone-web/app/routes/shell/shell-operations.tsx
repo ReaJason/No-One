@@ -1,6 +1,9 @@
+import type { ShellOperationLog } from "@/types/shell-operation-log";
+
 import { CheckCircle, ChevronLeft, ChevronRight, Filter, XCircle } from "lucide-react";
 import { useState } from "react";
 import { type LoaderFunctionArgs, useLoaderData, useSearchParams } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import * as opLogApi from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ShellOperationLog } from "@/types/shell-operation-log";
 
 const ALL_VALUE = "__ALL__";
 const PAGE_SIZE = 20;

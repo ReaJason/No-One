@@ -1,4 +1,5 @@
 import { redirect } from "react-router";
+
 import { destroySession, getSession } from "@/sessions.server";
 
 async function performLogout(request: Request) {

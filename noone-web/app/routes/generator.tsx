@@ -1,10 +1,12 @@
+import type { GeneratorContext } from "./generator/generator-context";
 import type { LoaderFunctionArgs } from "react-router";
+
 import { Outlet, useLoaderData, useLocation, useNavigate } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { getAllProfiles } from "@/api/profile-api";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { GeneratorContext } from "./generator/generator-context";
 
 export const handle = createBreadcrumb(() => ({
   id: "generator",

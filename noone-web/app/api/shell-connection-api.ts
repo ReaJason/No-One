@@ -1,4 +1,3 @@
-import type { FetchOptions } from "ofetch";
 import type { AuthFetch } from "@/api.server";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type {
@@ -6,6 +5,7 @@ import type {
   ShellConnectionSearchParams,
   ShellLanguage,
 } from "@/types/shell-connection";
+import type { FetchOptions } from "ofetch";
 
 const baseUrl = "/shells";
 

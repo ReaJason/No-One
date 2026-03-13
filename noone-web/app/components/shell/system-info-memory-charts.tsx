@@ -1,8 +1,9 @@
+import type { ChartConfig } from "@/components/ui/chart";
+
 import { useMemo } from "react";
 import { Pie, PieChart, Sector } from "recharts";
 
 import { ChartContainer } from "@/components/ui/chart";
-import type { ChartConfig } from "@/components/ui/chart";
 
 export type MemoryChartsProps = {
   isJava: boolean;

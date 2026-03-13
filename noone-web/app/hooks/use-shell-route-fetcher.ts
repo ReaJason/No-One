@@ -1,6 +1,7 @@
+import type { ShellRouteResult } from "@/lib/shell-route";
+
 import { useCallback, useEffect, useRef } from "react";
 import { useFetcher, type FetcherSubmitOptions } from "react-router";
-import type { ShellRouteResult } from "@/lib/shell-route";
 
 interface PendingRequest<T> {
   requestId: string;

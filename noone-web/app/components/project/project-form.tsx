@@ -1,8 +1,11 @@
+import type { User } from "@/types/admin";
+import type { ProjectStatus } from "@/types/project";
 import type { LucideIcon } from "lucide-react";
+
 import { Search } from "lucide-react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Form } from "react-router";
-import { PROJECT_STATUS_ITEMS, type ProjectFormSeed } from "@/routes/project/project-form.shared";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,8 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { User } from "@/types/admin";
-import type { ProjectStatus } from "@/types/project";
+import { PROJECT_STATUS_ITEMS, type ProjectFormSeed } from "@/routes/project/project-form.shared";
 
 type ProjectFormProps = {
   mode: "create" | "edit";

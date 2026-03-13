@@ -1,8 +1,7 @@
 import "@xterm/xterm/css/xterm.css";
 import { useTheme } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
-import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
+
 import {
   Select,
   SelectContent,
@@ -10,6 +9,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
+import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
 
 interface CommandExecuteProps {
   shellId: number;
@@ -72,6 +73,7 @@ const ANSI_RED = "\x1b[31m";
 const ANSI_YELLOW = "\x1b[33m";
 const ANSI_CYAN = "\x1b[36m";
 const ANSI_DIM = "\x1b[2m";
+// eslint-disable-next-line no-control-regex
 const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;?]*[ -/]*[@-~]/;
 const DEFAULT_TEMPLATE_ARGS = "{{cmd}}";
 const AUTO_CHARSET_VALUE = "__AUTO__";

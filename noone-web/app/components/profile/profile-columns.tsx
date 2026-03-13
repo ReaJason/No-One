@@ -1,8 +1,11 @@
+import type { Profile } from "@/types/profile";
 import type { ColumnDef } from "@tanstack/react-table";
+
 import { Edit, Loader, MoreHorizontal, Trash2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import type { Profile } from "@/types/profile";
 
 function ProfileActionsCell({ profile }: { profile: Profile }) {
   const navigate = useNavigate();

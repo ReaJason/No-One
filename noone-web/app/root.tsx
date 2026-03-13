@@ -1,3 +1,8 @@
+import type { Route } from "./+types/root";
+
+import { ThemeProvider } from "next-themes";
+
+import "./app.css";
 import {
   isRouteErrorResponse,
   Links,
@@ -6,9 +11,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from "react-router";
-import type { Route } from "./+types/root";
-import "./app.css";
-import { ThemeProvider } from "next-themes";
+
 import { TailwindIndicator } from "@/components/tailwind-indicator";
 
 export const links: Route.LinksFunction = () => [

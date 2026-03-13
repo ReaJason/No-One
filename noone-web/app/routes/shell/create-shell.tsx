@@ -1,6 +1,9 @@
-import { ArrowLeft } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import type { Profile } from "@/types/profile";
+import type { Project } from "@/types/project";
+import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
+import { useEffect, useRef, useState } from "react";
 import {
   Form,
   redirect,
@@ -12,7 +15,10 @@ import {
   useParams,
 } from "react-router";
 import { toast } from "sonner";
+
 import { createAuthFetch } from "@/api.server";
+import { getAllProfiles } from "@/api/profile-api";
+import { getAllProjects } from "@/api/project-api";
 import {
   createShellConnection,
   getShellConnectionById,
@@ -22,11 +28,8 @@ import {
   type TestShellConfigRequest,
   type UpdateShellConnectionRequest,
 } from "@/api/shell-connection-api";
-import { getAllProfiles } from "@/api/profile-api";
-import { getAllProjects } from "@/api/project-api";
+import { FormPageShell } from "@/components/form-page-shell";
 import ShellFormActions from "@/components/shell/shell-form-actions";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -49,9 +52,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { Profile } from "@/types/profile";
-import type { Project } from "@/types/project";
-import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
 
 type LoaderData =
   | {
@@ -230,47 +230,30 @@ export default function CreateOrEditShell() {
     label: project.name,
     value: String(project.id),
   }));
-  console.log(projectItems);
 
   const formSeed = getShellFormSeed(loaderData);
-  console.log(formSeed);
   const formKey = shell
     ? `edit:${shell.id}:${shell.updatedAt}`
     : `create:${formSeed.url}:${formSeed.profileId}:${formSeed.language}:${formSeed.projectId}`;
 
   return (
-    <div className="container mx-auto max-w-7xl p-6">
-      <section className="mb-8 rounded-2xl border border-border/70 bg-gradient-to-br from-muted/40 via-background to-background p-6 shadow-sm">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/shells")}
-          className="mb-4 flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Return to shell list
-        </Button>
-
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={isEdit ? "secondary" : "default"}>
-              {isEdit ? "Edit mode" : "New connection"}
-            </Badge>
-            {hasPrefill ? <Badge variant="outline">Pre-filled</Badge> : null}
-          </div>
-
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-balance">
-              {isEdit ? "Edit Shell" : "Create Shell"}
-            </h1>
-            <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
-              {shell
-                ? `Update shell #${shell.id} and verify the connection details before saving.`
-                : "Register a new shell connection with a clearer overview of runtime, profile, and transport settings."}
-            </p>
-          </div>
-        </div>
-      </section>
-
+    <FormPageShell
+      backHref="/shells"
+      backLabel="Return to shell list"
+      badges={[
+        {
+          label: isEdit ? "Edit mode" : "New connection",
+          variant: isEdit ? "secondary" : "default",
+        },
+        ...(hasPrefill ? [{ label: "Pre-filled", variant: "outline" as const }] : []),
+      ]}
+      title={isEdit ? "Edit Shell" : "Create Shell"}
+      description={
+        shell
+          ? `Update shell #${shell.id} and verify the connection details before saving.`
+          : "Register a new shell connection with a clearer overview of runtime, profile, and transport settings."
+      }
+    >
       <ShellForm
         key={formKey}
         formSeed={formSeed}
@@ -280,7 +263,7 @@ export default function CreateOrEditShell() {
         profileItems={profileItems}
         onCancel={() => navigate("/shells")}
       />
-    </div>
+    </FormPageShell>
   );
 }
 

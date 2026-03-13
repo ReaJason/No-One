@@ -1,8 +1,12 @@
+import type { Role, User, UserStatus } from "@/types/admin";
+import type { PaginatedResponse } from "@/types/api";
+import type { LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import * as React from "react";
 import { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { getUsers, loadUserSearchParams } from "@/api/user-api";
@@ -14,8 +18,6 @@ import { UsersTableActionBar } from "@/components/user/user-action-bar";
 import { useUserColumns } from "@/components/user/user-columns";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { PaginatedResponse } from "@/types/api";
-import type { Role, User, UserStatus } from "@/types/admin";
 
 export const handle = createBreadcrumb(() => ({
   id: "users",

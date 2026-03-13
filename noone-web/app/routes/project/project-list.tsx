@@ -1,10 +1,13 @@
+import type { PaginatedResponse } from "@/types/api";
+import type { Project } from "@/types/project";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { deleteProject, getProjects, loadProjectSearchParams } from "@/api/project-api";
-import type { PaginatedResponse } from "@/types/api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -12,7 +15,6 @@ import { ProjectTableActionBar } from "@/components/project/project-action-bar";
 import { projectColumns } from "@/components/project/project-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
-import type { Project } from "@/types/project";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, status, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);

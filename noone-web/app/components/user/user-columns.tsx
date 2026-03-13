@@ -1,7 +1,8 @@
+import type { Role, User, UserStatus } from "@/types/admin";
 import type { ColumnDef } from "@tanstack/react-table";
+
 import {
   CalendarIcon,
-  KeyRound,
   Loader,
   Mail,
   MoreHorizontal,
@@ -9,11 +10,10 @@ import {
   Shield,
   Text,
   Trash2,
-  UserCheck,
-  UserX,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { Link, useFetcher } from "react-router";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
   AlertDialog,
@@ -37,10 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/format";
-import type { Role, User, UserStatus } from "@/types/admin";
 
 const STATUS_META: Record<UserStatus, { label: string; className: string }> = {
   ENABLED: { label: "Enabled", className: "bg-green-100 text-green-800 hover:bg-green-100" },
@@ -59,21 +56,9 @@ const StatusBadge = React.memo(({ status }: { status: UserStatus }) => {
 });
 
 const UserActionsCell = React.memo(({ user }: { user: User }) => {
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isResetOpen, setIsResetOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [verificationPassword, setVerificationPassword] = useState("");
-
-  const statusFetcher = useFetcher<{ errors?: Record<string, string> }>();
   const deleteFetcher = useFetcher<{ errors?: Record<string, string> }>();
-  const resetPasswordFetcher = useFetcher<{ errors?: Record<string, string> }>();
-
-  const nextStatus: UserStatus = user.status === "ENABLED" ? "DISABLED" : "ENABLED";
-  const statusActionLabel = user.status === "ENABLED" ? "Disable User" : "Enable User";
-  const statusError = statusFetcher.data?.errors?.general;
   const deleteError = deleteFetcher.data?.errors?.general;
-  const resetPasswordError = resetPasswordFetcher.data?.errors?.general;
 
   return (
     <>
@@ -92,32 +77,9 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
             <Link to={`/admin/users/edit-roles/${user.id}`}>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
-                Edit Roles
+                Edit User
               </DropdownMenuItem>
             </Link>
-            <Link to={`/admin/users/security/${user.id}`}>
-              <DropdownMenuItem>
-                <Shield className="mr-2 h-4 w-4" />
-                Security
-              </DropdownMenuItem>
-            </Link>
-            <DropdownMenuItem onClick={() => setIsStatusOpen(true)}>
-              {user.status === "ENABLED" ? (
-                <>
-                  <UserX className="mr-2 h-4 w-4" />
-                  {statusActionLabel}
-                </>
-              ) : (
-                <>
-                  <UserCheck className="mr-2 h-4 w-4" />
-                  {statusActionLabel}
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsResetOpen(true)}>
-              <KeyRound className="mr-2 h-4 w-4" />
-              Reset Password
-            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
@@ -127,128 +89,16 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={isStatusOpen} onOpenChange={setIsStatusOpen}>
-        <AlertDialogContent>
-          <statusFetcher.Form method="post" action={`/admin/users/${user.id}/update`}>
-            <input type="hidden" name="status" value={nextStatus} />
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirm status change</AlertDialogTitle>
-              <AlertDialogDescription>
-                This user status will be changed from {STATUS_META[user.status].label} to{" "}
-                {STATUS_META[nextStatus].label}.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={`status-password-${user.id}`}>Current admin password</Label>
-              <Input
-                id={`status-password-${user.id}`}
-                name="verificationPassword"
-                type="password"
-                required
-                value={verificationPassword}
-                onChange={(event) => setVerificationPassword(event.target.value)}
-                disabled={statusFetcher.state !== "idle"}
-              />
-              {statusError ? <p className="text-sm text-destructive">{statusError}</p> : null}
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction>
-                <Button type="submit" className="text-sm" disabled={statusFetcher.state !== "idle"}>
-                  {statusFetcher.state !== "idle" && (
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Confirm
-                </Button>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </statusFetcher.Form>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
-        <AlertDialogContent>
-          <resetPasswordFetcher.Form
-            method="post"
-            action={`/admin/users/${user.id}/reset-password`}
-            className="space-y-4"
-          >
-            <input type="hidden" name="forceChangeOnNextLogin" value="true" />
-            <AlertDialogHeader>
-              <AlertDialogTitle>Reset user password</AlertDialogTitle>
-              <AlertDialogDescription>
-                A temporary password will be set for this user.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={`new-password-${user.id}`}>Temporary password</Label>
-              <Input
-                id={`new-password-${user.id}`}
-                name="newPassword"
-                type="password"
-                minLength={6}
-                required
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                disabled={resetPasswordFetcher.state !== "idle"}
-              />
-              {resetPasswordError ? (
-                <p className="text-sm text-destructive">{resetPasswordError}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={`reset-password-verify-${user.id}`}>Current admin password</Label>
-              <Input
-                id={`reset-password-verify-${user.id}`}
-                name="verificationPassword"
-                type="password"
-                required
-                value={verificationPassword}
-                onChange={(event) => setVerificationPassword(event.target.value)}
-                disabled={resetPasswordFetcher.state !== "idle"}
-              />
-            </div>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction>
-                <Button
-                  type="submit"
-                  className="text-sm"
-                  disabled={resetPasswordFetcher.state !== "idle" || newPassword.length < 6}
-                >
-                  {resetPasswordFetcher.state !== "idle" && (
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Confirm
-                </Button>
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </resetPasswordFetcher.Form>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
-          <deleteFetcher.Form method="post" action={`/admin/users/${user.id}/delete`}>
+          <deleteFetcher.Form method="post" action={`/admin/users/delete/${user.id}`}>
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. The user account will be permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <div className="space-y-2">
-              <Label htmlFor={`delete-password-${user.id}`}>Current admin password</Label>
-              <Input
-                id={`delete-password-${user.id}`}
-                name="verificationPassword"
-                type="password"
-                required
-                value={verificationPassword}
-                onChange={(event) => setVerificationPassword(event.target.value)}
-                disabled={deleteFetcher.state !== "idle"}
-              />
-              {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
-            </div>
+            {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction>

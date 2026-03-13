@@ -1,5 +1,6 @@
-import { useAuth as useAuthContext, useUser } from "@/contexts/auth-context";
 import type { AuthState } from "@/lib/authz";
+
+import { useAuth as useAuthContext, useUser } from "@/contexts/auth-context";
 
 export interface AuthStateWithLoading extends AuthState {
   isLoading: boolean;

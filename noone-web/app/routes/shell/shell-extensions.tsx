@@ -1,11 +1,15 @@
+import type { Plugin } from "@/types/plugin";
+
 import { Puzzle, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import PluginCatalog from "@/components/shell/plugin-catalog";
 import PluginTabPanel, { type PluginTabState } from "@/components/shell/plugin-tab-panel";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   dispatchShellPluginFromRoute,
   parseShellIdParam,
@@ -13,8 +17,7 @@ import {
   shellRouteError,
   shellRouteSuccess,
 } from "@/lib/shell-route.server";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Plugin } from "@/types/plugin";
+
 import { useShellManagerContext } from "./shell-manager-context";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {

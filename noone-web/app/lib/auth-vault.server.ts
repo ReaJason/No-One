@@ -1,5 +1,6 @@
-import { randomUUID } from "node:crypto";
 import type { User } from "@/types/admin";
+
+import { randomUUID } from "node:crypto";
 
 export interface AuthVaultEntry {
   sessionId: string;

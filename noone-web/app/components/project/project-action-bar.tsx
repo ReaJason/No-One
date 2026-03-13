@@ -1,13 +1,15 @@
+import type { Project } from "@/types/project";
 import type { Table } from "@tanstack/react-table";
+
 import { Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
 import {
   DataTableActionBar,
   DataTableActionBarAction,
   DataTableActionBarSelection,
 } from "@/components/data-table/data-table-action-bar";
 import { Separator } from "@/components/ui/separator";
-import type { Project } from "@/types/project";
 
 interface ProjectTableActionBarProps {
   table: Table<Project>;

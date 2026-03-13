@@ -28,8 +28,8 @@ export default [
     ]),
     ...prefix("profiles", [
       index("routes/profile/profile-list.tsx"),
-      route("/create", "routes/profile/create-profile.tsx"),
-      route("/edit/:profileId", "routes/profile/edit.$profileId.tsx"),
+      route("/create", "routes/profile/profile-editor.tsx", { id: "profiles-create" }),
+      route("/edit/:profileId", "routes/profile/profile-editor.tsx", { id: "profiles-edit" }),
     ]),
     ...prefix("plugins", [
       index("routes/plugins.tsx"),
@@ -40,27 +40,31 @@ export default [
     ...prefix("admin", [
       ...prefix("users", [
         index("routes/admin/users.tsx"),
-        route("/create", "routes/admin/users/create.tsx"),
-        route("/edit-roles/:userId", "routes/admin/users/edit-roles.$userId.tsx"),
+        route("/create", "routes/admin/users/user-editor.tsx", { id: "users-create" }),
+        route("/edit-roles/:userId", "routes/admin/users/user-editor.tsx", { id: "users-edit" }),
         route("/update/:userId", "routes/admin/users/update.$userId.tsx"),
         route("/delete/:userId", "routes/admin/users/delete.$userId.tsx"),
       ]),
       route("/roles", "routes/admin/roles.tsx"),
-      route("/roles/create", "routes/admin/roles/create.tsx"),
-      route("/roles/edit/:roleId", "routes/admin/roles/edit.$roleId.tsx"),
+      route("/roles/create", "routes/admin/roles/role-editor.tsx", { id: "roles-create" }),
+      route("/roles/edit/:roleId", "routes/admin/roles/role-editor.tsx", { id: "roles-edit" }),
       route("/roles/update/:roleId", "routes/admin/roles/update.$roleId.tsx"),
       ...prefix("permissions", [
         index("routes/admin/permissions.tsx"),
-        route("/create", "routes/admin/permissions/create.tsx"),
-        route("/edit/:permissionId", "routes/admin/permissions/edit.$permissionId.tsx"),
+        route("/create", "routes/admin/permissions/permission-editor.tsx", {
+          id: "permissions-create",
+        }),
+        route("/edit/:permissionId", "routes/admin/permissions/permission-editor.tsx", {
+          id: "permissions-edit",
+        }),
         route("/update/:permissionId", "routes/admin/permissions/update.$permissionId.tsx"),
         route("/delete/:permissionId", "routes/admin/permissions/delete.$permissionId.tsx"),
       ]),
     ]),
     ...prefix("projects", [
       index("routes/project/project-list.tsx"),
-      route("/create", "routes/project/create-project.tsx"),
-      route("/edit/:projectId", "routes/project/edit.$projectId.tsx"),
+      route("/create", "routes/project/project-editor.tsx", { id: "projects-create" }),
+      route("/edit/:projectId", "routes/project/project-editor.tsx", { id: "projects-edit" }),
     ]),
   ]),
 ] satisfies RouteConfig;

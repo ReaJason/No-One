@@ -1,7 +1,10 @@
+import type { Permission } from "@/types/admin";
 import type { ColumnDef } from "@tanstack/react-table";
+
 import { Edit, Loader, MoreHorizontal, Text, Trash2, Users } from "lucide-react";
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
   AlertDialog,
@@ -26,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import type { Permission } from "@/types/admin";
 
 export const permissionColumns: ColumnDef<Permission>[] = [
   {

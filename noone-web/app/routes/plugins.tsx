@@ -1,9 +1,13 @@
+import type { PaginatedResponse } from "@/types/api";
+import type { Plugin } from "@/types/plugin";
+import type { LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import { parseAsString, useQueryState } from "nuqs";
 import * as React from "react";
 import { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { getPlugins, loadPluginSearchParams } from "@/api/plugin-api";
 import { DataTable } from "@/components/data-table/data-table";
@@ -15,8 +19,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { formatDate } from "@/lib/format";
-import type { PaginatedResponse } from "@/types/api";
-import type { Plugin } from "@/types/plugin";
 
 const LANGUAGE_TABS = [
   { value: "all", label: "All" },

@@ -1,8 +1,13 @@
+import type { Route } from "../+types/root";
+import type { User } from "@/types/admin";
+
 import { Separator } from "@radix-ui/react-separator";
+import { Shield } from "lucide-react";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import React from "react";
 import { data, Link, type LoaderFunctionArgs, Outlet } from "react-router";
 import { Toaster } from "sonner";
+
 import { AppSidebar } from "@/components/app-sidebar";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -16,13 +21,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
-import { Shield } from "lucide-react";
 import { buildAuthState } from "@/lib/authz";
+import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
 import { authMiddleware } from "@/middleware/auth.server";
 import { getSession } from "@/sessions.server";
-import type { User } from "@/types/admin";
-import type { Route } from "../+types/root";
 
 export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
 

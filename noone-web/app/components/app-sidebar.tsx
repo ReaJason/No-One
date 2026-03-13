@@ -14,8 +14,7 @@ import {
   Users,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
-import { useAuth } from "@/contexts/auth-context";
-import { hasAnyAuthority } from "@/lib/authz";
+
 import {
   Sidebar,
   SidebarContent,
@@ -28,6 +27,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/auth-context";
+import { hasAnyAuthority } from "@/lib/authz";
+
 import { NavUser } from "./nav-user";
 
 interface NavItem {

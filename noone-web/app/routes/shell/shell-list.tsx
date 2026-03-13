@@ -1,7 +1,12 @@
+import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
+import type { Project } from "@/types/project";
+import type { ShellConnection } from "@/types/shell-connection";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import React, { use, useMemo } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { deleteShellConnection, getShellConnections } from "@/api/shell-connection-api";
 import { DataTable } from "@/components/data-table/data-table";
@@ -12,9 +17,6 @@ import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import { loadShellConnectionSearchParams } from "@/lib/shell-connection-search-param";
-import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
-import type { ShellConnection } from "@/types/shell-connection";
-import type { Project } from "@/types/project";
 
 async function getAllProject(authFetch: ReturnType<typeof createAuthFetch>) {
   const params: Record<string, any> = {

@@ -1,5 +1,6 @@
-import { useOutletContext } from "react-router";
 import type { ShellConnection } from "@/types/shell-connection";
+
+import { useOutletContext } from "react-router";
 
 export interface ShellManagerContext {
   shell: ShellConnection;

@@ -1,3 +1,5 @@
+import type { User } from "@/types/admin";
+
 import { GalleryVerticalEnd } from "lucide-react";
 import {
   type ActionFunctionArgs,
@@ -9,14 +11,14 @@ import {
   useLoaderData,
   useNavigation,
 } from "react-router";
+
+import { publicApi } from "@/api.server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { commitSession, getSession } from "@/sessions.server";
-import type { User } from "@/types/admin";
-import { publicApi } from "@/api.server";
 
 const REQUIRE_2FA_CODE = "REQUIRE_2FA";
 const INVALID_2FA_CODE = "INVALID_2FA_CODE";

@@ -1,5 +1,5 @@
-import type { FetchOptions } from "ofetch";
 import type { ServerPaginatedResponse, PaginatedResponse } from "@/types/api";
+import type { FetchOptions } from "ofetch";
 
 export function mapPaginatedResponse<T>(
   response: ServerPaginatedResponse<T>,

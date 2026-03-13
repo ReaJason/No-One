@@ -1,8 +1,10 @@
+import type { ActionFunctionArgs } from "react-router";
+
 import { Download, FileCode2, LoaderCircle, PlusIcon, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionFunctionArgs } from "react-router";
 import { Form, useActionData, useNavigate, useNavigation } from "react-router";
 import { toast } from "sonner";
+
 import { createAuthFetch } from "@/api.server";
 import {
   generateWebShell,
@@ -23,6 +25,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,14 +44,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
 import { downloadContent } from "@/lib/utils";
+
 import { useGeneratorContext } from "./generator-context";
 
 const JAVA_WEBSHELL_OPTIONS: Array<{ value: WebShellFormat; label: string; desc: string }> = [

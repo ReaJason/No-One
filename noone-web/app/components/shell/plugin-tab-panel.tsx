@@ -1,5 +1,8 @@
+import type { Plugin, TaskStatus } from "@/types/plugin";
+
 import { Clock, Loader2, Play, Puzzle, RefreshCw, Square } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +16,6 @@ import {
 } from "@/components/ui/select";
 import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
-import type { Plugin, TaskStatus } from "@/types/plugin";
 
 export interface PluginTabState {
   selectedAction: string;

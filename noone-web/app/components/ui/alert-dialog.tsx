@@ -1,7 +1,9 @@
 "use client";
 
-import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 import type * as React from "react";
+
+import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
+
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

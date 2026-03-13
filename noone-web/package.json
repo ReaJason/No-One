@@ -8,7 +8,7 @@
     "start": "react-router-serve ./build/server/index.js",
     "typecheck": "react-router typegen && tsc",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
+    "lint:fix": "oxlint --fix --fix-suggestions --fix-dangerously .",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check"
   },

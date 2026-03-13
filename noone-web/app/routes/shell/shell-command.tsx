@@ -1,4 +1,5 @@
 import type { ActionFunctionArgs } from "react-router";
+
 import CommandExecute from "@/components/shell/command-execute";
 import {
   dispatchShellPluginFromRoute,
@@ -7,6 +8,7 @@ import {
   shellRouteError,
   shellRouteSuccess,
 } from "@/lib/shell-route.server";
+
 import { useShellManagerContext } from "./shell-manager-context";
 
 export async function action({ context, params, request }: ActionFunctionArgs) {

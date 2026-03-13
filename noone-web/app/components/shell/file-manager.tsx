@@ -1,3 +1,6 @@
+import type { FileManagerInitialState } from "@/lib/file-manager-initial-state";
+
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   ArrowDown,
   ArrowUp,
@@ -20,11 +23,10 @@ import {
   TerminalSquare,
   Upload,
 } from "lucide-react";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+
 import FileEditorPane from "@/components/shell/file-editor-pane";
-import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -62,7 +64,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { FileManagerInitialState } from "@/lib/file-manager-initial-state";
+import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
 import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
 import { cn } from "@/lib/utils";

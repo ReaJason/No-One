@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { Params } from "react-router";
+
 import { useMatches } from "react-router";
 
 export interface BreadcrumbDefinition {
@@ -46,7 +47,7 @@ const pathToBreadcrumb: Record<string, ReactNode> = {
   "/admin": "Admin",
   "/admin/users": "Users",
   "/admin/users/create": "Create User",
-  "/admin/users/edit-roles": "Edit User Roles",
+  "/admin/users/edit-roles": "Edit User",
   "/admin/users/update": "Update User",
   "/admin/roles": "Roles",
   "/admin/roles/create": "Create Role",

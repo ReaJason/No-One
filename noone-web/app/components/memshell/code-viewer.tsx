@@ -1,4 +1,5 @@
 import type { VariantProps } from "class-variance-authority";
+
 import { Check, Copy } from "lucide-react";
 import { type HTMLProps, type ReactNode, useCallback, useEffect, useState } from "react";
 import CopyToClipboard from "react-copy-to-clipboard";
@@ -6,6 +7,7 @@ import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
 import materialDark from "react-syntax-highlighter/dist/esm/styles/prism/material-dark";
 import { toast } from "sonner";
+
 import { Button, type buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

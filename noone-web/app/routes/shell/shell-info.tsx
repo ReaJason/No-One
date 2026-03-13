@@ -1,9 +1,10 @@
-import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router";
-import { createAuthFetch } from "@/api.server";
-import * as opLogApi from "@/api/shell-operation-log-api";
-import * as shellApi from "@/api/shell-api";
-import SystemDashboard from "@/components/shell/system-info";
 import { useState } from "react";
+import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router";
+
+import { createAuthFetch } from "@/api.server";
+import * as shellApi from "@/api/shell-api";
+import * as opLogApi from "@/api/shell-operation-log-api";
+import SystemDashboard from "@/components/shell/system-info";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string;

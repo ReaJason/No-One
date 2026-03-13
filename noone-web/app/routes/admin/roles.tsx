@@ -1,7 +1,11 @@
+import type { Role } from "@/types/admin";
+import type { PaginatedResponse } from "@/types/api";
+import type { LoaderFunctionArgs } from "react-router";
+
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
-import type { LoaderFunctionArgs } from "react-router";
 import { Link, useLoaderData } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { getRoles, loadRoleSearchParams } from "@/api/role-api";
 import { DataTable } from "@/components/data-table/data-table";
@@ -11,8 +15,6 @@ import { RoleTableActionBar } from "@/components/role/role-action-bar";
 import { roleColumns } from "@/components/role/role-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
-import type { PaginatedResponse } from "@/types/api";
-import type { Role } from "@/types/admin";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } = loadRoleSearchParams(request);

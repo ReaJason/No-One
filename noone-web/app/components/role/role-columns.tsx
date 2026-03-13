@@ -1,5 +1,8 @@
+import type { Permission, Role } from "@/types/admin";
 import type { ColumnDef } from "@tanstack/react-table";
+
 import { Edit, Key, MoreHorizontal, Text, Trash2, Users } from "lucide-react";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import type { Permission, Role } from "@/types/admin";
 
 export const roleColumns: ColumnDef<Role>[] = [
   {

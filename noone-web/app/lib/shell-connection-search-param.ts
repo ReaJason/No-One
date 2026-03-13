@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "react-router";
 import type { ShellConnectionSearchParams } from "@/types/shell-connection";
+import type { LoaderFunctionArgs } from "react-router";
 
 export async function loadShellConnectionSearchParams(
   request: LoaderFunctionArgs["request"],

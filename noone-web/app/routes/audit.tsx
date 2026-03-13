@@ -1,6 +1,8 @@
-import React, { use } from "react";
 import type { LoaderFunctionArgs } from "react-router";
+
+import React, { use } from "react";
 import { useLoaderData } from "react-router";
+
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";

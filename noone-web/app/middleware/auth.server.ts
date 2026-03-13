@@ -1,8 +1,10 @@
-import { redirect } from "react-router";
-import { getSession } from "@/sessions.server";
-import { pendingCookieContext } from "@/context.server";
-import { runWithAuthRequestContext } from "@/api/auth-context.server";
 import type { Route } from "../+types/root";
+
+import { redirect } from "react-router";
+
+import { runWithAuthRequestContext } from "@/api/auth-context.server";
+import { pendingCookieContext } from "@/context.server";
+import { getSession } from "@/sessions.server";
 
 export const authMiddleware: Route.MiddlewareFunction = async ({ request, context }, next) => {
   const session = await getSession(request.headers.get("Cookie"));

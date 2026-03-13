@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router";
+
 import {
   dispatchShellPluginFromRoute,
   parseShellIdParam,

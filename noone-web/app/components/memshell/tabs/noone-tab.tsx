@@ -1,4 +1,7 @@
+import type { Profile } from "@/types/profile";
+
 import { useEffect, useState } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -11,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { TabsContent } from "@/components/ui/tabs";
 import { notNeedUrlPattern } from "@/lib/utils";
-import type { Profile } from "@/types/profile";
+
 import { OptionalClassFormField } from "./classname-field";
 
 export function NoOneTabContent({

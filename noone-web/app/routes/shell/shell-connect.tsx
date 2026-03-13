@@ -1,3 +1,6 @@
+import type { ShellConnection } from "@/types/shell-connection";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+
 import {
   ArrowLeft,
   CheckCircle2,
@@ -9,8 +12,8 @@ import {
   XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { getShellConnectionById, testShellConnection } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
@@ -27,7 +30,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import type { ShellConnection } from "@/types/shell-connection";
 
 type StepKey = "resolveShell" | "testConnection" | "handoff";
 type StepStatus = "pending" | "running" | "success" | "error";

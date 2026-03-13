@@ -1,3 +1,5 @@
+import type { MemShellResult } from "@/types/memshell";
+
 import { DownloadIcon, PlusIcon } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { useNavigate } from "react-router";
@@ -18,7 +20,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadBytes } from "@/lib/utils";
-import type { MemShellResult } from "@/types/memshell";
+
 import CodeViewer from "./code-viewer";
 import { BasicInfo } from "./results/basic-info";
 import { ResultComponent } from "./results/result-component";

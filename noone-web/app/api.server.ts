@@ -1,18 +1,44 @@
-import { type FetchOptions, ofetch } from "ofetch";
-import { commitSession, destroySession, getSession } from "@/sessions.server";
+import type { User } from "@/types/admin";
 import type { RouterContextProvider } from "react-router";
+
+import { type FetchOptions, ofetch } from "ofetch";
 import { redirect } from "react-router";
-import { pendingCookieContext } from "@/context.server";
-import { ApiClientError } from "@/api/api-client";
+
 import {
   getAuthRefreshPromise,
   getRefreshedAccessToken,
   setAuthRefreshPromise,
   setRefreshedAccessToken,
 } from "@/api/auth-context.server";
-import type { User } from "@/types/admin";
+import { pendingCookieContext } from "@/context.server";
+import { commitSession, destroySession, getSession } from "@/sessions.server";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+
+export interface ApiError {
+  message: string;
+  code?: number;
+  details?: any;
+}
+
+export class ApiClientError extends Error implements ApiError {
+  code?: number;
+  details?: any;
+
+  constructor(
+    message: string,
+    options: {
+      code?: number;
+      details?: any;
+      cause?: unknown;
+    } = {},
+  ) {
+    super(message, { cause: options.cause });
+    this.name = "ApiClientError";
+    this.code = options.code;
+    this.details = options.details;
+  }
+}
 
 interface LoginResponse {
   token: string;

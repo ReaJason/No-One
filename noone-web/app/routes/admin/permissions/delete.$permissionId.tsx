@@ -1,5 +1,7 @@
 import type { ActionFunctionArgs } from "react-router";
+
 import { redirect } from "react-router";
+
 import { createAuthFetch } from "@/api.server";
 import { deletePermission } from "@/api/permission-api";
 

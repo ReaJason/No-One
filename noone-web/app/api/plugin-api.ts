@@ -1,8 +1,10 @@
-import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
 import type { AuthFetch } from "@/api.server";
-import { mapPaginatedResponse } from "@/api/server-api-utils";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { Plugin } from "@/types/plugin";
+
+import { createLoader, parseAsInteger, parseAsString, parseAsStringEnum } from "nuqs/server";
+
+import { mapPaginatedResponse } from "@/api/server-api-utils";
 
 const baseUrl = "/plugins";
 

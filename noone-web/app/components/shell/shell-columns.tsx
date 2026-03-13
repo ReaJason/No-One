@@ -1,4 +1,6 @@
+import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
 import type { ColumnDef } from "@tanstack/react-table";
+
 import {
   AlertCircle,
   Edit,
@@ -12,6 +14,7 @@ import {
 import { useEffect, useRef } from "react";
 import { useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
+
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +29,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
-import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
 
 const statusLabels: Record<ShellStatus, string> = {
   CONNECTED: "Connected",
