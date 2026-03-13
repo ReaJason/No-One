@@ -1,8 +1,5 @@
-package com.reajason.noone.noone.core.client;
+package com.reajason.noone.core.client;
 
-import com.reajason.noone.core.client.HttpBodyTemplateEngine;
-import com.reajason.noone.core.client.HttpRequestBodyType;
-import com.reajason.noone.core.client.HttpResponseBodyType;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

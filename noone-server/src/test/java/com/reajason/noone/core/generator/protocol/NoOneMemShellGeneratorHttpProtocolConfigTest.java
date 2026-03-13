@@ -1,40 +1,42 @@
-package com.reajason.noone.noone.core.generator.protocol;
+package com.reajason.noone.core.generator.protocol;
 
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.noone.core.client.HttpBodyTemplateEngine;
 import com.reajason.noone.core.client.HttpRequestBodyType;
 import com.reajason.noone.core.generator.NoOneConfig;
 import com.reajason.noone.core.generator.NoOneMemShellGenerator;
-import com.reajason.noone.core.shelltool.NoOneNettyHandler;
+import com.reajason.noone.core.shelltool.NoOneServlet;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.HttpProtocolConfig;
 import com.reajason.noone.server.profile.config.HttpResponseBodyType;
-import io.netty.buffer.Unpooled;
-import io.netty.handler.codec.http.DefaultFullHttpResponse;
-import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.netty.handler.codec.http.HttpVersion;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.objectweb.asm.ClassReader;
 
+import javax.servlet.ServletInputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.ByteArrayInputStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
 
-class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
+class NoOneMemShellGeneratorHttpProtocolConfigTest {
 
     private static final String TEST_PAYLOAD = "PAYLOAD";
     private static final byte[] TEST_PAYLOAD_BYTES = TEST_PAYLOAD.getBytes(UTF_8);
 
     @Nested
-    @DisplayName("getArgFromContent Tests")
-    class GetArgFromContentTests {
+    @DisplayName("getArgFromRequest Tests")
+    class GetArgFromRequestTests {
 
         @Nested
         @DisplayName("FORM_URLENCODED")
@@ -48,17 +50,14 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 config.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
                 config.setRequestTemplate(template);
 
-                HttpBodyTemplateEngine.EncodedBody encoded = HttpBodyTemplateEngine.encodeRequestBody(
-                        HttpRequestBodyType.FORM_URLENCODED,
-                        template,
-                        TEST_PAYLOAD
-                );
-
                 byte[] bytes = generateBytes(config);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getParameter("q")).thenReturn(TEST_PAYLOAD);
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
 
@@ -70,17 +69,14 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 config.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
                 config.setRequestTemplate(template);
 
-                HttpBodyTemplateEngine.EncodedBody encoded = HttpBodyTemplateEngine.encodeRequestBody(
-                        HttpRequestBodyType.FORM_URLENCODED,
-                        template,
-                        TEST_PAYLOAD
-                );
-
                 byte[] bytes = generateBytes(config);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getParameter("q")).thenReturn("prefix" + TEST_PAYLOAD + "suffix");
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -107,7 +103,11 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getContentType()).thenReturn(encoded.contentType());
+                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -134,7 +134,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -161,7 +164,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -188,7 +194,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -215,7 +224,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                HttpServletRequest request = mock(HttpServletRequest.class);
+                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -312,10 +324,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                DefaultFullHttpResponse response = createNettyResponse();
+                HttpServletResponse response = mock(HttpServletResponse.class);
                 invokeWrapResponse(generated, instance, response);
 
-                assertEquals(418, response.status().code());
+                verify(response).setStatus(418);
             }
 
             @Test
@@ -328,10 +340,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                DefaultFullHttpResponse response = createNettyResponse();
+                HttpServletResponse response = mock(HttpServletResponse.class);
                 invokeWrapResponse(generated, instance, response);
 
-                assertEquals(201, response.status().code());
+                verify(response).setStatus(201);
             }
         }
 
@@ -351,14 +363,14 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                DefaultFullHttpResponse response = createNettyResponse();
+                HttpServletResponse response = mock(HttpServletResponse.class);
                 invokeWrapResponse(generated, instance, response);
 
-                assertEquals("value", response.headers().get("X-Custom"));
+                verify(response).setHeader("X-Custom", "value");
             }
 
             @Test
-            @DisplayName("should set multiple headers")
+            @DisplayName("should set multiple headers in order")
             void shouldSetMultipleHeaders() throws Exception {
                 HttpProtocolConfig config = new HttpProtocolConfig();
                 Map<String, String> headers = new LinkedHashMap<>();
@@ -371,12 +383,13 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                DefaultFullHttpResponse response = createNettyResponse();
+                HttpServletResponse response = mock(HttpServletResponse.class);
                 invokeWrapResponse(generated, instance, response);
 
-                assertEquals("first-value", response.headers().get("X-First"));
-                assertEquals("second-value", response.headers().get("X-Second"));
-                assertEquals("application/json", response.headers().get("Content-Type"));
+                InOrder inOrder = inOrder(response);
+                inOrder.verify(response).setHeader("X-First", "first-value");
+                inOrder.verify(response).setHeader("X-Second", "second-value");
+                inOrder.verify(response).setHeader("Content-Type", "application/json");
             }
         }
     }
@@ -386,8 +399,8 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
     class IntegrationTests {
 
         @Test
-        @DisplayName("should apply complete HTTP protocol config to Netty handler")
-        void httpProtocolConfig_shouldBeAppliedToNettyHandler() throws Exception {
+        @DisplayName("should apply complete HTTP protocol config via advice mapping")
+        void httpProtocolConfig_shouldBeAppliedViaAdviceMapping() throws Exception {
             HttpProtocolConfig http = new HttpProtocolConfig();
             http.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
             http.setRequestTemplate("username=admin&action=login&q={{payload}}&token=123456");
@@ -401,30 +414,34 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
 
             byte[] bytes = generateBytes(http);
             Class<?> generated = loadGeneratedClass(bytes);
+
             Object instance = generated.getDeclaredConstructor().newInstance();
 
-            byte[] extracted = invokeGetArgFromContent(generated, instance,
-                    "username=admin&action=login&q=PAYLOAD&token=123456".getBytes(UTF_8));
-            assertEquals("PAYLOAD", new String(extracted, UTF_8));
+            HttpServletRequest request = mock(HttpServletRequest.class);
+            when(request.getParameter("q")).thenReturn("PAYLOAD");
 
-            byte[] wrappedData = invokeWrapResData(generated, instance, "PAYLOAD".getBytes(UTF_8));
-            assertEquals("helloPAYLOADworld", new String(wrappedData, UTF_8));
+            byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+            assertEquals("PAYLOAD", new String(extracted, StandardCharsets.UTF_8));
 
-            DefaultFullHttpResponse response = createNettyResponse();
+            byte[] wrappedData = invokeWrapResData(generated, instance, "PAYLOAD".getBytes(StandardCharsets.UTF_8));
+            assertEquals("helloPAYLOADworld", new String(wrappedData, StandardCharsets.UTF_8));
+
+            HttpServletResponse response = mock(HttpServletResponse.class);
             invokeWrapResponse(generated, instance, response);
 
-            assertEquals(418, response.status().code());
-            assertEquals("1", response.headers().get("X-Test"));
-            assertEquals("text/plain; charset=utf-8", response.headers().get("Content-Type"));
+            verify(response).setStatus(418);
+            verify(response).setHeader("X-Test", "1");
+            verify(response).setHeader("Content-Type", "text/plain; charset=utf-8");
+            verifyNoMoreInteractions(response);
         }
     }
 
     // Helper methods for reflection-based invocation
 
-    private static byte[] invokeGetArgFromContent(Class<?> clazz, Object instance, byte[] content) throws Exception {
-        Method method = clazz.getDeclaredMethod("getArgFromContent", byte[].class);
+    private static byte[] invokeGetArgFromRequest(Class<?> clazz, Object instance, HttpServletRequest request) throws Exception {
+        Method method = clazz.getDeclaredMethod("getArgFromRequest", Object.class);
         method.setAccessible(true);
-        return (byte[]) method.invoke(instance, content);
+        return (byte[]) method.invoke(instance, request);
     }
 
     private static byte[] invokeWrapResData(Class<?> clazz, Object instance, byte[] payload) throws Exception {
@@ -433,18 +450,10 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
         return (byte[]) method.invoke(instance, payload);
     }
 
-    private static void invokeWrapResponse(Class<?> clazz, Object instance, FullHttpResponse response) throws Exception {
-        Method method = clazz.getDeclaredMethod("wrapResponse", FullHttpResponse.class);
+    private static void invokeWrapResponse(Class<?> clazz, Object instance, HttpServletResponse response) throws Exception {
+        Method method = clazz.getDeclaredMethod("wrapResponse", Object.class);
         method.setAccessible(true);
         method.invoke(instance, response);
-    }
-
-    private static DefaultFullHttpResponse createNettyResponse() {
-        return new DefaultFullHttpResponse(
-                HttpVersion.HTTP_1_1,
-                HttpResponseStatus.OK,
-                Unpooled.buffer(0)
-        );
     }
 
     // Helper methods for test setup
@@ -453,7 +462,7 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
         ShellConfig shellConfig = ShellConfig.builder()
                 .server("Tomcat")
                 .shellTool("Custom")
-                .shellType("NettyHandler")
+                .shellType("Servlet")
                 .targetJreVersion(52)
                 .build();
 
@@ -461,8 +470,8 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneNettyHandler.class);
-        noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneNettyHandler");
+        noOneConfig.setShellClass(NoOneServlet.class);
+        noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneServlet");
         noOneConfig.setProfile(profile);
 
         NoOneMemShellGenerator generator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
@@ -483,6 +492,21 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
             }
         }
 
-        return new DefiningClassLoader(NoOneNettyHandler.class.getClassLoader()).define();
+        return new DefiningClassLoader(NoOneServlet.class.getClassLoader()).define();
+    }
+
+    private static ServletInputStream newServletInputStream(byte[] bytes) {
+        ByteArrayInputStream in = new ByteArrayInputStream(bytes);
+        return new ServletInputStream() {
+            @Override
+            public int read() {
+                return in.read();
+            }
+
+            @Override
+            public int read(byte[] b, int off, int len) {
+                return in.read(b, off, len);
+            }
+        };
     }
 }

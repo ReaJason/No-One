@@ -1,7 +1,5 @@
-package com.reajason.noone.noone.core;
+package com.reajason.noone.core;
 
-import com.reajason.noone.core.NoOneCore;
-import com.reajason.noone.core.TlvCodec;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;

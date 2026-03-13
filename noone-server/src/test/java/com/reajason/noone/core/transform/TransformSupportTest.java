@@ -1,6 +1,5 @@
-package com.reajason.noone.noone.core.transform;
+package com.reajason.noone.core.transform;
 
-import com.reajason.noone.core.transform.*;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

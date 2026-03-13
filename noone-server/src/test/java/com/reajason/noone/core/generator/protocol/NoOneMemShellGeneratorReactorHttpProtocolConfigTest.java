@@ -1,4 +1,4 @@
-package com.reajason.noone.noone.core.generator.protocol;
+package com.reajason.noone.core.generator.protocol;
 
 import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;

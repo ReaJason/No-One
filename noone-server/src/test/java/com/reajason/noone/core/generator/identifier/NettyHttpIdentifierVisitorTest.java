@@ -1,9 +1,12 @@
-package com.reajason.noone.noone.core.generator.identifier;
+package com.reajason.noone.core.generator.identifier;
 
-import com.reajason.noone.core.generator.identifier.ReactorIdentifierVisitor;
 import com.reajason.noone.server.profile.config.IdentifierConfig;
 import com.reajason.noone.server.profile.config.IdentifierLocation;
 import com.reajason.noone.server.profile.config.IdentifierOperator;
+import io.netty.handler.codec.http.DefaultHttpRequest;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpVersion;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.jar.asm.ClassWriter;
@@ -13,11 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.http.HttpCookie;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -26,13 +24,12 @@ import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import static net.bytebuddy.matcher.ElementMatchers.*;
+import static net.bytebuddy.matcher.ElementMatchers.named;
+import static net.bytebuddy.matcher.ElementMatchers.takesArguments;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-public class ReactorIdentifierVisitorTest {
+public class NettyHttpIdentifierVisitorTest {
     private static final AtomicInteger TYPE_INDEX = new AtomicInteger(0);
 
     private static final class InstrumentedChecker {
@@ -44,7 +41,7 @@ public class ReactorIdentifierVisitorTest {
             this.isAuthedMethod = isAuthedMethod;
         }
 
-        boolean isAuthed(ServerHttpRequest request) {
+        boolean isAuthed(HttpRequest request) {
             try {
                 return (boolean) isAuthedMethod.invoke(instance, request);
             } catch (IllegalAccessException e) {
@@ -80,11 +77,8 @@ public class ReactorIdentifierVisitorTest {
     void headerOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.HEADER, operator, "X-Test", configValue));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Test", requestValue);
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getHeaders()).thenReturn(headers);
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        request.headers().set("X-Test", requestValue);
 
         assertEquals(expected, checker.isAuthed(request));
     }
@@ -94,11 +88,8 @@ public class ReactorIdentifierVisitorTest {
     void metadataOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.METADATA, operator, "X-Test", configValue));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("X-Test", requestValue);
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getHeaders()).thenReturn(headers);
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        request.headers().set("X-Test", requestValue);
 
         assertEquals(expected, checker.isAuthed(request));
     }
@@ -107,11 +98,7 @@ public class ReactorIdentifierVisitorTest {
     void headerNullReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "X-Test", "abc"));
 
-        HttpHeaders headers = new HttpHeaders();
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getHeaders()).thenReturn(headers);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
         assertEquals(false, checker.isAuthed(request));
     }
 
@@ -120,24 +107,15 @@ public class ReactorIdentifierVisitorTest {
     void queryParamOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.QUERY_PARAM, operator, "p", configValue));
 
-        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-        queryParams.add("p", requestValue);
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getQueryParams()).thenReturn(queryParams);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/path?p=" + requestValue);
         assertEquals(expected, checker.isAuthed(request));
     }
 
     @Test
-    void queryParamNullReturnsFalse() {
+    void queryParamMissingReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.QUERY_PARAM, IdentifierOperator.EQUALS, "p", "abc"));
 
-        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getQueryParams()).thenReturn(queryParams);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/path?other=abc");
         assertEquals(false, checker.isAuthed(request));
     }
 
@@ -146,24 +124,16 @@ public class ReactorIdentifierVisitorTest {
     void cookieOperatorsWork(IdentifierOperator operator, String requestValue, String configValue, boolean expected) {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, operator, "c", configValue));
 
-        MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
-        cookies.add("c", new HttpCookie("c", requestValue));
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getCookies()).thenReturn(cookies);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        request.headers().set("Cookie", "c=" + requestValue);
         assertEquals(expected, checker.isAuthed(request));
     }
 
     @Test
-    void cookieNullReturnsFalse() {
+    void cookieHeaderMissingReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, IdentifierOperator.EQUALS, "c", "abc"));
 
-        MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getCookies()).thenReturn(cookies);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
         assertEquals(false, checker.isAuthed(request));
     }
 
@@ -171,31 +141,27 @@ public class ReactorIdentifierVisitorTest {
     void cookieNameNotFoundReturnsFalse() {
         InstrumentedChecker checker = instrument(new IdentifierConfig(IdentifierLocation.COOKIE, IdentifierOperator.EQUALS, "c", "abc"));
 
-        MultiValueMap<String, HttpCookie> cookies = new LinkedMultiValueMap<>();
-        cookies.add("other", new HttpCookie("other", "abc"));
-
-        ServerHttpRequest request = mock(ServerHttpRequest.class);
-        when(request.getCookies()).thenReturn(cookies);
-
+        DefaultHttpRequest request = new DefaultHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, "/");
+        request.headers().set("Cookie", "other=abc");
         assertEquals(false, checker.isAuthed(request));
     }
 
     @Test
     void constructorRejectsNulls() {
-        assertThrows(NullPointerException.class, () -> new ReactorIdentifierVisitor(null));
-        assertThrows(NullPointerException.class, () -> new ReactorIdentifierVisitor(new IdentifierConfig(null, IdentifierOperator.EQUALS, "n", "v")));
-        assertThrows(NullPointerException.class, () -> new ReactorIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, null, "n", "v")));
-        assertThrows(NullPointerException.class, () -> new ReactorIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, null, "v")));
-        assertThrows(NullPointerException.class, () -> new ReactorIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "n", null)));
+        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(null));
+        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(null, IdentifierOperator.EQUALS, "n", "v")));
+        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, null, "n", "v")));
+        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, null, "v")));
+        assertThrows(NullPointerException.class, () -> new NettyHttpIdentifierVisitor(new IdentifierConfig(IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "n", null)));
     }
 
     private static InstrumentedChecker instrument(IdentifierConfig identifier) {
         int index = TYPE_INDEX.getAndIncrement();
-        String baseName = ReactorIdentifierVisitorTest.class.getName() + "$GeneratedAuthChecker$" + index;
+        String baseName = NettyHttpIdentifierVisitorTest.class.getName() + "$GeneratedAuthChecker$" + index;
         String instrumentedName = baseName + "$Instrumented";
 
         ClassLoader baseLoader = new SingleTypeClassLoader(
-                ReactorIdentifierVisitorTest.class.getClassLoader(),
+                NettyHttpIdentifierVisitorTest.class.getClassLoader(),
                 baseName,
                 generateBaseCheckerBytes(baseName)
         );
@@ -211,16 +177,15 @@ public class ReactorIdentifierVisitorTest {
                 .redefine(baseType)
                 .name(instrumentedName)
                 .method(named("isAuthed")
-                        .and(takesArguments(ServerHttpRequest.class))
-                        .and(returns(boolean.class)))
-                .intercept(new ReactorIdentifierVisitor(identifier))
+                        .and(takesArguments(HttpRequest.class)))
+                .intercept(new NettyHttpIdentifierVisitor(identifier))
                 .make()
                 .load(baseLoader, ClassLoadingStrategy.Default.WRAPPER)
                 .getLoaded();
 
         try {
             Object instance = loaded.getDeclaredConstructor().newInstance();
-            Method method = loaded.getMethod("isAuthed", ServerHttpRequest.class);
+            Method method = loaded.getMethod("isAuthed", HttpRequest.class);
             return new InstrumentedChecker(instance, method);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException e) {
             throw new AssertionError("Failed to instantiate instrumented type", e);
@@ -246,7 +211,7 @@ public class ReactorIdentifierVisitorTest {
         MethodVisitor isAuthed = cw.visitMethod(
                 Opcodes.ACC_PUBLIC,
                 "isAuthed",
-                "(Lorg/springframework/http/server/reactive/ServerHttpRequest;)Z",
+                "(Lio/netty/handler/codec/http/HttpRequest;)Z",
                 null,
                 null
         );
@@ -289,3 +254,4 @@ public class ReactorIdentifierVisitorTest {
         }
     }
 }
+

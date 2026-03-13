@@ -16,6 +16,7 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.X509Certificate;
 import java.util.Map;
@@ -316,11 +317,17 @@ public class HttpClient implements Client {
             } catch (ResponseStatusException | ResponseDecodeException e) {
                 throw e;
             } catch (IOException e) {
+                if (isInterruptedFailure(e)) {
+                    throw interruptedRequest(e, "HTTP request was interrupted");
+                }
                 attempts++;
                 if (attempts >= maxAttempts) {
                     throw new RequestSendException("HTTP request failed after " + attempts + " attempt(s), due to " + e.getMessage(), attempts, e);
                 }
             } catch (Exception e) {
+                if (isInterruptedFailure(e)) {
+                    throw interruptedRequest(e, "HTTP request was interrupted");
+                }
                 throw new ShellRequestException("Unexpected HTTP request execution failure", false, e);
             }
 
@@ -335,6 +342,27 @@ public class HttpClient implements Client {
             }
         }
         throw new RequestSendException("HTTP request failed with unknown transport error", attempts, null);
+    }
+
+    private RequestInterruptedException interruptedRequest(Throwable throwable, String message) {
+        InterruptedException interruptedException = findInterruptedException(throwable);
+        Thread.currentThread().interrupt();
+        return new RequestInterruptedException(message, interruptedException != null ? interruptedException : throwable);
+    }
+
+    private boolean isInterruptedFailure(Throwable throwable) {
+        return findInterruptedException(throwable) != null || throwable instanceof InterruptedIOException;
+    }
+
+    private InterruptedException findInterruptedException(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof InterruptedException interruptedException) {
+                return interruptedException;
+            }
+            current = current.getCause();
+        }
+        return null;
     }
 
 }

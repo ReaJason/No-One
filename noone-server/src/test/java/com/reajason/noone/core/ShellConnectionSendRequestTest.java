@@ -1,8 +1,6 @@
-package com.reajason.noone.noone.core;
+package com.reajason.noone.core;
 
 import com.reajason.noone.Constants;
-import com.reajason.noone.core.ShellConnection;
-import com.reajason.noone.core.TlvCodec;
 import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.exception.RequestSerializeException;
 import com.reajason.noone.core.exception.ResponseBusinessException;

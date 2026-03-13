@@ -1,9 +1,5 @@
-package com.reajason.noone.noone.core.client;
+package com.reajason.noone.core.client;
 
-import com.reajason.noone.core.client.ClientConfig;
-import com.reajason.noone.core.client.HttpClient;
-import com.reajason.noone.core.client.HttpRequestBodyType;
-import com.reajason.noone.core.client.HttpResponseBodyType;
 import com.reajason.noone.core.exception.RequestInterruptedException;
 import com.reajason.noone.core.exception.RequestSendException;
 import com.reajason.noone.core.exception.RequestSerializeException;

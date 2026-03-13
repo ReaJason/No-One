@@ -1,8 +1,6 @@
-package com.reajason.noone.noone.core.generator;
+package com.reajason.noone.core.generator;
 
 import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.noone.core.generator.NoOneConfig;
-import com.reajason.noone.core.generator.NoOneMemShellGenerator;
 import com.reajason.noone.core.shelltool.NoOneServlet;
 import com.reajason.noone.core.transform.*;
 import com.reajason.noone.server.profile.Profile;
@@ -11,8 +9,6 @@ import org.objectweb.asm.ClassReader;
 
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;

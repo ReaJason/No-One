@@ -1,19 +1,15 @@
-package com.reajason.noone.noone.core.generator;
+package com.reajason.noone.core.generator;
 
 import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.Constants;
-import com.reajason.noone.core.generator.NoOneConfig;
-import com.reajason.noone.core.generator.NoOneMemShellGenerator;
 import com.reajason.noone.core.shelltool.NoOneNettyHandler;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.*;
 import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 
 class NoOneMemShellGeneratorTest {

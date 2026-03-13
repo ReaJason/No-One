@@ -1,4 +1,4 @@
-package com.reajason.noone.noone.core;
+package com.reajason.noone.core;
 
 /**
  * @author ReaJason
