@@ -63,8 +63,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     log.error("JWT authentication failed: {}", e.getMessage());
                     SecurityContextHolder.clearContext();
                 }
-            } else {
-                log.info("JWT token is invalid, expired, or session revoked");
             }
         }
         filterChain.doFilter(request, response);

@@ -1,0 +1,16 @@
+.git
+.github
+.gradle
+.idea
+.vscode
+
+**/.DS_Store
+**/.react-router
+**/bin
+**/node_modules
+**/obj
+**/out
+
+noone-docs/.next
+noone-docs/node_modules
+noone-web/.vercel

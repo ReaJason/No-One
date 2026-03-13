@@ -1,0 +1,33 @@
+repos:
+  - repo: local
+    hooks:
+      - id: noone-web-fmt
+        name: noone-web fmt
+        entry: bash -lc 'cd noone-web && bun run fmt'
+        language: system
+        pass_filenames: false
+        files: ^noone-web/
+      - id: noone-web-lint
+        name: noone-web lint
+        entry: bash -lc 'cd noone-web && bun run lint'
+        language: system
+        pass_filenames: false
+        files: ^noone-web/
+      - id: noone-web-typecheck
+        name: noone-web typecheck
+        entry: bash -lc 'cd noone-web && bun run typecheck'
+        language: system
+        pass_filenames: false
+        files: ^noone-web/
+      - id: noone-server-compile
+        name: noone-server compile
+        entry: bash -lc './gradlew --no-daemon :noone-server:compileJava'
+        language: system
+        pass_filenames: false
+        files: ^(noone-core|noone-server)/
+#      - id: noone-plugins-nodejs-test
+#        name: noone-plugins nodejs test
+#        entry: node noone-plugins/nodejs-plugins/test.mjs
+#        language: system
+#        pass_filenames: false
+#        files: ^noone-plugins/nodejs-plugins/

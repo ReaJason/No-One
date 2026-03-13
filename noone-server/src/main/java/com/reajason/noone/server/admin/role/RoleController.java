@@ -31,7 +31,6 @@ public class RoleController {
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('role:create')")
     public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody RoleCreateRequest request) {
-        log.info("Creating role with name: {}", request.getName());
         RoleResponse response = roleService.createRole(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -39,7 +38,6 @@ public class RoleController {
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:read')")
     public ResponseEntity<RoleResponse> getRoleById(@PathVariable Long id) {
-        log.info("Getting role by id: {}", id);
         return ResponseEntity.ok(roleService.getRoleById(id));
     }
 
@@ -48,7 +46,6 @@ public class RoleController {
     public ResponseEntity<RoleResponse> updateRole(
             @PathVariable Long id,
             @Valid @RequestBody RoleUpdateRequest request) {
-        log.info("Updating role with id: {}", id);
         RoleResponse response = roleService.updateRole(id, request);
         return ResponseEntity.ok(response);
     }
@@ -56,7 +53,6 @@ public class RoleController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:delete')")
     public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
-        log.info("Deleting role with id: {}", id);
         roleService.deleteRole(id);
         return ResponseEntity.noContent().build();
     }
@@ -64,7 +60,6 @@ public class RoleController {
     @GetMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('role:list')")
     public ResponseEntity<Page<RoleResponse>> queryRoles(RoleQueryRequest request) {
-        log.info("Querying roles with params: {}", request);
         return ResponseEntity.ok(roleService.queryRoles(request));
     }
 
@@ -73,7 +68,6 @@ public class RoleController {
     public ResponseEntity<RoleResponse> assignPermissions(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds) {
-        log.info("Assigning permissions to role with id: {}, permissionIds: {}", id, permissionIds);
         RoleResponse response = roleService.assignPermissions(id, permissionIds);
         return ResponseEntity.ok(response);
     }
@@ -83,7 +77,6 @@ public class RoleController {
     public ResponseEntity<RoleResponse> removePermissions(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds) {
-        log.info("Removing permissions from role with id: {}, permissionIds: {}", id, permissionIds);
         RoleResponse response = roleService.removePermissions(id, permissionIds);
         return ResponseEntity.ok(response);
     }

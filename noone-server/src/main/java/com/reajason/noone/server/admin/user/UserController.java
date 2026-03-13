@@ -32,7 +32,6 @@ public class UserController {
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('user:read')")
     public ResponseEntity<UserResponse> getById(@PathVariable Long id) {
-        log.info("getting user by id: {}", id);
         return ResponseEntity.ok(userService.getById(id));
     }
 
@@ -42,7 +41,6 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody ResetPasswordRequest request,
             @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        log.info("resetting password for user id: {}", id);
         sensitiveActionService.requireChallenge(challengeToken, "user.reset-password", "user", String.valueOf(id));
         UserResponse response = userService.forceResetPassword(id, request.getNewPassword());
         userSessionService.revokeUserSessions(id, "ADMIN_PASSWORD_RESET");
@@ -66,7 +64,6 @@ public class UserController {
             @PathVariable Long id,
             @Valid @RequestBody UserUpdateRequest request,
             @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        log.info("Updating user with id: {}", id);
         if (request.getStatus() != null || request.getRoleIds() != null) {
             sensitiveActionService.requireChallenge(challengeToken, "user.update-security", "user", String.valueOf(id));
         }

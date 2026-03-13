@@ -79,7 +79,6 @@ public class NooneApplication {
                 return;
             }
 
-            log.info("Creating default administrator user...");
             User adminUser = new User();
             adminUser.setUsername("admin");
             adminUser.setRoles(new HashSet<>(List.of(findRoleByName("Super Admin"))));
@@ -138,7 +137,6 @@ public class NooneApplication {
                         pluginService.create(request);
                     }
                 }
-                log.info("Imported {} plugins from classpath resources", resources.length);
             } catch (IOException e) {
                 throw new IllegalStateException("Failed to import plugins from noone-server resources", e);
             }

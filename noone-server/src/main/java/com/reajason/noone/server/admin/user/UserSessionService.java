@@ -117,7 +117,6 @@ public class UserSessionService {
             session.setRevokedAt(LocalDateTime.now());
             session.setRevokeReason(reason);
             userSessionRepository.save(session);
-            log.info("Session revoked for user {} with sessionId {}", session.getUser().getUsername(), sessionId);
         });
     }
 

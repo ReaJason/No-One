@@ -31,7 +31,6 @@ public class PermissionController {
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:create')")
     public ResponseEntity<PermissionResponse> createPermission(@Valid @RequestBody PermissionCreateRequest request) {
-        log.info("Creating permission with code: {}", request.getCode());
         PermissionResponse response = permissionService.createPermission(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -39,7 +38,6 @@ public class PermissionController {
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:read')")
     public ResponseEntity<PermissionResponse> getPermissionById(@PathVariable Long id) {
-        log.info("Getting permission by id: {}", id);
         return ResponseEntity.ok(permissionService.getPermissionById(id));
     }
 
@@ -48,7 +46,6 @@ public class PermissionController {
     public ResponseEntity<PermissionResponse> updatePermission(
             @PathVariable Long id,
             @Valid @RequestBody PermissionUpdateRequest request) {
-        log.info("Updating permission with id: {}", id);
         PermissionResponse response = permissionService.updatePermission(id, request);
         return ResponseEntity.ok(response);
     }
@@ -56,7 +53,6 @@ public class PermissionController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:delete')")
     public ResponseEntity<Void> deletePermission(@PathVariable Long id) {
-        log.info("Deleting permission with id: {}", id);
         permissionService.deletePermission(id);
         return ResponseEntity.noContent().build();
     }
@@ -64,7 +60,6 @@ public class PermissionController {
     @GetMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:list')")
     public ResponseEntity<Page<PermissionResponse>> queryPermissions(PermissionQueryRequest request) {
-        log.info("Querying permissions with params: {}", request);
         return ResponseEntity.ok(permissionService.queryPermissions(request));
     }
 
@@ -73,7 +68,6 @@ public class PermissionController {
     public ResponseEntity<PermissionResponse> assignRoles(
             @PathVariable Long id,
             @RequestBody Set<Long> roleIds) {
-        log.info("Assigning roles to permission with id: {}, roleIds: {}", id, roleIds);
         PermissionResponse response = permissionService.assignRoles(id, roleIds);
         return ResponseEntity.ok(response);
     }
@@ -83,7 +77,6 @@ public class PermissionController {
     public ResponseEntity<PermissionResponse> removeRoles(
             @PathVariable Long id,
             @RequestBody Set<Long> roleIds) {
-        log.info("Removing roles from permission with id: {}, roleIds: {}", id, roleIds);
         PermissionResponse response = permissionService.removeRoles(id, roleIds);
         return ResponseEntity.ok(response);
     }

@@ -127,7 +127,6 @@ public class AuthController {
         String sessionId = jwtUtil.getSessionId(refreshToken);
         String currentRefreshTokenId = jwtUtil.getTokenId(refreshToken);
         User user = userService.getByUsername(jwtUtil.getUsernameFromToken(refreshToken));
-        log.info("refresh now, refreshToken: {}, tokenId: {}", refreshToken, currentRefreshTokenId);
         try {
             String newRefreshTokenId = jwtUtil.newTokenId();
             ClientMetadata metadata = clientMetadataResolver.resolve(request.getHeader("User-Agent"));
@@ -248,8 +247,6 @@ public class AuthController {
             latestUser.setMfaBoundAt(LocalDateTime.now());
             userRepository.save(latestUser);
         }
-        log.info("create accessToken: {}, tokenId: {}",  accessToken, accessTokenId);
-        log.info("create refreshToken: {}, tokenId: {}",  refreshToken, refreshTokenId);
         userSessionService.createSession(
                 latestUser,
                 sessionId,

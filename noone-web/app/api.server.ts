@@ -13,7 +13,7 @@ import {
 import { pendingCookieContext } from "@/context.server";
 import { commitSession, destroySession, getSession } from "@/sessions.server";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api";
+const BASE_URL = process.env.INTERNAL_API_BASE_URL ?? import.meta.env.INTERNAL_API_BASE_URL;
 
 export interface ApiError {
   message: string;

@@ -73,7 +73,6 @@ public class ShellController {
     @PostMapping("/test-config")
     public ResponseEntity<Map<String, Object>> testConfig(
             @Valid @RequestBody ShellTestConfigRequest request) {
-        log.info("Testing shell config for URL: {}", request.getUrl());
         return ResponseEntity.ok(shellService.testConfig(request));
     }
 

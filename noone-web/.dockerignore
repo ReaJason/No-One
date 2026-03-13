@@ -1,4 +1,6 @@
 .react-router
 build
+coverage
 node_modules
+.env
 README.md

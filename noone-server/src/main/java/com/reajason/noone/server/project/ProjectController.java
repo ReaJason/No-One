@@ -24,7 +24,6 @@ public class ProjectController {
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('project:create')")
     public ResponseEntity<ProjectResponse> create(@Valid @RequestBody ProjectCreateRequest request) {
-        log.info("Creating project: {}", request.getName());
         ProjectResponse response = projectService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -32,7 +31,6 @@ public class ProjectController {
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.canAccessProject(#id)")
     public ResponseEntity<ProjectResponse> getById(@PathVariable Long id) {
-        log.info("Getting project by id: {}", id);
         return ResponseEntity.ok(projectService.getById(id));
     }
 
@@ -41,7 +39,6 @@ public class ProjectController {
     public ResponseEntity<ProjectResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody ProjectUpdateRequest request) {
-        log.info("Updating project id: {}", id);
         ProjectResponse response = projectService.update(id, request);
         return ResponseEntity.ok(response);
     }
@@ -49,7 +46,6 @@ public class ProjectController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('project:delete')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        log.info("Deleting project id: {}", id);
         projectService.delete(id);
         return ResponseEntity.noContent().build();
     }

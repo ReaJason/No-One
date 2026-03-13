@@ -1,0 +1,32 @@
+services:
+  noone-server:
+    build:
+      context: .
+      dockerfile: noone-server/Dockerfile
+    environment:
+      SPRING_DATASOURCE_PASSWORD: secret
+      SPRING_DATASOURCE_URL: jdbc:postgresql://192.168.15.11:5432/mydb
+      SPRING_DATASOURCE_USERNAME: myuser
+
+  noone-web:
+    build:
+      context: ./noone-web
+      dockerfile: Dockerfile
+    depends_on:
+      - noone-server
+    environment:
+      HOST: 0.0.0.0
+      INTERNAL_API_BASE_URL: http://noone-server:8888/api
+      PORT: 3000
+      SESSION_SECRET: dev-session-secret-change-me
+      SESSION_COOKIE_SECURE: false
+
+  nginx:
+    image: nginx:1.29-alpine
+    depends_on:
+      - noone-web
+      - noone-server
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro

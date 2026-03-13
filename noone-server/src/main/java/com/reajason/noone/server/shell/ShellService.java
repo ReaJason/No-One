@@ -63,8 +63,6 @@ public class ShellService {
      * Create a new shell connection (without automatic connection test)
      */
     public ShellResponse create(ShellCreateRequest request) {
-        log.info("Creating shell connection: {}", request.getUrl());
-
         Shell shell = shellMapper.toEntity(request);
         shell.setStatus(ShellStatus.DISCONNECTED);
 
@@ -102,7 +100,6 @@ public class ShellService {
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
         shellRepository.delete(shell);
         shellConnectionPool.evict(id);
-        log.info("Deleted shell: {}", id);
     }
 
     /**

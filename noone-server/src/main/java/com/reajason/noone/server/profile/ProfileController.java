@@ -22,14 +22,12 @@ public class ProfileController {
 
     @PostMapping
     public ResponseEntity<ProfileResponse> create(@Valid @RequestBody ProfileCreateRequest request) {
-        log.info("Creating profile: {}", request.getName());
         ProfileResponse response = profileService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProfileResponse> getById(@PathVariable Long id) {
-        log.info("Getting profile by id: {}", id);
         return ResponseEntity.ok(profileService.getById(id));
     }
 
@@ -37,14 +35,12 @@ public class ProfileController {
     public ResponseEntity<ProfileResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody ProfileUpdateRequest request) {
-        log.info("Updating profile id: {}", id);
         ProfileResponse response = profileService.update(id, request);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        log.info("Deleting profile id: {}", id);
         profileService.delete(id);
         return ResponseEntity.noContent().build();
     }
