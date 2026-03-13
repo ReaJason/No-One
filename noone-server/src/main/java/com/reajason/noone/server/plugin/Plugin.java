@@ -1,4 +1,4 @@
-package com.reajason.noone.server.admin.plugin;
+package com.reajason.noone.server.plugin;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Entity
 @Table(name = "plugins", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"pluginId", "version", "language"})
+        @UniqueConstraint(columnNames = {"pluginId", "language"})
 })
 @Getter
 @Setter
@@ -50,6 +50,10 @@ public class Plugin {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> actions;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private Map<String, Object> meta;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

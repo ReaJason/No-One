@@ -18,6 +18,7 @@ public class NoOneCore extends URLClassLoader {
     private static final String CLASSNAME = "className";
     private static final String PLUGIN = "plugin";
     private static final String PLUGIN_BYTES = "pluginBytes";
+    private static final String VERSION = "version";
     private static final String ARGS = "args";
 
     private static final String REFRESH = "refresh";
@@ -39,6 +40,7 @@ public class NoOneCore extends URLClassLoader {
 
     // pluginName to pluginObject
     public static final Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
+    public static final Map<String, String> loadedPluginVersionCache = new ConcurrentHashMap<String, String>();
     public static final Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
 
     private static volatile NoOneCore pluginClassLoader;
@@ -101,6 +103,7 @@ public class NoOneCore extends URLClassLoader {
                             }
                             globalCaches.clear();
                             loadedPluginCache.clear();
+                            loadedPluginVersionCache.clear();
                             pluginClassLoader = null;
                             break;
                         default:
@@ -130,7 +133,7 @@ public class NoOneCore extends URLClassLoader {
 
     public Map<String, Object> getStatus() {
         Map<String, Object> result = new HashMap<String, Object>();
-        result.put(PLUGIN_CACHES, loadedPluginCache.keySet());
+        result.put(PLUGIN_CACHES, loadedPluginVersionCache);
         result.put(GLOBAL_CACHES, globalCaches.keySet());
         return result;
     }
@@ -139,7 +142,8 @@ public class NoOneCore extends URLClassLoader {
         String plugin = (String) args.get(PLUGIN);
         String className = (String) args.get(CLASSNAME);
         byte[] pluginBytes = (byte[]) args.get(PLUGIN_BYTES);
-        boolean refresh = Boolean.parseBoolean((String) args.get(REFRESH));
+        String version = asString(args.get(VERSION));
+        boolean refresh = asBoolean(args.get(REFRESH));
 
         if (!refresh && plugin != null) {
             Object cached = loadedPluginCache.get(plugin);
@@ -161,6 +165,7 @@ public class NoOneCore extends URLClassLoader {
             Object pluginObj = loader.defineClass(className, pluginBytes)
                     .getDeclaredConstructor().newInstance();
             loadedPluginCache.put(plugin, pluginObj);
+            loadedPluginVersionCache.put(plugin, version);
             result.put(CLASS_DEFINE, true);
             return pluginObj;
         }
@@ -171,6 +176,7 @@ public class NoOneCore extends URLClassLoader {
                 pluginObj = loader.defineClass(className, pluginBytes)
                         .getDeclaredConstructor().newInstance();
                 loadedPluginCache.put(plugin, pluginObj);
+                loadedPluginVersionCache.put(plugin, version);
                 result.put(CLASS_DEFINE, true);
             }
             return pluginObj;
@@ -263,6 +269,17 @@ public class NoOneCore extends URLClassLoader {
         } catch (Exception e) {
             throw new RuntimeException("Error invoking method: " + methodName, e);
         }
+    }
+
+    private boolean asBoolean(Object value) {
+        if (value instanceof Boolean) {
+            return (Boolean)value;
+        }
+        return Boolean.parseBoolean(asString(value));
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     static final byte NULL = 0x00;

@@ -1,4 +1,4 @@
-package com.reajason.noone.server.admin.plugin.dto;
+package com.reajason.noone.server.plugin.dto;
 
 import lombok.Data;
 

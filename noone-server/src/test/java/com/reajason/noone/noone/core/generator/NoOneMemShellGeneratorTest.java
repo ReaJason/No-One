@@ -55,7 +55,7 @@ class NoOneMemShellGeneratorTest {
                 .build();
         NoOneMemShellGenerator noOneMemShellGenerator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
         byte[] bytes = noOneMemShellGenerator.getBytes();
-        Files.write(Paths.get("hello.class"), bytes);
+//        Files.write(Paths.get("hello.class"), bytes);
     }
 
 }

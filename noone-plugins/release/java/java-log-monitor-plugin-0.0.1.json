@@ -39,5 +39,19 @@
         "type":"text"
       }
     }
+  },
+  "meta": {
+    "classNames": [
+      "ch.qos.logback.classic.TelemetryLogAppender",
+      "ch.qos.logback.classic.AuditTrailInterceptor",
+      "ch.qos.logback.classic.RollingEventTracker",
+      "ch.qos.logback.classic.LogStreamProcessor",
+      "ch.qos.logback.classic.AccessLogFilter",
+      "ch.qos.logback.classic.DiagnosticContextHolder",
+      "ch.qos.logback.classic.ExceptionTraceMonitor",
+      "ch.qos.logback.classic.MetricLogPublisher",
+      "ch.qos.logback.classic.LogContextRefresher",
+      "ch.qos.logback.classic.Slf4jBindingAdapter"
+    ]
   }
 }

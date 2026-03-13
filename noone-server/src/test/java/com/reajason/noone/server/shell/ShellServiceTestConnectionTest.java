@@ -1,7 +1,7 @@
 package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.ShellConnection;
-import com.reajason.noone.server.admin.plugin.PluginRepository;
+import com.reajason.noone.server.plugin.PluginRepository;
 import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

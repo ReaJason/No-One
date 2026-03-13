@@ -2,6 +2,7 @@ package com.reajason.noone.noone.core;
 
 import com.reajason.noone.Constants;
 import com.reajason.noone.core.ShellConnection;
+import com.reajason.noone.core.TlvCodec;
 import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.exception.RequestSerializeException;
 import com.reajason.noone.core.exception.ResponseBusinessException;
@@ -31,11 +32,10 @@ class ShellConnectionSendRequestTest {
     void shouldThrowRequestSerializeExceptionWhenSerializeThrows() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.serializeException = new RuntimeException("serialize boom");
 
         RequestSerializeException exception = assertThrows(
                 RequestSerializeException.class,
-                () -> conn.sendRequestPublic(Map.of("action", "status"))
+                () -> conn.sendRequestPublic(Map.of("action", new Object()))
         );
         assertTrue(exception.getMessage().contains("serialize"));
     }
@@ -56,10 +56,8 @@ class ShellConnectionSendRequestTest {
     @Test
     void shouldThrowResponseDecodeExceptionWhenDeserializeThrows() {
         TestClient client = new TestClient();
-        client.nextResponse = new byte[]{1, 2, 3};
-
         TestShellConnection conn = new TestShellConnection(client);
-        conn.deserializeException = new RuntimeException("deserialize boom");
+        client.nextResponse = new byte[]{1, 2, 3};
 
         ResponseDecodeException exception = assertThrows(
                 ResponseDecodeException.class,
@@ -86,10 +84,10 @@ class ShellConnectionSendRequestTest {
     void shouldThrowResponseBusinessExceptionWhenStatusResponseIsFailure() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(
+        client.nextResponse = encodeResponse(Map.of(
                 Constants.CODE, Constants.FAILURE,
                 Constants.ERROR, "status failed"
-        );
+        ));
 
         ResponseBusinessException exception = assertThrows(ResponseBusinessException.class, conn::test);
         assertTrue(exception.getMessage().contains("status failed"));
@@ -99,10 +97,10 @@ class ShellConnectionSendRequestTest {
     void shouldThrowResponseBusinessExceptionWhenLoadPluginResponseIsFailure() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(
+        client.nextResponse = encodeResponse(Map.of(
                 Constants.CODE, Constants.FAILURE,
                 Constants.ERROR, "load failed"
-        );
+        ));
 
         ResponseBusinessException exception = assertThrows(
                 ResponseBusinessException.class,
@@ -115,7 +113,7 @@ class ShellConnectionSendRequestTest {
     void shouldThrowResponseDecodeExceptionWhenStatusResponseCodeIsMissing() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(Constants.ERROR, "missing code");
+        client.nextResponse = encodeResponse(Map.of(Constants.ERROR, "missing code"));
 
         ResponseDecodeException exception = assertThrows(ResponseDecodeException.class, conn::test);
         assertTrue(exception.getMessage().contains("Missing or invalid code"));
@@ -125,7 +123,7 @@ class ShellConnectionSendRequestTest {
     void shouldThrowResponseDecodeExceptionWhenLoadPluginResponseCodeIsUnexpected() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(Constants.CODE, 99);
+        client.nextResponse = encodeResponse(Map.of(Constants.CODE, 99));
 
         ResponseDecodeException exception = assertThrows(
                 ResponseDecodeException.class,
@@ -138,13 +136,14 @@ class ShellConnectionSendRequestTest {
     void shouldReturnTrueAndCachePluginsWhenStatusResponseIsSuccess() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(
+        client.nextResponse = encodeResponse(Map.of(
                 Constants.CODE, Constants.SUCCESS,
-                Constants.PLUGIN_CACHES, java.util.Set.of("a", "b")
-        );
+                Constants.PLUGIN_CACHES, Map.of("a", "1.0.0", "b", "2.0.0")
+        ));
 
         assertTrue(conn.test());
         assertFalse(conn.needLoadPlugin("a"));
+        assertEquals("1.0.0", conn.getLoadedPluginVersion("a"));
     }
 
     @SuppressWarnings("unchecked")
@@ -152,7 +151,7 @@ class ShellConnectionSendRequestTest {
     void shouldNormalizeCommandExecuteCdArgsBeforeSend() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok");
+        client.nextResponse = encodeResponse(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok"));
 
         Map<String, Object> response = conn.runPlugin(
                 "command-execute",
@@ -172,7 +171,7 @@ class ShellConnectionSendRequestTest {
     void shouldNormalizeCommandExecuteExecArgsBeforeSend() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok");
+        client.nextResponse = encodeResponse(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok"));
 
         Map<String, Object> response = conn.runPlugin(
                 "command-execute",
@@ -230,7 +229,7 @@ class ShellConnectionSendRequestTest {
     void shouldKeepNonCommandExecuteArgsUnchanged() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok");
+        client.nextResponse = encodeResponse(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok"));
         Map<String, Object> args = Map.of("key", "value");
 
         conn.runPlugin("system-info", args);
@@ -244,13 +243,13 @@ class ShellConnectionSendRequestTest {
     void shouldNormalizeFileManagerBytesToByteArrayBeforeSend() {
         TestClient client = new TestClient();
         TestShellConnection conn = new TestShellConnection(client);
-        conn.nextDeserializedResponse = Map.of(
+        client.nextResponse = encodeResponse(Map.of(
                 Constants.CODE, Constants.SUCCESS,
                 Constants.DATA, Map.of(
                         "bytes", new byte[]{4, 5, (byte) 255},
                         "chunks", List.of(Map.of("bytes", new byte[]{6, 7}))
                 )
-        );
+        ));
 
         Map<String, Object> response = conn.runPlugin(
                 "file-manager",
@@ -291,17 +290,20 @@ class ShellConnectionSendRequestTest {
     }
 
     private static final class TestShellConnection extends ShellConnection {
-        RuntimeException serializeException;
-        RuntimeException deserializeException;
-        Map<String, Object> nextDeserializedResponse = Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok");
         Map<String, Object> lastSerializedRequest = new HashMap<>();
 
-        private TestShellConnection(Client client) {
+        private TestShellConnection(TestClient client) {
             super(client);
         }
 
         Map<String, Object> sendRequestPublic(Map<String, Object> requestMap) {
             return sendRequest(requestMap);
+        }
+
+        @Override
+        protected Map<String, Object> sendRequest(Map<String, Object> requestMap) {
+            lastSerializedRequest = new HashMap<>(requestMap);
+            return super.sendRequest(requestMap);
         }
 
         @Override
@@ -311,7 +313,7 @@ class ShellConnectionSendRequestTest {
     }
 
     private static final class TestClient implements Client {
-        byte[] nextResponse = new byte[]{1};
+        byte[] nextResponse = encodeResponse(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, "ok"));
         RuntimeException sendException;
         int sendCalls = 0;
 
@@ -351,5 +353,9 @@ class ShellConnectionSendRequestTest {
         @Override
         public void setUrl(String url) {
         }
+    }
+
+    private static byte[] encodeResponse(Map<String, Object> response) {
+        return TlvCodec.serialize(response);
     }
 }

@@ -1,8 +1,8 @@
-package com.reajason.noone.server.admin.plugin;
+package com.reajason.noone.server.plugin;
 
-import com.reajason.noone.server.admin.plugin.dto.PluginCreateRequest;
-import com.reajason.noone.server.admin.plugin.dto.PluginQueryRequest;
-import com.reajason.noone.server.admin.plugin.dto.PluginResponse;
+import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
+import com.reajason.noone.server.plugin.dto.PluginQueryRequest;
+import com.reajason.noone.server.plugin.dto.PluginResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;

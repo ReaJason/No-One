@@ -19,6 +19,10 @@ export interface PluginAction {
   resultSchema?: PluginResultSchema;
 }
 
+export interface PluginMeta {
+  classNames?: string[];
+}
+
 export type PluginRunMode = "sync" | "async" | "scheduled";
 
 export type TaskStatus =
@@ -37,6 +41,15 @@ export interface Plugin {
   type: string;
   runMode?: PluginRunMode;
   actions?: Record<string, PluginAction>;
+  meta?: PluginMeta;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PluginRuntimeStatus {
+  pluginId: string;
+  serverVersion: string;
+  shellVersion: string | null;
+  loaded: boolean;
+  needsUpdate: boolean;
 }

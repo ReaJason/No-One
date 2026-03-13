@@ -2,6 +2,7 @@
     const ACTION = "action";
     const PLUGIN = "plugin";
     const CLASS_BYTES = "pluginCode";
+    const VERSION = "version";
     const ARGS = "args";
 
     const REFRESH = "refresh";
@@ -32,6 +33,7 @@
     const MAP = 0x10;
 
     const loadedPluginCache = new Map();
+    const loadedPluginVersionCache = new Map();
     const globalCaches = new Map();
 
     function serialize(obj) {
@@ -374,15 +376,16 @@
 
     function getStatus() {
         const result = {};
-        result[PLUGIN_CACHES] = new Set(loadedPluginCache.keys());
+        result[PLUGIN_CACHES] = Object.fromEntries(loadedPluginVersionCache);
         return result;
     }
 
     function load(args, result) {
         const plugin = args[PLUGIN];
         const pluginCode = args[CLASS_BYTES];
-        console.log("pluginCode: " + pluginCode);
-        let pluginObj = loadedPluginCache.get(plugin);
+        const version = args[VERSION] == null ? null : String(args[VERSION]);
+        const refresh = args[REFRESH] === true || String(args[REFRESH]).toLowerCase() === "true";
+        let pluginObj = refresh ? null : loadedPluginCache.get(plugin);
         if (pluginObj == null) {
             if (plugin == null) {
                 throw new Error("plugin is required");
@@ -399,12 +402,12 @@
                     pluginObj = pluginFunc;
                 }
                 loadedPluginCache.set(plugin, pluginObj);
+                loadedPluginVersionCache.set(plugin, version);
             } catch (error) {
                 console.error(error);
                 throw new Error(`Failed to load class: ${error.message}\n${error.stack}`);
             }
         }
-
         return pluginObj;
     }
 
@@ -453,6 +456,7 @@
                         break;
                     case ACTION_CLEAN:
                         loadedPluginCache.clear();
+                        loadedPluginVersionCache.clear();
                         globalCaches.clear();
                         result[DATA] = true;
                         break;

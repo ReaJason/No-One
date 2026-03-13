@@ -85,4 +85,16 @@ public class ShellController {
         }
         return ResponseEntity.ok(shellService.dispatchPlugin(id, pluginDispatchRequest.getPluginId(), args));
     }
+
+    @GetMapping("/{id}/plugins/{pluginId}/status")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
+    public ResponseEntity<ShellPluginStatusResponse> getPluginStatus(@PathVariable Long id, @PathVariable String pluginId) {
+        return ResponseEntity.ok(shellService.getPluginStatus(id, pluginId));
+    }
+
+    @PostMapping("/{id}/plugins/{pluginId}/update")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
+    public ResponseEntity<ShellPluginStatusResponse> updatePlugin(@PathVariable Long id, @PathVariable String pluginId) {
+        return ResponseEntity.ok(shellService.updatePlugin(id, pluginId));
+    }
 }

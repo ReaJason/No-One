@@ -81,5 +81,19 @@
       "name":"Manager Info",
       "description":"Show task manager status"
     }
+  },
+  "meta": {
+    "classNames": [
+      "org.quartz.core.ScheduledJobDispatcher",
+      "org.quartz.core.AsyncWorkerPoolManager",
+      "org.quartz.core.CronTriggerContext",
+      "org.quartz.core.BackgroundTaskRunner",
+      "org.quartz.core.BatchProcessCoordinator",
+      "org.quartz.core.DaemonThreadFactory",
+      "org.quartz.core.PeriodicTaskTemplate",
+      "org.quartz.core.QueueConsumerSupervisor",
+      "org.quartz.core.DelayedExecutionAdapter",
+      "org.quartz.core.JobLifecycleListener"
+    ]
   }
 }

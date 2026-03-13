@@ -12,6 +12,7 @@ import PluginTabPanel, { type PluginTabState } from "@/components/shell/plugin-t
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   dispatchShellPluginFromRoute,
+  updateShellPluginFromRoute,
   parseShellIdParam,
   parseShellRouteFormData,
   shellRouteError,
@@ -39,11 +40,16 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
       action?: string;
       args?: Record<string, unknown>;
     }>(request);
-    if (intent !== "execute-plugin" && intent !== "cancel-plugin") {
+    if (intent !== "execute-plugin" && intent !== "cancel-plugin" && intent !== "update-plugin") {
       return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
     }
     if (!payload.pluginId) {
       return Response.json({ ok: false, error: "Missing pluginId", requestId }, { status: 400 });
+    }
+
+    if (intent === "update-plugin") {
+      const data = await updateShellPluginFromRoute(request, context, shellId, payload.pluginId);
+      return shellRouteSuccess(data, requestId);
     }
 
     const data = await dispatchShellPluginFromRoute(request, context, shellId, {
@@ -164,7 +170,8 @@ export default function ShellExtensionsRoute() {
                 <PluginTabPanel
                   plugin={plugin}
                   actionPath={`/shells/${shell.id}/extensions`}
-                  statusPath={`/shells/${shell.id}/extensions/status`}
+                  taskStatusPath={`/shells/${shell.id}/extensions/status`}
+                  pluginStatusPath={`/shells/${shell.id}/extensions/plugin-status`}
                   state={pluginStates[plugin.id]}
                   onStateChange={(update) => updatePluginState(plugin.id, update)}
                 />

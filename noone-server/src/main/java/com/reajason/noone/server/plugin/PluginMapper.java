@@ -1,7 +1,7 @@
-package com.reajason.noone.server.admin.plugin;
+package com.reajason.noone.server.plugin;
 
-import com.reajason.noone.server.admin.plugin.dto.PluginCreateRequest;
-import com.reajason.noone.server.admin.plugin.dto.PluginResponse;
+import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
+import com.reajason.noone.server.plugin.dto.PluginResponse;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,6 +17,7 @@ public class PluginMapper {
         plugin.setRunMode(request.getRunMode());
         plugin.setPayload(request.getPayload());
         plugin.setActions(request.getActions());
+        plugin.setMeta(request.getMeta());
         return plugin;
     }
 
@@ -29,6 +30,7 @@ public class PluginMapper {
         response.setType(plugin.getType());
         response.setRunMode(plugin.getRunMode());
         response.setActions(plugin.getActions());
+        response.setMeta(plugin.getMeta());
         response.setCreatedAt(plugin.getCreatedAt());
         response.setUpdatedAt(plugin.getUpdatedAt());
         return response;

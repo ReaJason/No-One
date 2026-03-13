@@ -17,6 +17,7 @@ interface CommandExecuteProps {
   actionPath: string;
   osName?: string;
   cwdHint?: string;
+  onExecuted?: () => void;
 }
 
 interface CommandTemplatePayload {
@@ -181,6 +182,7 @@ export default function CommandExecute({
   actionPath,
   osName,
   cwdHint,
+  onExecuted,
 }: CommandExecuteProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<{
@@ -455,6 +457,7 @@ export default function CommandExecute({
         if (typeof exitCode === "number" && exitCode !== 0) {
           term.writeln(`${ANSI_YELLOW}exit code: ${exitCode}${ANSI_RESET}`);
         }
+        onExecuted?.();
       } catch (error: unknown) {
         const message =
           error instanceof Error && error.message ? error.message : "Command execution failed";
@@ -480,6 +483,7 @@ export default function CommandExecute({
       templateExecutable,
       toPrintable,
       writePrompt,
+      onExecuted,
     ],
   );
 

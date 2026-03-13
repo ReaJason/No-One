@@ -41,6 +41,9 @@ export function PluginForm({ action, errors, initialValues, onCancel }: PluginFo
   "version": "1.0.0",
   "language": "java",
   "type": "reconnaissance",
+  "meta": {
+    "classNames": ["com.reajason.noone.runtime.PortScanA", "com.reajason.noone.runtime.PortScanB"]
+  },
   "actions": { ... }
 }`}
               rows={16}
@@ -52,8 +55,9 @@ export function PluginForm({ action, errors, initialValues, onCancel }: PluginFo
               <p className="text-sm text-destructive">{errors.pluginJson}</p>
             ) : null}
             <p className="text-sm text-muted-foreground">
-              Required fields: id, name, version, language, type. If a plugin with the same name and
-              version already exists, it will be overwritten.
+              Required fields: id, name, version, language, type. Java plugins must also provide
+              `meta.classNames`. Uploading a plugin with the same id and language overwrites the
+              current server version.
             </p>
           </div>
         </CardContent>

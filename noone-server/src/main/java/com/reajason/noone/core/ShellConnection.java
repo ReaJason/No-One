@@ -13,10 +13,9 @@ import lombok.Setter;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public abstract class ShellConnection {
     private static final String COMMAND_EXECUTE_PLUGIN = "command-execute";
@@ -28,7 +27,8 @@ public abstract class ShellConnection {
     @Getter
     protected Client client;
 
-    protected Set<String> serverPluginCaches = new HashSet<>();
+    protected Map<String, String> serverPluginCaches = new LinkedHashMap<>();
+    protected boolean pluginCacheInitialized;
 
     public ShellConnection(Client client) {
         this.client = client;
@@ -71,7 +71,7 @@ public abstract class ShellConnection {
             bytes = TlvCodec.serialize(requestMap);
         } catch (ShellCommunicationException e) {
             throw e;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             throw new RequestSerializeException("Failed to serialize shell request", e);
         }
 
@@ -93,7 +93,7 @@ public abstract class ShellConnection {
             response = TlvCodec.deserialize(result);
         } catch (ShellCommunicationException e) {
             throw e;
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             throw new ResponseDecodeException("Failed to deserialize shell response", e);
         }
         if (response == null) {
@@ -108,7 +108,8 @@ public abstract class ShellConnection {
         Map<String, Object> response = sendRequest(requestMap);
         int code = requireResponseCode(response, Constants.ACTION_STATUS);
         if (code == Constants.SUCCESS) {
-            serverPluginCaches = toPluginCacheSet(response.get(Constants.PLUGIN_CACHES));
+            serverPluginCaches = toPluginCacheMap(response.get(Constants.PLUGIN_CACHES));
+            pluginCacheInitialized = true;
             return true;
         }
         if (code == Constants.FAILURE) {
@@ -118,17 +119,34 @@ public abstract class ShellConnection {
     }
 
     public void loadPlugin(String pluginName, byte[] pluginCodeBytes) {
-        if (!needLoadPlugin(pluginName)) {
+        loadPluginInternal(pluginName, null, pluginCodeBytes, false);
+    }
+
+    public void loadPlugin(String pluginName, String version, byte[] pluginCodeBytes) {
+        loadPluginInternal(pluginName, version, pluginCodeBytes, false);
+    }
+
+    public void refreshPlugin(String pluginName, String version, byte[] pluginCodeBytes) {
+        loadPluginInternal(pluginName, version, pluginCodeBytes, true);
+    }
+
+    private void loadPluginInternal(String pluginName, String version, byte[] pluginCodeBytes, boolean refresh) {
+        if (!refresh && !needLoadPlugin(pluginName)) {
             return;
         }
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put(Constants.ACTION, Constants.ACTION_LOAD);
         requestMap.put(Constants.PLUGIN, pluginName);
+        if (version != null) {
+            requestMap.put(Constants.VERSION, version);
+        }
+        requestMap.put(Constants.REFRESH, String.valueOf(refresh));
         fillLoadPluginRequestMaps(pluginName, pluginCodeBytes, requestMap);
         Map<String, Object> response = sendRequest(requestMap);
         int code = requireResponseCode(response, Constants.ACTION_LOAD);
         if (code == Constants.SUCCESS) {
-            serverPluginCaches.add(pluginName);
+            serverPluginCaches.put(pluginName, version);
+            pluginCacheInitialized = true;
             return;
         }
         if (code == Constants.FAILURE) {
@@ -154,21 +172,57 @@ public abstract class ShellConnection {
         return message.isBlank() ? "unknown error" : message;
     }
 
-    private Set<String> toPluginCacheSet(Object pluginCachesObj) {
-        Set<String> caches = new HashSet<>();
-        if (!(pluginCachesObj instanceof Set<?> rawSet)) {
+    private Map<String, String> toPluginCacheMap(Object pluginCachesObj) {
+        Map<String, String> caches = new LinkedHashMap<>();
+        if (pluginCachesObj instanceof Map<?, ?> rawMap) {
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                caches.put(String.valueOf(entry.getKey()), stringifyPluginVersion(entry.getValue()));
+            }
+            return caches;
+        }
+        if (!(pluginCachesObj instanceof Iterable<?> rawSet)) {
             return caches;
         }
         for (Object item : rawSet) {
             if (item != null) {
-                caches.add(String.valueOf(item));
+                caches.put(String.valueOf(item), null);
             }
         }
         return caches;
     }
 
     public boolean needLoadPlugin(String pluginId) {
-        return !serverPluginCaches.contains(pluginId);
+        return !serverPluginCaches.containsKey(pluginId);
+    }
+
+    public boolean isPluginOutdated(String pluginId, String serverVersion) {
+        String shellVersion = getLoadedPluginVersion(pluginId);
+        if (shellVersion == null) {
+            return false;
+        }
+        return serverVersion != null && !serverVersion.equals(shellVersion);
+    }
+
+    public String getLoadedPluginVersion(String pluginId) {
+        if (!serverPluginCaches.containsKey(pluginId)) {
+            return null;
+        }
+        return serverPluginCaches.get(pluginId);
+    }
+
+    public boolean isPluginCacheInitialized() {
+        return pluginCacheInitialized;
+    }
+
+    private String stringifyPluginVersion(Object value) {
+        if (value == null) {
+            return null;
+        }
+        String version = String.valueOf(value).trim();
+        return version.isEmpty() ? null : version;
     }
 
     public abstract void fillLoadPluginRequestMaps(String pluginName, byte[] pluginCodeBytes, Map<String, Object> requestMap);

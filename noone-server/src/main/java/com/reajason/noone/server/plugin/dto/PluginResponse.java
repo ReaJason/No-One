@@ -1,4 +1,4 @@
-package com.reajason.noone.server.admin.plugin.dto;
+package com.reajason.noone.server.plugin.dto;
 
 import lombok.Data;
 
@@ -14,6 +14,7 @@ public class PluginResponse {
     private String type;
     private String runMode;
     private Map<String, Object> actions;
+    private Map<String, Object> meta;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

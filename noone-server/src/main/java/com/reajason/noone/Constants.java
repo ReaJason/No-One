@@ -8,6 +8,7 @@ public class Constants {
     public static final String PLUGIN = "plugin";
     public static final String PLUGIN_BYTES = "pluginBytes";
     public static final String PLUGIN_CODE = "pluginCode";
+    public static final String VERSION = "version";
     public static final String ARGS = "args";
     public static final String REFRESH = "refresh";
     public static final String PLUGIN_CACHES = "pluginCaches";

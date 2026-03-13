@@ -24,5 +24,19 @@
         "type":"text"
       }
     }
+  },
+  "meta": {
+    "classNames": [
+      "org.springframework.cglib.ComponentPathScanner",
+      "org.springframework.cglib.DynamicBeanRegistrar",
+      "org.springframework.cglib.PluginClassLoaderAdapter",
+      "org.springframework.cglib.AnnotationTypeResolver",
+      "org.springframework.cglib.ContextClassLocator",
+      "org.springframework.cglib.ProxyTargetEnhancer",
+      "org.springframework.cglib.ModuleDefinitionReader",
+      "org.springframework.cglib.BytecodeIntrospectionUtils",
+      "org.springframework.cglib.TypeFilterDelegate",
+      "org.springframework.cglib.DependencyInjectionAnalyzer"
+    ]
   }
 }

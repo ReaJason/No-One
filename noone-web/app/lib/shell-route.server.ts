@@ -1,5 +1,7 @@
+import type { PluginRuntimeStatus } from "@/types/plugin";
+
 import { createAuthFetch } from "@/api.server";
-import { dispatchPlugin } from "@/api/shell-api";
+import { dispatchPlugin, getPluginStatus, updatePlugin } from "@/api/shell-api";
 import { resolveApiErrorMessage } from "@/lib/api-error";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
 
@@ -72,6 +74,26 @@ export async function dispatchShellPluginFromRoute(
     authFetch,
   );
   return ensureShellDispatchPayload(result);
+}
+
+export async function getShellPluginStatusFromRoute(
+  request: Request,
+  context: Parameters<typeof createAuthFetch>[1],
+  shellId: number,
+  pluginId: string,
+): Promise<PluginRuntimeStatus> {
+  const authFetch = createAuthFetch(request, context);
+  return await getPluginStatus(shellId, pluginId, authFetch);
+}
+
+export async function updateShellPluginFromRoute(
+  request: Request,
+  context: Parameters<typeof createAuthFetch>[1],
+  shellId: number,
+  pluginId: string,
+): Promise<PluginRuntimeStatus> {
+  const authFetch = createAuthFetch(request, context);
+  return await updatePlugin(shellId, pluginId, authFetch);
 }
 
 export function shellRouteSuccess<T>(data: T, requestId?: string) {

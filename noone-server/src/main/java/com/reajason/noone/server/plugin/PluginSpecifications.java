@@ -1,4 +1,4 @@
-package com.reajason.noone.server.admin.plugin;
+package com.reajason.noone.server.plugin;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.ObjectUtils;

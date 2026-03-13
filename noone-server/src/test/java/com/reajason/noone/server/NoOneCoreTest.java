@@ -1,21 +1,17 @@
 package com.reajason.noone.server;
 
 import com.reajason.noone.core.NoOneCore;
-import net.bytebuddy.ByteBuddy;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * NoOneCore 类缓存管理单元测试
- *
- * @author ReaJason
- * @since 2025/12/14
- */
 class NoOneCoreTest {
 
     private NoOneCore noOneCore;
@@ -24,176 +20,158 @@ class NoOneCoreTest {
     void setUp() {
         noOneCore = new NoOneCore();
         NoOneCore.loadedPluginCache.clear();
+        NoOneCore.loadedPluginVersionCache.clear();
+        NoOneCore.globalCaches.clear();
     }
 
     @Test
     void testFirstLoadWithPlugin() throws Exception {
-        // 准备测试数据
-        Map<String, Object> args = new HashMap<>();
-        args.put("action", "run");
-        args.put("plugin", "testClass");
-        String testClass123 = "TestClass_" + System.currentTimeMillis();
-        args.put("className", testClass123);
-        args.put("classBytes", createSimpleClassBytes(testClass123));
+        String className = "com.reajason.noone.runtime.TestPluginLoad";
+        Map<String, Object> loadArgs = new HashMap<>();
+        loadArgs.put("plugin", "test-plugin");
+        loadArgs.put("className", className);
+        loadArgs.put("pluginBytes", createSimplePluginBytes(className));
+        loadArgs.put("version", "1.0.0");
 
-        // 执行
-        Map<String, Object> result = noOneCore.run(args);
+        Map<String, Object> loadResult = new HashMap<>();
+        Object pluginObj = noOneCore.load(loadArgs, loadResult);
 
-        // 验证
-        assertTrue((Boolean) result.get("classDefine"), "Should indicate class was defined");
-        assertNotNull(result.get("data"), "Should return method execution result");
+        assertNotNull(pluginObj);
+        assertEquals(Boolean.TRUE, loadResult.get("classDefine"));
+        assertTrue(NoOneCore.loadedPluginCache.containsKey("test-plugin"));
+        assertEquals("1.0.0", NoOneCore.loadedPluginVersionCache.get("test-plugin"));
 
-        // 验证缓存
-        assertTrue(NoOneCore.loadedPluginCache.containsKey("testClass"), "Should cache by plugin");
+        Map<String, Object> runResult = noOneCore.run(Map.of("plugin", "test-plugin", "args", new HashMap<>()));
+        assertEquals("ok", runResult.get("data"));
+        assertEquals(Boolean.TRUE, runResult.get("classRun"));
     }
 
     @Test
     void testReuseByPlugin() throws Exception {
-        // 首次加载
-        Map<String, Object> args1 = new HashMap<>();
-        args1.put("action", "run");
-        args1.put("plugin", "testClass");
-        String testClass123 = "TestClass_" + System.currentTimeMillis();
-        args1.put("className", testClass123);
-        args1.put("classBytes", createSimpleClassBytes(testClass123));
-        noOneCore.run(args1);
+        String className = "com.reajason.noone.runtime.TestPluginReuse";
+        Map<String, Object> loadArgs = new HashMap<>();
+        loadArgs.put("plugin", "test-plugin");
+        loadArgs.put("className", className);
+        loadArgs.put("pluginBytes", createSimplePluginBytes(className));
+        loadArgs.put("version", "1.0.0");
 
-        // 第二次调用 - 仅使用 plugin
-        Map<String, Object> args2 = new HashMap<>();
-        args2.put("action", "run");
-        args2.put("plugin", "testClass");
+        Map<String, Object> result1 = new HashMap<>();
+        Object first = noOneCore.load(loadArgs, result1);
+        Map<String, Object> result2 = new HashMap<>();
+        Object second = noOneCore.load(Map.of("plugin", "test-plugin", "version", "1.0.0"), result2);
 
-        Map<String, Object> result = noOneCore.run(args2);
-
-        // 验证
-        assertNull(result.get("classDefine"), "Should not redefine class");
-        assertNotNull(result.get("data"), "Should return method execution result");
+        assertSame(first, second);
+        assertNull(result2.get("classDefine"));
     }
 
     @Test
     void testRefreshClass() throws Exception {
-        // 首次加载
-        Map<String, Object> args1 = new HashMap<>();
-        args1.put("action", "run");
-        args1.put("plugin", "testClass");
-        String testClass123 = "TestClass_" + System.currentTimeMillis();
-        args1.put("className", testClass123);
-        args1.put("classBytes", createSimpleClassBytes(testClass123));
-        noOneCore.run(args1);
+        String className1 = "com.reajason.noone.runtime.TestPluginRefreshA";
+        String className2 = "com.reajason.noone.runtime.TestPluginRefreshB";
+        Map<String, Object> initialResult = new HashMap<>();
+        noOneCore.load(Map.of(
+                "plugin", "test-plugin",
+                "className", className1,
+                "pluginBytes", createSimplePluginBytes(className1),
+                "version", "1.0.0"
+        ), initialResult);
 
-        Object oldClass = NoOneCore.loadedPluginCache.get("testClass");
+        Object oldPlugin = NoOneCore.loadedPluginCache.get("test-plugin");
 
-        // 使用 refresh 重新加载
-        Map<String, Object> args2 = new HashMap<>();
-        args2.put("action", "run");
-        args2.put("plugin", "testClass");
-        String testClass456 = "TestClass456_" + System.currentTimeMillis();
-        args2.put("className", testClass456);
-        args2.put("classBytes", createSimpleClassBytes(testClass456));
-        args2.put("refresh", "true");
+        Map<String, Object> refreshResult = new HashMap<>();
+        Object refreshed = noOneCore.load(Map.of(
+                "plugin", "test-plugin",
+                "className", className2,
+                "pluginBytes", createSimplePluginBytes(className2),
+                "version", "2.0.0",
+                "refresh", "true"
+        ), refreshResult);
 
-        Map<String, Object> result = noOneCore.run(args2);
-
-        // 验证
-        assertTrue((Boolean) result.get("classDefine"), "Should redefine class");
-        Object newClass = NoOneCore.loadedPluginCache.get("testClass");
-        assertNotEquals(oldClass.toString(), newClass.toString(), "Should load a different class instance");
+        assertNotSame(oldPlugin, refreshed);
+        assertEquals(Boolean.TRUE, refreshResult.get("classDefine"));
+        assertEquals("2.0.0", NoOneCore.loadedPluginVersionCache.get("test-plugin"));
     }
 
     @Test
     void testGetStatus() throws Exception {
-        // 加载多个类
-        loadTestClass("testClass1", "TestClass1");
-        loadTestClass("testClass2", "TestClass2");
-        loadTestClass("testClass3", "TestClass3");
+        loadTestClass("testClass1", "com.reajason.noone.runtime.StatusOne", "1.0.0");
+        loadTestClass("testClass2", "com.reajason.noone.runtime.StatusTwo", "2.0.0");
+        loadTestClass("testClass3", "com.reajason.noone.runtime.StatusThree", "3.0.0");
 
-        // 查询状态
         Map<String, Object> status = noOneCore.getStatus();
         @SuppressWarnings("unchecked")
         Map<String, String> caches = (Map<String, String>) status.get("pluginCaches");
 
-        // 验证
-        assertEquals(3, caches.size(), "Should have 3 cached classes");
-        assertEquals("TestClass1", caches.get("testClass1"));
-        assertEquals("TestClass2", caches.get("testClass2"));
-        assertEquals("TestClass3", caches.get("testClass3"));
+        assertEquals(3, caches.size());
+        assertEquals("1.0.0", caches.get("testClass1"));
+        assertEquals("2.0.0", caches.get("testClass2"));
+        assertEquals("3.0.0", caches.get("testClass3"));
     }
 
-    /**
-     * 测试场景 7: clean 清理缓存
-     */
     @Test
     void testCleanCache() throws Exception {
-        // 加载类
-        loadTestClass("testClass", "TestClass123");
+        loadTestClass("testClass", "com.reajason.noone.runtime.CleanPlugin", "1.0.0");
 
-        // 验证缓存存在
         assertEquals(1, NoOneCore.loadedPluginCache.size());
+        assertEquals(1, NoOneCore.loadedPluginVersionCache.size());
 
-        // 直接清理缓存
         NoOneCore.loadedPluginCache.clear();
+        NoOneCore.loadedPluginVersionCache.clear();
 
-        // 验证缓存已清空
-        assertTrue(NoOneCore.loadedPluginCache.isEmpty(), "Should clear plugin cache");
+        assertTrue(NoOneCore.loadedPluginCache.isEmpty());
+        assertTrue(NoOneCore.loadedPluginVersionCache.isEmpty());
     }
 
-    /**
-     * 测试场景 8: 缺少必需参数时抛出异常
-     */
     @Test
     void testMissingRequiredParams() {
-        Map<String, Object> args = new HashMap<>();
-        args.put("action", "run");
-        args.put("plugin", "testClass");
-        // 缺少 className 和 classBytes
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> noOneCore.load(Map.of("plugin", "test-plugin"), new HashMap<>()));
 
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            noOneCore.run(args);
-        });
-
-        assertTrue(exception.getMessage().contains("className and classBytes are required"),
-                "Should indicate missing required parameters");
+        assertTrue(exception.getMessage().contains("className is required"));
     }
 
-    /**
-     * 测试场景 9: plugin 为 null 时抛出异常
-     */
-    @Test
-    void testMissingPlugin() {
+    private void loadTestClass(String plugin, String className, String version) throws Exception {
         Map<String, Object> args = new HashMap<>();
-        args.put("action", "run");
-        // 缺少 plugin
-        args.put("className", "TestClass123");
-        args.put("classBytes", createSimpleClassBytes("TestClass123"));
-
-        RuntimeException exception = assertThrows(RuntimeException.class, () -> {
-            noOneCore.run(args);
-        });
-
-        assertTrue(exception.getMessage().contains("plugin is required"),
-                "Should indicate plugin is required");
-    }
-
-    // ========== 辅助方法 ==========
-
-    private void loadTestClass(String plugin, String className) throws Exception {
-        Map<String, Object> args = new HashMap<>();
-        args.put("action", "run");
         args.put("plugin", plugin);
         args.put("className", className);
-        args.put("classBytes", createSimpleClassBytes(className));
-        noOneCore.run(args);
+        args.put("pluginBytes", createSimplePluginBytes(className));
+        args.put("version", version);
+        noOneCore.load(args, new HashMap<>());
     }
 
-    /**
-     * 创建一个简单的测试类字节码
-     * 使用 ByteBuddy 重命名 SystemInfoCollector 类
-     */
-    private byte[] createSimpleClassBytes(String className) {
-        return new ByteBuddy()
-                .redefine(NoOneCoreTest.class)
-                .name(className)
-                .make()
-                .getBytes();
+    private byte[] createSimplePluginBytes(String className) {
+        String internalName = className.replace('.', '/');
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, "java/lang/Object", null);
+
+        MethodVisitor init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+        init.visitCode();
+        init.visitVarInsn(Opcodes.ALOAD, 0);
+        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        init.visitInsn(Opcodes.RETURN);
+        init.visitMaxs(1, 1);
+        init.visitEnd();
+
+        MethodVisitor equals = writer.visitMethod(Opcodes.ACC_PUBLIC, "equals", "(Ljava/lang/Object;)Z", null, null);
+        equals.visitCode();
+        equals.visitVarInsn(Opcodes.ALOAD, 1);
+        equals.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Map");
+        equals.visitLdcInsn("result");
+        equals.visitLdcInsn("ok");
+        equals.visitMethodInsn(
+                Opcodes.INVOKEINTERFACE,
+                "java/util/Map",
+                "put",
+                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
+                true
+        );
+        equals.visitInsn(Opcodes.POP);
+        equals.visitInsn(Opcodes.ICONST_1);
+        equals.visitInsn(Opcodes.IRETURN);
+        equals.visitMaxs(3, 2);
+        equals.visitEnd();
+
+        writer.visitEnd();
+        return writer.toByteArray();
     }
 }

@@ -47,7 +47,7 @@ class NoOneMemShellGeneratorTransformersTest {
 
         NoOneMemShellGenerator generator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
         byte[] bytes = generator.getBytes();
-        Files.write(Paths.get("transformations.class"), bytes);
+//        Files.write(Paths.get("transformations.class"), bytes);
         Class<?> generated = loadGeneratedClass(bytes);
         Object instance = generated.getDeclaredConstructor().newInstance();
 

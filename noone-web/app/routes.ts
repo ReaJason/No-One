@@ -9,6 +9,7 @@ export default [
     route("files/data", "routes/shell/shell-files-data.ts"),
     route("command", "routes/shell/shell-command.tsx"),
     route("extensions", "routes/shell/shell-extensions.tsx"),
+    route("extensions/plugin-status", "routes/shell/shell-extension-plugin-status.ts"),
     route("extensions/status", "routes/shell/shell-extension-task-status.ts"),
     route("operations", "routes/shell/shell-operations.tsx"),
   ]),

@@ -13,6 +13,7 @@ namespace dotnet_core
         private const string ACTION = "action";
         private const string PLUGIN = "plugin";
         private const string PLUGIN_BYTES = "pluginBytes";
+        private const string VERSION = "version";
         private const string ARGS = "args";
 
         private const string REFRESH = "refresh";
@@ -34,6 +35,7 @@ namespace dotnet_core
 
         // pluginName to pluginObject
         public static readonly ConcurrentDictionary<string, object> loadedPluginCache = new ConcurrentDictionary<string, object>();
+        public static readonly ConcurrentDictionary<string, string> loadedPluginVersionCache = new ConcurrentDictionary<string, string>();
         public static readonly ConcurrentDictionary<string, object> globalCaches = new ConcurrentDictionary<string, object>();
 
         private const byte NULL = 0x00;
@@ -100,6 +102,7 @@ namespace dotnet_core
                                 break;
                             case ACTION_CLEAN:
                                 loadedPluginCache.Clear();
+                                loadedPluginVersionCache.Clear();
                                 break;
                             default:
                                 result[CODE] = FAILURE;
@@ -137,10 +140,10 @@ namespace dotnet_core
         public Dictionary<string, object> GetStatus()
         {
             Dictionary<string, object> result = new Dictionary<string, object>();
-            OrderedSet pluginCaches = new OrderedSet();
-            foreach (string plugin in loadedPluginCache.Keys)
+            Dictionary<string, object> pluginCaches = new Dictionary<string, object>();
+            foreach (KeyValuePair<string, string> entry in loadedPluginVersionCache)
             {
-                pluginCaches.Add(plugin);
+                pluginCaches[entry.Key] = entry.Value;
             }
             result[PLUGIN_CACHES] = pluginCaches;
             return result;
@@ -160,6 +163,7 @@ namespace dotnet_core
                 throw new InvalidOperationException("pluginBytes is required for class loading");
             }
 
+            string version = GetString(args, VERSION);
             bool refresh = ParseBoolean(GetObject(args, REFRESH));
             object pluginObj = null;
             if (!refresh)
@@ -171,8 +175,9 @@ namespace dotnet_core
             {
                 pluginObj = CreatePlugin(pluginBytes);
                 loadedPluginCache[plugin] = pluginObj;
-                result[CLASS_DEFINE] = true;
+                loadedPluginVersionCache[plugin] = version;
             }
+            result[CLASS_DEFINE] = true;
 
             return pluginObj;
         }

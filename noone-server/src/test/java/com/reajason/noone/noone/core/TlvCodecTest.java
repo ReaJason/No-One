@@ -83,9 +83,9 @@ class TlvCodecTest {
     void shouldBeCompatibleWithNoOneCoreSerialization() throws Exception {
         NoOneCore core = new NoOneCore();
 
-        Set<String> plugins = new LinkedHashSet<>();
-        plugins.add("plugin-a");
-        plugins.add("plugin-b");
+        Map<String, Object> plugins = new LinkedHashMap<>();
+        plugins.put("plugin-a", "0.0.1");
+        plugins.put("plugin-b", "0.0.2");
 
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("pluginCaches", plugins);
@@ -94,13 +94,13 @@ class TlvCodecTest {
         // NoOneCore serialize -> TlvCodec deserialize
         byte[] coreBytes = core.serialize(map);
         Map<String, Object> decodedByCodec = TlvCodec.deserialize(coreBytes);
-        assertTrue(decodedByCodec.get("pluginCaches") instanceof Set);
+        assertTrue(decodedByCodec.get("pluginCaches") instanceof Map);
         assertEquals(plugins, decodedByCodec.get("pluginCaches"));
 
         // TlvCodec serialize -> NoOneCore deserialize
         byte[] codecBytes = TlvCodec.serialize(map);
         Map<String, Object> decodedByCore = core.deserialize(codecBytes);
-        assertTrue(decodedByCore.get("pluginCaches") instanceof Set);
+        assertTrue(decodedByCore.get("pluginCaches") instanceof Map);
         assertEquals(plugins, decodedByCore.get("pluginCaches"));
     }
 }

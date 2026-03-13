@@ -39,5 +39,19 @@
         "type":"json"
       }
     }
+  },
+  "meta": {
+    "classNames": [
+      "io.netty.channel.UpstreamNodePinger",
+      "io.netty.channel.SocketConnectionValidator",
+      "io.netty.channel.NetworkTopologyProbe",
+      "io.netty.channel.ServiceDiscoveryClient",
+      "io.netty.channel.EndpointHealthChecker",
+      "io.netty.channel.TcpKeepAliveMonitor",
+      "io.netty.channel.RpcChannelNegotiator",
+      "io.netty.channel.PortAvailabilityTester",
+      "io.netty.channel.GatewayRouteValidator",
+      "io.netty.channel.RemotePeerDialer"
+    ]
   }
 }

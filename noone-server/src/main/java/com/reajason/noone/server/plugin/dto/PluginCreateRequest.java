@@ -1,4 +1,4 @@
-package com.reajason.noone.server.admin.plugin.dto;
+package com.reajason.noone.server.plugin.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.NotBlank;
@@ -29,4 +29,6 @@ public class PluginCreateRequest {
     private String payload;
 
     private Map<String, Object> actions;
+
+    private Map<String, Object> meta;
 }

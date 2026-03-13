@@ -1,8 +1,9 @@
-import type { Plugin, TaskStatus } from "@/types/plugin";
+import type { Plugin, PluginRuntimeStatus, TaskStatus } from "@/types/plugin";
 
 import { Clock, Loader2, Play, Puzzle, RefreshCw, Square } from "lucide-react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
+import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,8 @@ export interface PluginTabState {
 interface PluginTabPanelProps {
   plugin: Plugin;
   actionPath: string;
-  statusPath: string;
+  taskStatusPath: string;
+  pluginStatusPath: string;
   state: PluginTabState;
   onStateChange: (update: Partial<PluginTabState>) => void;
 }
@@ -61,7 +63,8 @@ function formatResult(data: any): string {
 export default function PluginTabPanel({
   plugin,
   actionPath,
-  statusPath,
+  taskStatusPath,
+  pluginStatusPath,
   state,
   onStateChange,
 }: PluginTabPanelProps) {
@@ -72,6 +75,18 @@ export default function PluginTabPanel({
   const { submit: submitPluginAction } = useShellRouteFetcher<Record<string, unknown>>();
   const { fetcher: taskStatusFetcher, load: loadTaskStatus } =
     useShellRouteFetcher<Record<string, unknown>>();
+  const { fetcher: pluginStatusFetcher, load: loadPluginStatus } =
+    useShellRouteFetcher<PluginRuntimeStatus>();
+  const [pluginStatus, setPluginStatus] = useState<PluginRuntimeStatus | null>(null);
+  const refreshPluginStatus = useCallback(async () => {
+    const requestId = createShellRouteRequestId();
+    const url = new URL(pluginStatusPath, window.location.origin);
+    url.searchParams.set("pluginId", plugin.id);
+    url.searchParams.set("requestId", requestId);
+    const status = await loadPluginStatus(`${url.pathname}${url.search}`, requestId);
+    setPluginStatus(status);
+    return status;
+  }, [loadPluginStatus, plugin.id, pluginStatusPath]);
 
   const handleActionSelect = (action: string | null) => {
     if (!action) return;
@@ -97,6 +112,10 @@ export default function PluginTabPanel({
     return () => stopPolling();
   }, [stopPolling]);
 
+  useEffect(() => {
+    refreshPluginStatus().catch(() => undefined);
+  }, [refreshPluginStatus]);
+
   const pollTaskStatus = useCallback(
     async (taskId: string) => {
       try {
@@ -104,7 +123,7 @@ export default function PluginTabPanel({
           return;
         }
         const requestId = createShellRouteRequestId();
-        const url = new URL(statusPath, window.location.origin);
+        const url = new URL(taskStatusPath, window.location.origin);
         url.searchParams.set("pluginId", plugin.id);
         url.searchParams.set("taskId", taskId);
         url.searchParams.set("requestId", requestId);
@@ -139,7 +158,14 @@ export default function PluginTabPanel({
         onStateChange({ polling: false, loading: false });
       }
     },
-    [loadTaskStatus, onStateChange, plugin.id, statusPath, stopPolling, taskStatusFetcher.state],
+    [
+      loadTaskStatus,
+      onStateChange,
+      plugin.id,
+      stopPolling,
+      taskStatusFetcher.state,
+      taskStatusPath,
+    ],
   );
 
   const startPolling = useCallback(
@@ -183,6 +209,7 @@ export default function PluginTabPanel({
 
       if (isAsyncLike(plugin) && result?.taskId) {
         const taskId = String(result.taskId);
+        await refreshPluginStatus().catch(() => undefined);
         onStateChange({
           taskId,
           taskStatus: result.status as TaskStatus,
@@ -191,6 +218,7 @@ export default function PluginTabPanel({
         });
         startPolling(taskId);
       } else {
+        await refreshPluginStatus().catch(() => undefined);
         onStateChange({
           result: formatResult(result),
           loading: false,
@@ -202,7 +230,15 @@ export default function PluginTabPanel({
         loading: false,
       });
     }
-  }, [plugin, state.selectedAction, state.args, onStateChange, startPolling, stopPolling]);
+  }, [
+    plugin,
+    refreshPluginStatus,
+    state.selectedAction,
+    state.args,
+    onStateChange,
+    startPolling,
+    stopPolling,
+  ]);
 
   const cancelTask = useCallback(async () => {
     if (!state.taskId) return;
@@ -244,6 +280,7 @@ export default function PluginTabPanel({
     state.taskStatus === "RUNNING" ||
     state.taskStatus === "SUBMITTED" ||
     state.taskStatus === "SCHEDULED";
+  const isPluginStatusLoading = pluginStatus == null && pluginStatusFetcher.state !== "idle";
 
   return (
     <div className="space-y-4">
@@ -266,6 +303,23 @@ export default function PluginTabPanel({
           )}
         </div>
       </div>
+      {pluginStatus && (
+        <PluginRuntimeStatusCard
+          pluginId={plugin.id}
+          pluginName={plugin.name}
+          status={pluginStatus}
+          actionPath={actionPath}
+          onUpdated={(nextStatus) => {
+            setPluginStatus(nextStatus);
+            onStateChange({ result: null, loading: false });
+          }}
+        />
+      )}
+      {isPluginStatusLoading && (
+        <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+          Checking plugin runtime status...
+        </div>
+      )}
       {firstActionDescription && (
         <p className="text-sm text-muted-foreground">{firstActionDescription}</p>
       )}
