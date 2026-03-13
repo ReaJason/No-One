@@ -5,49 +5,26 @@ import com.reajason.noone.server.admin.permission.dto.PermissionResponse;
 import com.reajason.noone.server.admin.permission.dto.PermissionRoleDTO;
 import com.reajason.noone.server.admin.permission.dto.PermissionUpdateRequest;
 import com.reajason.noone.server.admin.role.Role;
-import org.springframework.stereotype.Component;
+import org.mapstruct.*;
 
-import java.util.stream.Collectors;
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public abstract class PermissionMapper {
 
-@Component
-public class PermissionMapper {
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    public abstract Permission toEntity(PermissionCreateRequest request);
 
-    public Permission toEntity(PermissionCreateRequest request) {
-        return Permission.builder()
-                .code(request.getCode())
-                .name(request.getName())
-                .build();
-    }
+    @Mapping(target = "category", expression = "java(extractCategory(permission.getCode()))")
+    public abstract PermissionResponse toResponse(Permission permission);
 
-    public PermissionResponse toResponse(Permission permission) {
-        PermissionResponse response = new PermissionResponse();
-        response.setId(permission.getId());
-        response.setCode(permission.getCode());
-        response.setName(permission.getName());
-        response.setCategory(extractCategory(permission.getCode()));
-        response.setRoles(permission.getRoles().stream().map(this::toPermissionRoleDTO).collect(Collectors.toSet()));
-        response.setCreatedAt(permission.getCreatedAt());
-        response.setUpdatedAt(permission.getUpdatedAt());
-        return response;
-    }
+    public abstract PermissionRoleDTO toPermissionRoleDTO(Role role);
 
-    public PermissionRoleDTO toPermissionRoleDTO(Role role) {
-        PermissionRoleDTO permissionRoleDTO = new PermissionRoleDTO();
-        permissionRoleDTO.setId(role.getId());
-        permissionRoleDTO.setName(role.getName());
-        return permissionRoleDTO;
-    }
+    public abstract void updateEntity(@MappingTarget Permission permission, PermissionUpdateRequest request);
 
-    public static String extractCategory(String code) {
+    protected static String extractCategory(String code) {
         return code.split(":")[0].toLowerCase();
-    }
-
-    public void updateEntity(Permission permission, PermissionUpdateRequest request) {
-        if (request.getCode() != null) {
-            permission.setCode(request.getCode());
-        }
-        if (request.getName() != null) {
-            permission.setName(request.getName());
-        }
     }
 }

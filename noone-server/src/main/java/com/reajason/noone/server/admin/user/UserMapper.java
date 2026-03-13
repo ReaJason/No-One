@@ -4,9 +4,11 @@ import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.user.dto.UserCreateRequest;
 import com.reajason.noone.server.admin.user.dto.UserResponse;
 import com.reajason.noone.server.admin.user.dto.UserRoleDTO;
-import org.springframework.stereotype.Component;
-
-import java.util.stream.Collectors;
+import jakarta.annotation.Resource;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
+import org.mapstruct.NullValuePropertyMappingStrategy;
 
 /**
  * 用户实体与DTO映射器
@@ -14,47 +16,28 @@ import java.util.stream.Collectors;
  * @author ReaJason
  * @since 2025/1/27
  */
-@Component
-public class UserMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public abstract class UserMapper {
 
-    private final UserAuthorityResolver userAuthorityResolver;
+    @Resource
+    protected UserAuthorityResolver userAuthorityResolver;
 
-    public UserMapper(UserAuthorityResolver userAuthorityResolver) {
-        this.userAuthorityResolver = userAuthorityResolver;
-    }
+    @Mapping(target = "status", expression = "java(request.getStatus() == null ? com.reajason.noone.server.admin.user.UserStatus.ENABLED : request.getStatus())")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "lastLogin", ignore = true)
+    @Mapping(target = "lastLoginIp", ignore = true)
+    @Mapping(target = "passwordChangedAt", ignore = true)
+    @Mapping(target = "mfaBoundAt", ignore = true)
+    @Mapping(target = "mfaEnabled", ignore = true)
+    @Mapping(target = "mustChangePassword", ignore = true)
+    public abstract User toEntity(UserCreateRequest request);
 
-    public User toEntity(UserCreateRequest request) {
-        User user = new User();
-        user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
-        user.setEmail(request.getEmail());
-        user.setStatus(request.getStatus() == null ? UserStatus.ENABLED : request.getStatus());
-        return user;
-    }
+    @Mapping(target = "authorities", expression = "java(userAuthorityResolver.resolveAuthorityCodes(user))")
+    public abstract UserResponse toResponse(User user);
 
-    public UserResponse toResponse(User user) {
-        UserResponse response = new UserResponse();
-        response.setId(user.getId());
-        response.setUsername(user.getUsername());
-        response.setEmail(user.getEmail());
-        response.setStatus(user.getStatus());
-        response.setMfaEnabled(user.isMfaEnabled());
-        response.setMustChangePassword(user.isMustChangePassword());
-        response.setCreatedAt(user.getCreatedAt());
-        response.setUpdatedAt(user.getUpdatedAt());
-        response.setLastLogin(user.getLastLogin());
-        response.setLastLoginIp(user.getLastLoginIp());
-        response.setPasswordChangedAt(user.getPasswordChangedAt());
-        response.setMfaBoundAt(user.getMfaBoundAt());
-        response.setRoles(user.getRoles().stream().map(this::toUserRoleDTO).collect(Collectors.toSet()));
-        response.setAuthorities(userAuthorityResolver.resolveAuthorityCodes(user));
-        return response;
-    }
-
-    public UserRoleDTO toUserRoleDTO(Role role) {
-        UserRoleDTO userRoleDTO = new UserRoleDTO();
-        userRoleDTO.setId(role.getId());
-        userRoleDTO.setName(role.getName());
-        return userRoleDTO;
-    }
+    public abstract UserRoleDTO toUserRoleDTO(Role role);
 }

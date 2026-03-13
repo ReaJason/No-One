@@ -8,13 +8,14 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
-    database: postgresql
     show-sql: false
     properties:
       hibernate:
         format_sql: false
   datasource:
     driver-class-name: org.postgresql.Driver
-  docker:
-    compose:
-      file: noone-server/compose.yaml
+    url: jdbc:postgresql://your-ip:5432/noone
+    username: noone
+    password: your-password
+jwt:
+  secret: "u3SJYZOHd06qmX+AsSHKy9Mab8f3ciIWCQiqVvhsqlYZ9+HRmKp7akyzibfn1OdVMqCE2zjz1iHeWyj1Kg5zrg"

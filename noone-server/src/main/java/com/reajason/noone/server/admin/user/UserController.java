@@ -20,7 +20,6 @@ public class UserController {
 
     private final UserService userService;
     private final UserSessionService userSessionService;
-    private final com.reajason.noone.server.admin.auth.SensitiveActionService sensitiveActionService;
 
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('user:create')")
@@ -39,9 +38,7 @@ public class UserController {
     @PreAuthorize("@authorizationService.hasSystemPermission('user:update')")
     public ResponseEntity<UserResponse> resetPassword(
             @PathVariable Long id,
-            @Valid @RequestBody ResetPasswordRequest request,
-            @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        sensitiveActionService.requireChallenge(challengeToken, "user.reset-password", "user", String.valueOf(id));
+            @Valid @RequestBody ResetPasswordRequest request) {
         UserResponse response = userService.forceResetPassword(id, request.getNewPassword());
         userSessionService.revokeUserSessions(id, "ADMIN_PASSWORD_RESET");
         return ResponseEntity.ok(response);
@@ -50,9 +47,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('user:delete')")
     public ResponseEntity<Void> delete(
-            @PathVariable Long id,
-            @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        sensitiveActionService.requireChallenge(challengeToken, "user.delete", "user", String.valueOf(id));
+            @PathVariable Long id) {
         userSessionService.revokeUserSessions(id, "ADMIN_USER_DELETED");
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
@@ -62,11 +57,7 @@ public class UserController {
     @PreAuthorize("@authorizationService.hasSystemPermission('user:update')")
     public ResponseEntity<UserResponse> update(
             @PathVariable Long id,
-            @Valid @RequestBody UserUpdateRequest request,
-            @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        if (request.getStatus() != null || request.getRoleIds() != null) {
-            sensitiveActionService.requireChallenge(challengeToken, "user.update-security", "user", String.valueOf(id));
-        }
+            @Valid @RequestBody UserUpdateRequest request) {
         UserResponse response = userService.update(id, request);
         return ResponseEntity.ok(response);
     }
@@ -92,9 +83,7 @@ public class UserController {
     @DeleteMapping("/{id}/sessions")
     @PreAuthorize("@authorizationService.hasSystemPermission('auth:session:manage')")
     public ResponseEntity<Void> revokeAllSessions(
-            @PathVariable Long id,
-            @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        sensitiveActionService.requireChallenge(challengeToken, "user.revoke-all-sessions", "user", String.valueOf(id));
+            @PathVariable Long id) {
         userSessionService.revokeUserSessions(id, "ADMIN_FORCE_LOGOUT");
         return ResponseEntity.noContent().build();
     }
@@ -103,9 +92,7 @@ public class UserController {
     @PreAuthorize("@authorizationService.hasSystemPermission('auth:session:manage')")
     public ResponseEntity<Void> revokeSession(
             @PathVariable Long id,
-            @PathVariable String sessionId,
-            @RequestHeader(value = com.reajason.noone.server.admin.auth.SensitiveActionService.CHALLENGE_HEADER, required = false) String challengeToken) {
-        sensitiveActionService.requireChallenge(challengeToken, "user.revoke-session", "session", sessionId);
+            @PathVariable String sessionId) {
         userSessionService.revokeSession(sessionId, "ADMIN_FORCE_LOGOUT");
         return ResponseEntity.noContent().build();
     }

@@ -29,4 +29,5 @@ public class JwtConfig {
 
     private String header = "Authorization";
     private String prefix = "Bearer ";
+    private String secret;
 }

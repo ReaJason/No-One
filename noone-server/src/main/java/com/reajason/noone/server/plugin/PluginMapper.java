@@ -2,37 +2,19 @@ package com.reajason.noone.server.plugin;
 
 import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.plugin.dto.PluginResponse;
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingConstants;
 
-@Component
-public class PluginMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+public interface PluginMapper {
 
-    public Plugin toEntity(PluginCreateRequest request) {
-        Plugin plugin = new Plugin();
-        plugin.setPluginId(request.getId());
-        plugin.setName(request.getName());
-        plugin.setVersion(request.getVersion());
-        plugin.setLanguage(request.getLanguage());
-        plugin.setType(request.getType());
-        plugin.setRunMode(request.getRunMode());
-        plugin.setPayload(request.getPayload());
-        plugin.setActions(request.getActions());
-        plugin.setMeta(request.getMeta());
-        return plugin;
-    }
+    @Mapping(target = "pluginId", source = "id")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    Plugin toEntity(PluginCreateRequest request);
 
-    public PluginResponse toResponse(Plugin plugin) {
-        PluginResponse response = new PluginResponse();
-        response.setId(plugin.getPluginId());
-        response.setName(plugin.getName());
-        response.setVersion(plugin.getVersion());
-        response.setLanguage(plugin.getLanguage());
-        response.setType(plugin.getType());
-        response.setRunMode(plugin.getRunMode());
-        response.setActions(plugin.getActions());
-        response.setMeta(plugin.getMeta());
-        response.setCreatedAt(plugin.getCreatedAt());
-        response.setUpdatedAt(plugin.getUpdatedAt());
-        return response;
-    }
+    @Mapping(target = "id", source = "pluginId")
+    PluginResponse toResponse(Plugin plugin);
 }

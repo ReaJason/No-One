@@ -7,72 +7,50 @@ import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
 import com.reajason.noone.server.profile.dto.ProfileResponse;
 import com.reajason.noone.server.profile.dto.ProfileUpdateRequest;
 import jakarta.annotation.Resource;
+import org.mapstruct.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-@Component
-public class ProfileMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        uses = {ProfileMapper.PasswordEncoderMapper.class},
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public interface ProfileMapper {
 
-    @Resource
-    private PasswordEncoder passwordEncoder;
+    @Mapping(target = "password", source = "password", qualifiedByName = "encodePassword")
+    @Mapping(target = "protocolConfig", source = "protocolConfig", qualifiedByName = "applyProtocolDefaults")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    Profile toEntity(ProfileCreateRequest request);
 
-    public Profile toEntity(ProfileCreateRequest request) {
-        Profile profile = new Profile();
-        profile.setName(request.getName());
-        profile.setPassword(passwordEncoder.encode(request.getPassword()));
-        profile.setProtocolType(request.getProtocolType());
-        profile.setIdentifier(request.getIdentifier());
-        ProtocolConfig protocolConfig = request.getProtocolConfig();
-        applyProtocolDefaults(protocolConfig);
-        profile.setProtocolConfig(protocolConfig);
-        profile.setRequestTransformations(request.getRequestTransformations());
-        profile.setResponseTransformations(request.getResponseTransformations());
-        return profile;
-    }
+    @Mapping(target = "password", source = "password", qualifiedByName = "encodePassword")
+    @Mapping(target = "protocolConfig", source = "protocolConfig", qualifiedByName = "applyProtocolDefaults")
+    void updateEntity(@MappingTarget Profile profile, ProfileUpdateRequest request);
 
-    public void updateEntity(Profile profile, ProfileUpdateRequest request) {
-        if (request.getName() != null && !request.getName().isBlank()) {
-            profile.setName(request.getName());
-        }
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            profile.setPassword(passwordEncoder.encode(request.getPassword()));
-        }
-        if (request.getProtocolType() != null) {
-            profile.setProtocolType(request.getProtocolType());
-        }
-        if (request.getIdentifier() != null) {
-            profile.setIdentifier(request.getIdentifier());
-        }
-        if (request.getProtocolConfig() != null) {
-            ProtocolConfig protocolConfig = request.getProtocolConfig();
-            applyProtocolDefaults(protocolConfig);
-            profile.setProtocolConfig(protocolConfig);
-        }
-        if (request.getRequestTransformations() != null) {
-            profile.setRequestTransformations(request.getRequestTransformations());
-        }
-        if (request.getResponseTransformations() != null) {
-            profile.setResponseTransformations(request.getResponseTransformations());
-        }
-    }
+    @Mapping(target = "id", source = "id")
+    ProfileResponse toResponse(Profile profile);
 
-    public ProfileResponse toResponse(Profile profile) {
-        ProfileResponse response = new ProfileResponse();
-        response.setId(profile.getId());
-        response.setName(profile.getName());
-        response.setProtocolType(profile.getProtocolType());
-        response.setIdentifier(profile.getIdentifier());
-        response.setProtocolConfig(profile.getProtocolConfig());
-        response.setRequestTransformations(profile.getRequestTransformations());
-        response.setResponseTransformations(profile.getResponseTransformations());
-        response.setCreatedAt(profile.getCreatedAt());
-        response.setUpdatedAt(profile.getUpdatedAt());
-        return response;
-    }
+    @Component
+    class PasswordEncoderMapper {
 
-    private void applyProtocolDefaults(ProtocolConfig protocolConfig) {
-        if (protocolConfig instanceof HttpProtocolConfig httpProtocolConfig) {
-            HttpProtocolConfigDefaults.applyDefaults(httpProtocolConfig);
+        @Resource
+        private PasswordEncoder passwordEncoder;
+
+        @Named("encodePassword")
+        public String encodePassword(String password) {
+            if (password == null || password.isBlank()) {
+                return null; // IGNORE 策略会跳过 null，不会覆盖原值
+            }
+            return passwordEncoder.encode(password);
+        }
+
+        @Named("applyProtocolDefaults")
+        public ProtocolConfig applyProtocolDefaults(ProtocolConfig protocolConfig) {
+            if (protocolConfig == null) return null;
+            if (protocolConfig instanceof HttpProtocolConfig httpProtocolConfig) {
+                HttpProtocolConfigDefaults.applyDefaults(httpProtocolConfig);
+            }
+            return protocolConfig;
         }
     }
 }

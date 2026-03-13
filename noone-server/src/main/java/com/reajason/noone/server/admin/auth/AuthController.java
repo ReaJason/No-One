@@ -36,7 +36,6 @@ public class AuthController {
     private final LoginLogRepository loginLogRepository;
     private final ClientMetadataResolver clientMetadataResolver;
     private final AuthorizationService authorizationService;
-    private final SensitiveActionService sensitiveActionService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
@@ -200,12 +199,6 @@ public class AuthController {
         LoginResponse response = issueSession(user, servletRequest, "NONE", null);
         recordLogin(user, response.getSessionId(), servletRequest, LoginLog.LoginStatus.SUCCESS, null);
         return ResponseEntity.ok(response);
-    }
-
-    @PostMapping("/challenges")
-    public ResponseEntity<SensitiveActionChallengeResponse> createChallenge(
-            @Valid @RequestBody SensitiveActionChallengeRequest request) {
-        return ResponseEntity.ok(sensitiveActionService.createChallenge(request));
     }
 
     private ResponseEntity<LoginErrorResponse> policyRejected(User user, AuthPolicyDecision decision, HttpServletRequest request) {

@@ -4,12 +4,16 @@ import com.reajason.noone.server.config.JwtConfig;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import javax.crypto.SecretKey;
 import java.time.Duration;
@@ -20,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Getter
 @Slf4j
 @Component
 public class JwtUtil {
@@ -27,10 +32,18 @@ public class JwtUtil {
     @Resource
     private JwtConfig jwtConfig;
 
-    // 随机生成 JWT 加密 key，舒服
-    // 但是重启完，之前分发 JWT 都会失效，会触发重新登录，因为 key 变了解密不了了
-    @Getter
-    private final SecretKey signingKey = Jwts.SIG.HS512.key().build();
+    private SecretKey signingKey;
+
+    @PostConstruct
+    public void init() {
+        if (StringUtils.hasText(jwtConfig.getSecret())) {
+            byte[] keyBytes = Decoders.BASE64.decode(jwtConfig.getSecret());
+            signingKey = Keys.hmacShaKeyFor(keyBytes);
+        } else {
+            signingKey = Jwts.SIG.HS512.key().build();
+            log.warn("JWT secret is not configured in jwt.secret, using a randomly generated key. Issued tokens will be invalidated upon server restart.");
+        }
+    }
 
     public String generateToken(Authentication authentication) {
         return generateAccessToken(
@@ -159,10 +172,6 @@ public class JwtUtil {
 
     public String newTokenId() {
         return UUID.randomUUID().toString();
-    }
-
-    public JwtConfig getJwtConfig() {
-        return jwtConfig;
     }
 
     private Claims parseClaims(String token) {

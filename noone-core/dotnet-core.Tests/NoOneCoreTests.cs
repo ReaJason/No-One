@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Xunit;
 
 namespace dotnet_core.Tests;
@@ -123,8 +124,9 @@ public class NoOneCoreTests
         statusRequest["action"] = "status";
         Dictionary<string, object> statusResponse = InvokeEquals(statusRequest);
         Assert.Equal(0, statusResponse["code"]);
-        List<string> pluginNames = AsStringList(statusResponse["pluginCaches"]);
-        Assert.Contains("demo", pluginNames);
+        Dictionary<string, string> pluginNames = AsStringMap(statusResponse["pluginCaches"]);
+        Assert.Equal("demo", pluginNames.Keys.Single());
+        Assert.Null(pluginNames["demo"]);
 
         Dictionary<string, object> cleanRequest = new Dictionary<string, object>();
         cleanRequest["action"] = "clean";
@@ -133,7 +135,7 @@ public class NoOneCoreTests
 
         Dictionary<string, object> statusResponseAfterClean = InvokeEquals(statusRequest);
         Assert.Equal(0, statusResponseAfterClean["code"]);
-        List<string> pluginNamesAfterClean = AsStringList(statusResponseAfterClean["pluginCaches"]);
+        Dictionary<string, string> pluginNamesAfterClean = AsStringMap(statusResponseAfterClean["pluginCaches"]);
         Assert.Empty(pluginNamesAfterClean);
     }
 
@@ -183,16 +185,16 @@ public class NoOneCoreTests
         return new string(chars);
     }
 
-    private static List<string> AsStringList(object values)
+    private static Dictionary<string, string> AsStringMap(object values)
     {
-        IEnumerable enumerable = values as IEnumerable
-            ?? throw new InvalidOperationException("Expected enumerable.");
-        List<string> list = new List<string>();
-        foreach (object value in enumerable)
+        IDictionary dictionary = values as IDictionary
+            ?? throw new InvalidOperationException("Expected dictionary.");
+        Dictionary<string, string> map = new Dictionary<string, string>();
+        foreach (DictionaryEntry entry in dictionary)
         {
-            list.Add((string)value);
+            map[(string)entry.Key] = entry.Value as string;
         }
-        return list;
+        return map;
     }
 
     private class BaseSample
