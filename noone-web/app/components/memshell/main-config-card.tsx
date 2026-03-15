@@ -4,6 +4,7 @@ import { ServerIcon } from "lucide-react";
 import { memo, useCallback, useMemo, useState } from "react";
 
 import { NoOneTabContent } from "@/components/memshell/tabs/noone-tab";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Label } from "@/components/ui/label";
@@ -92,9 +93,17 @@ const MainConfigCard = memo(function MainConfigCard({
     <>
       <Card>
         <CardHeader className="pb-1">
-          <CardTitle className="text-md flex items-center gap-2">
-            <ServerIcon className="h-5" />
-            <span>Main Config</span>
+          <CardTitle className="text-md flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <ServerIcon className="h-5" />
+              <span>Main Config</span>
+            </div>
+            <Badge
+              variant={"outline"}
+              className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+            >
+              MemShellParty v2.7.0-SNAPSHOT
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -132,12 +141,12 @@ const MainConfigCard = memo(function MainConfigCard({
               <input type="hidden" name="shellTool" value={shellTool} />
 
               {/* Options - Responsive grid: 1 col mobile, 2 cols tablet, 4 cols desktop */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <input type="hidden" name="debug" value={debug.toString()} />
                 <div className="flex items-center gap-2">
                   <Switch id="debug" checked={debug} onCheckedChange={setDebug} />
                   <Label htmlFor="debug" className="cursor-pointer">
-                    Debug
+                    DebugMode
                   </Label>
                 </div>
 
@@ -145,7 +154,7 @@ const MainConfigCard = memo(function MainConfigCard({
                 <div className="flex items-center gap-2">
                   <Switch id="probe" checked={probe} onCheckedChange={setProbe} />
                   <Label htmlFor="probe" className="cursor-pointer">
-                    Probe
+                    ProbeMode
                   </Label>
                 </div>
 

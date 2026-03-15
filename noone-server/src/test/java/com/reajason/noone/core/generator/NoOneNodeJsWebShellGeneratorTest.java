@@ -1,5 +1,6 @@
 package com.reajason.noone.core.generator;
 
+import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.*;
 import org.junit.jupiter.api.Test;

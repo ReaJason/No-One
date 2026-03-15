@@ -1,7 +1,9 @@
 package com.reajason.noone.core.generator;
 
 import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.noone.core.shelltool.NoOneServlet;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
+import com.reajason.noone.core.shelltool.NoOneStagelessServlet;
 import com.reajason.noone.core.transform.*;
 import com.reajason.noone.server.profile.Profile;
 import org.junit.jupiter.api.Test;
@@ -14,7 +16,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class NoOneMemShellGeneratorTransformersTest {
+class NoOneStagelessGeneratorTransformersTest {
 
     @Test
     void generatedServlet_shouldApplyRequestAndResponseTransformers() throws Exception {
@@ -37,11 +39,11 @@ class NoOneMemShellGeneratorTransformersTest {
         profile.setResponseTransformations(transformations);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneServlet.class);
+        noOneConfig.setShellClass(NoOneStagelessServlet.class);
         noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneServletTransformers");
-        noOneConfig.setProfile(profile);
+        noOneConfig.setCoreProfile(profile);
 
-        NoOneMemShellGenerator generator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
+        NoOneStagelessGenerator generator = new NoOneStagelessGenerator(shellConfig, noOneConfig);
         byte[] bytes = generator.getBytes();
 //        Files.write(Paths.get("transformations.class"), bytes);
         Class<?> generated = loadGeneratedClass(bytes);
@@ -100,7 +102,7 @@ class NoOneMemShellGeneratorTransformersTest {
             }
         }
 
-        return new DefiningClassLoader(NoOneServlet.class.getClassLoader()).define();
+        return new DefiningClassLoader(NoOneStagelessServlet.class.getClassLoader()).define();
     }
 }
 

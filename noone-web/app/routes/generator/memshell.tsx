@@ -10,9 +10,11 @@ import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
 import ShellResult from "@/components/memshell/shell-result";
+import AddShellButton from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
 import { transformToPostData } from "@/lib/transformer";
 import { type MemShellResult } from "@/types/memshell";
+import { type MemShellFormSchema } from "@/types/schema";
 
 import { useGeneratorContext } from "./generator-context";
 
@@ -51,8 +53,30 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
+  // Extract custom packer config dynamically
+  const packerCustomConfig: Record<string, any> = {};
+  for (const [key, value] of formData.entries()) {
+    if (key.startsWith("packerCustomConfig.")) {
+      const configKey = key.replace("packerCustomConfig.", "");
+      if (typeof value === "string") {
+        if (value === "true") {
+          packerCustomConfig[configKey] = true;
+        } else if (value === "false") {
+          packerCustomConfig[configKey] = false;
+        } else {
+          const num = Number(value);
+          if (!Number.isNaN(num) && value !== "") {
+            packerCustomConfig[configKey] = num;
+          } else {
+            packerCustomConfig[configKey] = value;
+          }
+        }
+      }
+    }
+  }
+
   // Extract form data
-  const data = {
+  const data: MemShellFormSchema = {
     server: formData.get("server") as string,
     serverVersion: formData.get("serverVersion") as string,
     targetJdkVersion: formData.get("targetJdkVersion") as string,
@@ -68,9 +92,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
     headerValue: formData.get("headerValue") as string,
     injectorClassName: formData.get("injectorClassName") as string,
     packingMethod: formData.get("packingMethod") as string,
+    packerCustomConfig: Object.keys(packerCustomConfig).length > 0 ? packerCustomConfig : undefined,
     lambdaSuffix: formData.get("lambdaSuffix") === "true",
     probe: formData.get("probe") === "true",
-    profileId: formData.get("profileId") as string,
+    coreProfileId: (formData.get("coreProfileId") as string | null) ?? undefined,
+    loaderProfileId: (formData.get("loaderProfileId") as string | null) ?? undefined,
+    staging: formData.get("staging") === "true",
   };
 
   // Validation
@@ -122,7 +149,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
       success: true,
       result: result.memShellResult,
       packResult: result.packResult,
-      allPackResults: result.allPackResults,
       packMethod: data.packingMethod,
     };
   } catch (error) {
@@ -145,7 +171,6 @@ export default function MemShell() {
 
   const [generateResult, setGenerateResult] = useState<MemShellResult>();
   const [packResult, setPackResult] = useState<string | undefined>();
-  const [allPackResults, setAllPackResults] = useState<Map<string, string> | undefined>();
   const [packMethod, setPackMethod] = useState<string>("");
 
   // Use ref to track if we've already shown toast for this actionData
@@ -162,7 +187,6 @@ export default function MemShell() {
     if (actionData?.success) {
       setGenerateResult(actionData.result);
       setPackResult(actionData.packResult);
-      setAllPackResults(actionData.allPackResults);
       setPackMethod(actionData.packMethod as string);
       toast.success("Generated successfully");
     } else if (actionData?.error) {
@@ -179,20 +203,23 @@ export default function MemShell() {
     setSelectedShellType(shellType);
   }, []);
 
-  // Optimize: Memoize static JSX (rendering-hoist-jsx)
-  const submitButton = useMemo(
-    () => (
-      <Button className="w-full" type="submit" disabled={isSubmitting}>
-        {isSubmitting ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
-        Generate
-      </Button>
-    ),
-    [isSubmitting],
-  );
+  const addShellParams = useMemo(() => {
+    if (!generateResult) return null;
+    const loaderProfileId = generateResult.shellToolConfig.loaderProfile?.id;
+    const isStaging = Boolean(loaderProfileId);
+    return {
+      profileId: isStaging
+        ? undefined
+        : (generateResult.shellToolConfig.coreProfile?.id ?? undefined),
+      loaderProfileId: isStaging ? (loaderProfileId ?? undefined) : undefined,
+      shellType: generateResult.shellConfig.shellType ?? undefined,
+      staging: isStaging || undefined,
+    };
+  }, [generateResult]);
 
   return (
-    <Form method="post" className="flex flex-col gap-6 xl:flex-row">
-      <div className="flex w-full flex-col gap-2 xl:w-1/2">
+    <Form method="post" className="flex flex-col gap-6">
+      <div className="flex w-full flex-col gap-2">
         <MainConfigCard
           servers={serverConfig}
           mainConfig={mainConfig}
@@ -207,14 +234,19 @@ export default function MemShell() {
           server={selectedServer}
           shellType={selectedShellType}
         />
-        {submitButton}
+        <div className="flex gap-2">
+          <Button className="flex-1" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
+            Generate
+          </Button>
+          {addShellParams && <AddShellButton params={addShellParams} />}
+        </div>
       </div>
-      <div className="flex w-full flex-col gap-2 xl:w-1/2">
+      <div className="flex w-full flex-col gap-2">
         <ShellResult
           packMethod={packMethod}
           generateResult={generateResult}
           packResult={packResult}
-          allPackResults={allPackResults}
         />
       </div>
     </Form>

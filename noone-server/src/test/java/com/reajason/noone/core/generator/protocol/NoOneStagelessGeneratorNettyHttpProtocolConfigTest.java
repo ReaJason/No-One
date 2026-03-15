@@ -3,9 +3,9 @@ package com.reajason.noone.core.generator.protocol;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.noone.core.client.HttpBodyTemplateEngine;
 import com.reajason.noone.core.client.HttpRequestBodyType;
-import com.reajason.noone.core.generator.NoOneConfig;
-import com.reajason.noone.core.generator.NoOneMemShellGenerator;
-import com.reajason.noone.core.shelltool.NoOneNettyHandler;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
+import com.reajason.noone.core.shelltool.NoOneStagelessNettyHandler;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.HttpProtocolConfig;
 import com.reajason.noone.server.profile.config.HttpResponseBodyType;
@@ -27,7 +27,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
+class NoOneStagelessGeneratorNettyHttpProtocolConfigTest {
 
     private static final String TEST_PAYLOAD = "PAYLOAD";
     private static final byte[] TEST_PAYLOAD_BYTES = TEST_PAYLOAD.getBytes(UTF_8);
@@ -39,6 +39,7 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
         @Nested
         @DisplayName("FORM_URLENCODED")
         class FormUrlencodedTests {
+            private static final String RESERVED_PAYLOAD = "A+B/C=";
 
             @Test
             @DisplayName("should extract payload from simple parameter")
@@ -63,6 +64,28 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
             }
 
             @Test
+            @DisplayName("should decode urlencoded payload from simple parameter")
+            void shouldDecodeUrlencodedPayloadFromSimpleParameter() throws Exception {
+                String template = "q={{payload}}";
+                HttpProtocolConfig config = new HttpProtocolConfig();
+                config.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
+                config.setRequestTemplate(template);
+
+                HttpBodyTemplateEngine.EncodedBody encoded = HttpBodyTemplateEngine.encodeRequestBody(
+                        HttpRequestBodyType.FORM_URLENCODED,
+                        template,
+                        RESERVED_PAYLOAD
+                );
+
+                byte[] bytes = generateBytes(config);
+                Class<?> generated = loadGeneratedClass(bytes);
+                Object instance = generated.getDeclaredConstructor().newInstance();
+
+                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                assertEquals(RESERVED_PAYLOAD, new String(extracted, UTF_8));
+            }
+
+            @Test
             @DisplayName("should extract payload with prefix and suffix")
             void shouldExtractPayloadWithPrefixSuffix() throws Exception {
                 String template = "q=prefix{{payload}}suffix";
@@ -82,6 +105,28 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
 
                 byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
+            }
+
+            @Test
+            @DisplayName("should decode urlencoded payload with prefix and suffix")
+            void shouldDecodeUrlencodedPayloadWithPrefixSuffix() throws Exception {
+                String template = "q=prefix{{payload}}suffix";
+                HttpProtocolConfig config = new HttpProtocolConfig();
+                config.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
+                config.setRequestTemplate(template);
+
+                HttpBodyTemplateEngine.EncodedBody encoded = HttpBodyTemplateEngine.encodeRequestBody(
+                        HttpRequestBodyType.FORM_URLENCODED,
+                        template,
+                        RESERVED_PAYLOAD
+                );
+
+                byte[] bytes = generateBytes(config);
+                Class<?> generated = loadGeneratedClass(bytes);
+                Object instance = generated.getDeclaredConstructor().newInstance();
+
+                byte[] extracted = invokeGetArgFromContent(generated, instance, encoded.bytes());
+                assertEquals(RESERVED_PAYLOAD, new String(extracted, UTF_8));
             }
         }
 
@@ -461,11 +506,11 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneNettyHandler.class);
+        noOneConfig.setShellClass(NoOneStagelessNettyHandler.class);
         noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneNettyHandler");
-        noOneConfig.setProfile(profile);
+        noOneConfig.setCoreProfile(profile);
 
-        NoOneMemShellGenerator generator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
+        NoOneStagelessGenerator generator = new NoOneStagelessGenerator(shellConfig, noOneConfig);
         return generator.getBytes();
     }
 
@@ -483,6 +528,6 @@ class NoOneMemShellGeneratorNettyHttpProtocolConfigTest {
             }
         }
 
-        return new DefiningClassLoader(NoOneNettyHandler.class.getClassLoader()).define();
+        return new DefiningClassLoader(NoOneStagelessNettyHandler.class.getClassLoader()).define();
     }
 }

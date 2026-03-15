@@ -1,12 +1,19 @@
 import type { PackerConfig } from "@/types/memshell";
 
 import { PackageIcon } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
+import { PackerCombobox } from "@/components/packer/packer-combobox";
+import { PackerCustomConfigFields } from "@/components/packer/packer-custom-config-fields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FieldLabel, FieldSet } from "@/components/ui/field";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  findPackerEntry,
+  getPackerDefaultConfig,
+  getPackerSchemaFields,
+  normalizePackerCategories,
+} from "@/lib/packer-schema";
 
 interface PackageConfigCardProps {
   packerConfig: PackerConfig | undefined;
@@ -15,7 +22,6 @@ interface PackageConfigCardProps {
   server?: string;
 }
 
-// Optimize: Extract static JSX outside component (rendering-hoist-jsx)
 const LoadingSpinner = () => (
   <div className="flex h-50 items-center justify-center gap-4 p-4">
     <Spinner />
@@ -23,55 +29,79 @@ const LoadingSpinner = () => (
   </div>
 );
 
-// Optimize: Memoize component to prevent unnecessary re-renders (rerender-memo)
 const PackageConfigCard = memo(function PackageConfigCard({
   packerConfig,
   shellType,
   server,
 }: Readonly<PackageConfigCardProps>) {
-  // Optimize: Compute options with efficient filtering (js-early-exit)
-  const options = useMemo(() => {
-    if (!packerConfig) {
-      return [];
-    }
+  const [packingMethod, setPackingMethod] = useState("");
+  const [packerCustomConfig, setPackerCustomConfig] = useState<Record<string, any>>({});
 
-    const filteredOptions = packerConfig.filter((name) => {
-      // Early exit pattern for better performance
-      if (!shellType || shellType === " ") {
-        return true;
-      }
-      if (shellType.startsWith("Agent")) {
-        return name.startsWith("Agent");
-      }
-      if (server?.startsWith("XXL")) {
-        return !name.startsWith("Agent");
-      }
-      return !name.startsWith("Agent") && !name.toLowerCase().startsWith("xxl");
-    });
+  const categories = useMemo(() => normalizePackerCategories(packerConfig), [packerConfig]);
 
-    return filteredOptions.map((name) => ({
-      name: name,
-      value: name,
-    }));
-  }, [packerConfig, shellType, server]);
+  const filteredCategories = useMemo(() => {
+    return categories
+      .map((group) => ({
+        ...group,
+        packers: group.packers.filter((packer) => {
+          if (packer.categoryAnchor) {
+            return false;
+          }
+          const name = packer.name;
+          if (!shellType || shellType === " ") {
+            return true;
+          }
+          if (shellType.startsWith("Agent")) {
+            return name.startsWith("Agent");
+          }
+          if ((server ?? "").startsWith("XXL")) {
+            return !name.startsWith("Agent");
+          }
+          return !name.startsWith("Agent") && !name.toLowerCase().startsWith("xxl");
+        }),
+      }))
+      .filter((group) => group.packers.length > 0);
+  }, [categories, shellType, server]);
 
-  const [packingMethod, setPackingMethod] = useState(options[0]?.value || "");
+  const allOptionNames = useMemo(
+    () => filteredCategories.flatMap((group) => group.packers.map((packer) => packer.name)),
+    [filteredCategories],
+  );
 
-  // Optimize: Fix useEffect to only update when needed (rerender-dependencies)
+  const selectedPackerEntry = useMemo(
+    () =>
+      findPackerEntry(filteredCategories, packingMethod) ??
+      findPackerEntry(categories, packingMethod),
+    [categories, filteredCategories, packingMethod],
+  );
+
+  const selectedSchemaFields = useMemo(
+    () => getPackerSchemaFields(selectedPackerEntry),
+    [selectedPackerEntry],
+  );
+
+  // set default packing method
   useEffect(() => {
-    if (!options.length) {
-      if (packingMethod) {
-        setPackingMethod("");
+    if (allOptionNames.length > 0) {
+      if (!packingMethod || !allOptionNames.includes(packingMethod)) {
+        setPackingMethod(allOptionNames[0]);
       }
-      return;
     }
+  }, [allOptionNames, packingMethod]);
 
-    // Use Set for O(1) lookup performance (js-set-map-lookups)
-    const optionValues = new Set(options.map((option) => option.value));
-    if (!optionValues.has(packingMethod)) {
-      setPackingMethod(options[0].value);
+  // set default packer config only when packer name changes, protecting against Loader reference refreshes
+  const lastPackerNameRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const name = selectedPackerEntry?.name;
+    if (name && name !== lastPackerNameRef.current) {
+      setPackerCustomConfig(getPackerDefaultConfig(selectedPackerEntry) as any);
+      lastPackerNameRef.current = name;
     }
-  }, [options, packingMethod]);
+  }, [selectedPackerEntry]);
+
+  const handleConfigChange = (key: string, value: any) => {
+    setPackerCustomConfig((prev) => ({ ...prev, [key]: value }));
+  };
 
   return (
     <Card className="w-full">
@@ -82,27 +112,23 @@ const PackageConfigCard = memo(function PackageConfigCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {options.length > 0 ? (
-          <FieldSet>
-            <FieldLabel>Packer Method</FieldLabel>
-            <input type="hidden" name="packingMethod" value={packingMethod} />
-            <RadioGroup
-              name="packingMethod-display"
-              value={packingMethod}
-              defaultValue={options[0].value}
-              onValueChange={setPackingMethod}
-              className="grid grid-cols-2 md:grid-cols-3"
-            >
-              {options.map(({ name, value }) => (
-                <div key={value} className="flex items-center space-x-3">
-                  <RadioGroupItem value={value} id={value} />
-                  <FieldLabel className="text-xs" htmlFor={value}>
-                    {name}
-                  </FieldLabel>
-                </div>
-              ))}
-            </RadioGroup>
-          </FieldSet>
+        {allOptionNames.length > 0 ? (
+          <>
+            <Field className="gap-1">
+              <FieldLabel>Packer Method</FieldLabel>
+              <PackerCombobox
+                categories={filteredCategories}
+                value={packingMethod}
+                onValueChange={setPackingMethod}
+                placeholder="Select packer"
+              />
+            </Field>
+            <PackerCustomConfigFields
+              fields={selectedSchemaFields}
+              values={packerCustomConfig}
+              onValueChange={handleConfigChange}
+            />
+          </>
         ) : (
           <LoadingSpinner />
         )}

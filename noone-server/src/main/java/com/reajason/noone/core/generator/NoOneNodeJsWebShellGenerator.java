@@ -1,5 +1,6 @@
 package com.reajason.noone.core.generator;
 
+import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.generator.protocol.HttpProtocolMetadata;
 import com.reajason.noone.core.generator.transform.TransformDirection;
 import com.reajason.noone.core.transform.*;
@@ -61,7 +62,7 @@ public class NoOneNodeJsWebShellGenerator {
         String wrapResponse = DEFAULT_WRAP_RESPONSE;
         String helperBlock = "";
 
-        Profile profile = config.getProfile();
+        Profile profile = config.getCoreProfile();
         if (profile != null) {
             isAuthed = generateIsAuthed(profile.getIdentifier());
 

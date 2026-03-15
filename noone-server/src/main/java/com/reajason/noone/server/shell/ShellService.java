@@ -3,10 +3,10 @@ package com.reajason.noone.server.shell;
 import com.reajason.noone.Constants;
 import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.exception.*;
-import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
-import com.reajason.noone.server.plugin.Plugin;
-import com.reajason.noone.server.plugin.JavaPluginPayloadService;
 import com.reajason.noone.server.config.AuthorizationService;
+import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
+import com.reajason.noone.server.plugin.JavaPluginPayloadService;
+import com.reajason.noone.server.plugin.Plugin;
 import com.reajason.noone.server.shell.dto.*;
 import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import com.reajason.noone.server.shell.oplog.ShellOperationType;
@@ -22,12 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * Shell service with JavaManager integration
@@ -67,6 +62,7 @@ public class ShellService {
      * Create a new shell connection (without automatic connection test)
      */
     public ShellResponse create(ShellCreateRequest request) {
+        validateRuntimeConfig(request.getStaging(), request.getLoaderProfileId());
         Shell shell = shellMapper.toEntity(request);
         shell.setStatus(ShellStatus.DISCONNECTED);
 
@@ -90,6 +86,11 @@ public class ShellService {
     public ShellResponse update(Long id, ShellUpdateRequest request) {
         Shell shell = shellRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        boolean staging = request.getStaging() != null ? request.getStaging() : Boolean.TRUE.equals(shell.getStaging());
+        Long loaderProfileId = request.getLoaderProfileId() != null
+                ? request.getLoaderProfileId()
+                : shell.getLoaderProfileId();
+        validateRuntimeConfig(staging, loaderProfileId);
 
         shellMapper.updateEntity(shell, request);
         Shell saved = shellRepository.save(shell);
@@ -193,10 +194,14 @@ public class ShellService {
      * Used by create/edit pages to validate connection before saving.
      */
     public Map<String, Object> testConfig(ShellTestConfigRequest request) {
+        validateRuntimeConfig(request.getStaging(), request.getLoaderProfileId());
         Shell tempShell = new Shell();
         tempShell.setUrl(request.getUrl());
+        tempShell.setStaging(Boolean.TRUE.equals(request.getStaging()));
+        tempShell.setShellType(request.getShellType());
         tempShell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         tempShell.setProfileId(request.getProfileId());
+        tempShell.setLoaderProfileId(request.getLoaderProfileId());
         tempShell.setProxyUrl(request.getProxyUrl());
         tempShell.setCustomHeaders(request.getCustomHeaders());
         tempShell.setConnectTimeoutMs(request.getConnectTimeoutMs());
@@ -215,6 +220,12 @@ public class ShellService {
             return failureResponse("Test failed: " + safeMessage(e), e);
         } catch (Exception e) {
             return failureResponse("Test failed: " + safeMessage(e), e);
+        }
+    }
+
+    private void validateRuntimeConfig(Boolean staging, Long loaderProfileId) {
+        if (Boolean.TRUE.equals(staging) && loaderProfileId == null) {
+            throw new IllegalArgumentException("Loader profile ID cannot be null when staging is enabled");
         }
     }
 

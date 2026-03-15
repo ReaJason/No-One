@@ -1,7 +1,13 @@
 import type { InjectorConfig, ShellConfig, ShellToolConfig } from "@/types/memshell";
 import type { MemShellFormSchema } from "@/types/schema";
 
+const toOptionalValue = (value?: string) => {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+};
+
 export function transformToPostData(formValue: MemShellFormSchema) {
+  const isStagingMode = formValue.staging === true;
   const shellConfig: ShellConfig = {
     server: formValue.server,
     serverVersion: formValue.serverVersion,
@@ -20,7 +26,9 @@ export function transformToPostData(formValue: MemShellFormSchema) {
     godzillaKey: formValue.godzillaKey,
     headerName: formValue.headerName,
     headerValue: formValue.headerValue,
-    profileId: formValue.profileId,
+    coreProfileId: toOptionalValue(formValue.coreProfileId),
+    staging: isStagingMode,
+    loaderProfileId: isStagingMode ? toOptionalValue(formValue.loaderProfileId) : undefined,
   };
 
   const injectorConfig: InjectorConfig = {
@@ -32,6 +40,9 @@ export function transformToPostData(formValue: MemShellFormSchema) {
     shellConfig,
     shellToolConfig,
     injectorConfig,
-    packer: formValue.packingMethod,
+    packerSpec: {
+      name: formValue.packingMethod,
+      config: formValue.packerCustomConfig ?? {},
+    },
   };
 }

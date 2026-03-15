@@ -1,15 +1,20 @@
 package com.reajason.noone.core;
 
 import com.reajason.noone.Constants;
-import com.reajason.noone.core.client.Client;
+import com.reajason.noone.server.profile.Profile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class NodeJsConnection extends ShellConnection {
 
-    public NodeJsConnection(Client client) {
-        super(client);
+    public NodeJsConnection(ConnectionConfig config) {
+        super(config);
+    }
+
+    @Override
+    protected byte[] getCoreBytes(String shellType, Profile loaderProfile) {
+        return new byte[0];
     }
 
     @Override

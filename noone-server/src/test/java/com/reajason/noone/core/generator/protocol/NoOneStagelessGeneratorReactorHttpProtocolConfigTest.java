@@ -1,35 +1,39 @@
 package com.reajason.noone.core.generator.protocol;
 
+import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.noone.core.client.HttpBodyTemplateEngine;
 import com.reajason.noone.core.client.HttpRequestBodyType;
-import com.reajason.noone.core.generator.NoOneConfig;
-import com.reajason.noone.core.generator.NoOneMemShellGenerator;
-import com.reajason.noone.core.shelltool.NoOneServlet;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
+import com.reajason.noone.core.shelltool.NoOneStagelessWebFilter;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.HttpProtocolConfig;
 import com.reajason.noone.server.profile.config.HttpResponseBodyType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.objectweb.asm.ClassReader;
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.core.io.buffer.DefaultDataBufferFactory;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
+import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
 import java.lang.reflect.Method;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-class NoOneMemShellGeneratorHttpProtocolConfigTest {
+class NoOneStagelessGeneratorReactorHttpProtocolConfigTest {
 
     private static final String TEST_PAYLOAD = "PAYLOAD";
     private static final byte[] TEST_PAYLOAD_BYTES = TEST_PAYLOAD.getBytes(UTF_8);
@@ -51,13 +55,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getParameter("q")).thenReturn(TEST_PAYLOAD);
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body("q=" + TEST_PAYLOAD);
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
 
@@ -70,13 +77,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getParameter("q")).thenReturn("prefix" + TEST_PAYLOAD + "suffix");
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .body("q=prefix" + TEST_PAYLOAD + "suffix");
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -100,14 +110,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getContentType()).thenReturn(encoded.contentType());
-                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.parseMediaType(encoded.contentType()))
+                        .body(Flux.just(toDataBuffer(encoded.bytes())));
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -131,13 +143,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(new String(encoded.bytes(), UTF_8));
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -161,13 +176,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.APPLICATION_XML)
+                        .body(new String(encoded.bytes(), UTF_8));
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -191,13 +209,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .body(new String(encoded.bytes(), UTF_8));
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -221,13 +242,16 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 config.setRequestTemplate(template);
 
                 byte[] bytes = generateBytes(config);
+                assertNoAdviceReferences(bytes);
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletRequest request = mock(HttpServletRequest.class);
-                when(request.getInputStream()).thenReturn(newServletInputStream(encoded.bytes()));
+                MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(Flux.just(toDataBuffer(encoded.bytes())));
+                MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-                byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
+                byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
                 assertEquals(TEST_PAYLOAD, new String(extracted, UTF_8));
             }
         }
@@ -324,10 +348,10 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletResponse response = mock(HttpServletResponse.class);
+                MockServerHttpResponse response = new MockServerHttpResponse();
                 invokeWrapResponse(generated, instance, response);
 
-                verify(response).setStatus(418);
+                assertEquals(HttpStatus.I_AM_A_TEAPOT, response.getStatusCode());
             }
 
             @Test
@@ -340,10 +364,10 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletResponse response = mock(HttpServletResponse.class);
+                MockServerHttpResponse response = new MockServerHttpResponse();
                 invokeWrapResponse(generated, instance, response);
 
-                verify(response).setStatus(201);
+                assertEquals(HttpStatus.CREATED, response.getStatusCode());
             }
         }
 
@@ -363,14 +387,14 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletResponse response = mock(HttpServletResponse.class);
+                MockServerHttpResponse response = new MockServerHttpResponse();
                 invokeWrapResponse(generated, instance, response);
 
-                verify(response).setHeader("X-Custom", "value");
+                assertEquals("value", response.getHeaders().getFirst("X-Custom"));
             }
 
             @Test
-            @DisplayName("should set multiple headers in order")
+            @DisplayName("should set multiple headers")
             void shouldSetMultipleHeaders() throws Exception {
                 HttpProtocolConfig config = new HttpProtocolConfig();
                 Map<String, String> headers = new LinkedHashMap<>();
@@ -383,13 +407,12 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
                 Class<?> generated = loadGeneratedClass(bytes);
                 Object instance = generated.getDeclaredConstructor().newInstance();
 
-                HttpServletResponse response = mock(HttpServletResponse.class);
+                MockServerHttpResponse response = new MockServerHttpResponse();
                 invokeWrapResponse(generated, instance, response);
 
-                InOrder inOrder = inOrder(response);
-                inOrder.verify(response).setHeader("X-First", "first-value");
-                inOrder.verify(response).setHeader("X-Second", "second-value");
-                inOrder.verify(response).setHeader("Content-Type", "application/json");
+                assertEquals("first-value", response.getHeaders().getFirst("X-First"));
+                assertEquals("second-value", response.getHeaders().getFirst("X-Second"));
+                assertEquals("application/json", response.getHeaders().getFirst("Content-Type"));
             }
         }
     }
@@ -399,11 +422,11 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
     class IntegrationTests {
 
         @Test
-        @DisplayName("should apply complete HTTP protocol config via advice mapping")
-        void httpProtocolConfig_shouldBeAppliedViaAdviceMapping() throws Exception {
+        @DisplayName("should apply complete HTTP protocol config to Reactor WebFilter")
+        void httpProtocolConfig_shouldBeAppliedToReactorWebFilter() throws Exception {
             HttpProtocolConfig http = new HttpProtocolConfig();
-            http.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.FORM_URLENCODED);
-            http.setRequestTemplate("username=admin&action=login&q={{payload}}&token=123456");
+            http.setRequestBodyType(com.reajason.noone.server.profile.config.HttpRequestBodyType.TEXT);
+            http.setRequestTemplate("pre{{payload}}suf");
             http.setResponseBodyType(HttpResponseBodyType.TEXT);
             http.setResponseTemplate("hello{{payload}}world");
             http.setResponseStatusCode(418);
@@ -413,35 +436,42 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
             http.setResponseHeaders(responseHeaders);
 
             byte[] bytes = generateBytes(http);
+            assertNoAdviceReferences(bytes);
             Class<?> generated = loadGeneratedClass(bytes);
-
             Object instance = generated.getDeclaredConstructor().newInstance();
 
-            HttpServletRequest request = mock(HttpServletRequest.class);
-            when(request.getParameter("q")).thenReturn("PAYLOAD");
+            // Test getArgFromRequest
+            MockServerHttpRequest request = MockServerHttpRequest.post("/")
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("prePAYLOADsuf");
+            MockServerWebExchange exchange = MockServerWebExchange.from(request);
 
-            byte[] extracted = invokeGetArgFromRequest(generated, instance, request);
-            assertEquals("PAYLOAD", new String(extracted, StandardCharsets.UTF_8));
+            byte[] extracted = invokeGetArgFromRequest(generated, instance, exchange);
+            assertEquals("PAYLOAD", new String(extracted, UTF_8));
 
-            byte[] wrappedData = invokeWrapResData(generated, instance, "PAYLOAD".getBytes(StandardCharsets.UTF_8));
-            assertEquals("helloPAYLOADworld", new String(wrappedData, StandardCharsets.UTF_8));
+            // Test wrapResData
+            byte[] wrappedData = invokeWrapResData(generated, instance, "PAYLOAD".getBytes(UTF_8));
+            assertEquals("helloPAYLOADworld", new String(wrappedData, UTF_8));
 
-            HttpServletResponse response = mock(HttpServletResponse.class);
+            // Test wrapResponse
+            MockServerHttpResponse response = new MockServerHttpResponse();
             invokeWrapResponse(generated, instance, response);
 
-            verify(response).setStatus(418);
-            verify(response).setHeader("X-Test", "1");
-            verify(response).setHeader("Content-Type", "text/plain; charset=utf-8");
-            verifyNoMoreInteractions(response);
+            assertEquals(HttpStatus.I_AM_A_TEAPOT, response.getStatusCode());
+            assertEquals("1", response.getHeaders().getFirst("X-Test"));
+            assertEquals("text/plain; charset=utf-8", response.getHeaders().getFirst("Content-Type"));
         }
     }
 
     // Helper methods for reflection-based invocation
 
-    private static byte[] invokeGetArgFromRequest(Class<?> clazz, Object instance, HttpServletRequest request) throws Exception {
-        Method method = clazz.getDeclaredMethod("getArgFromRequest", Object.class);
+    private static byte[] invokeGetArgFromRequest(Class<?> clazz, Object instance, ServerWebExchange exchange) throws Exception {
+        Method method = clazz.getDeclaredMethod("getArgFromRequest", ServerWebExchange.class);
         method.setAccessible(true);
-        return (byte[]) method.invoke(instance, request);
+
+        @SuppressWarnings("unchecked")
+        Mono<byte[]> mono = (Mono<byte[]>) method.invoke(instance, exchange);
+        return mono.block();
     }
 
     private static byte[] invokeWrapResData(Class<?> clazz, Object instance, byte[] payload) throws Exception {
@@ -450,19 +480,23 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
         return (byte[]) method.invoke(instance, payload);
     }
 
-    private static void invokeWrapResponse(Class<?> clazz, Object instance, HttpServletResponse response) throws Exception {
-        Method method = clazz.getDeclaredMethod("wrapResponse", Object.class);
+    private static void invokeWrapResponse(Class<?> clazz, Object instance, ServerHttpResponse response) throws Exception {
+        Method method = clazz.getDeclaredMethod("wrapResponse", ServerHttpResponse.class);
         method.setAccessible(true);
         method.invoke(instance, response);
     }
 
     // Helper methods for test setup
 
+    private static DataBuffer toDataBuffer(byte[] bytes) {
+        return new DefaultDataBufferFactory().wrap(bytes);
+    }
+
     private static byte[] generateBytes(HttpProtocolConfig http) {
         ShellConfig shellConfig = ShellConfig.builder()
                 .server("Tomcat")
                 .shellTool("Custom")
-                .shellType("Servlet")
+                .shellType(ShellType.SPRING_WEBFLUX_WEB_FILTER)
                 .targetJreVersion(52)
                 .build();
 
@@ -470,12 +504,18 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneServlet.class);
-        noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneServlet");
-        noOneConfig.setProfile(profile);
+        noOneConfig.setShellClass(NoOneStagelessWebFilter.class);
+        noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneWebFilter");
+        noOneConfig.setCoreProfile(profile);
 
-        NoOneMemShellGenerator generator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
+        NoOneStagelessGenerator generator = new NoOneStagelessGenerator(shellConfig, noOneConfig);
         return generator.getBytes();
+    }
+
+    private static void assertNoAdviceReferences(byte[] bytes) {
+        String classFile = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1);
+        assertFalse(classFile.contains("com/reajason/noone/core/generator/protocol/reactor/ReactorGetArgFromRequestBodyAdvice"));
+        assertFalse(classFile.contains("com/reajason/noone/core/generator/protocol/reactor/ReactorGetArgFromRequestFormUrlencodedAdvice"));
     }
 
     private static Class<?> loadGeneratedClass(byte[] bytes) {
@@ -492,21 +532,6 @@ class NoOneMemShellGeneratorHttpProtocolConfigTest {
             }
         }
 
-        return new DefiningClassLoader(NoOneServlet.class.getClassLoader()).define();
-    }
-
-    private static ServletInputStream newServletInputStream(byte[] bytes) {
-        ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-        return new ServletInputStream() {
-            @Override
-            public int read() {
-                return in.read();
-            }
-
-            @Override
-            public int read(byte[] b, int off, int len) {
-                return in.read(b, off, len);
-            }
-        };
+        return new DefiningClassLoader(NoOneStagelessWebFilter.class.getClassLoader()).define();
     }
 }

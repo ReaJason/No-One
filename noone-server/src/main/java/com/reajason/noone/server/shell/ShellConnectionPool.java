@@ -1,18 +1,12 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.core.DotNetConnection;
-import com.reajason.noone.core.JavaConnection;
-import com.reajason.noone.core.NodeJsConnection;
-import com.reajason.noone.core.ShellConnection;
+import com.reajason.noone.core.*;
 import com.reajason.noone.core.client.*;
+import com.reajason.noone.core.client.HttpRequestBodyType;
+import com.reajason.noone.core.client.HttpResponseBodyType;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.IdentifierConfig;
-import com.reajason.noone.server.profile.config.IdentifierLocation;
-import com.reajason.noone.server.profile.config.ProtocolConfig;
-import com.reajason.noone.server.profile.config.ProtocolType;
-import com.reajason.noone.server.profile.config.WebSocketProtocolConfig;
+import com.reajason.noone.server.profile.config.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -40,14 +34,21 @@ public class ShellConnectionPool {
         }
 
         Profile profile = loadProfile(shell.getProfileId());
-        String signature = signature(shell, profile);
+        Profile loaderProfile;
+        if (shell.getStaging()) {
+            loaderProfile = loadProfile(shell.getLoaderProfileId());
+        } else {
+            loaderProfile = null;
+        }
+
+        String signature = signature(shell, profile, loaderProfile);
 
         CacheEntry entry = cache.compute(shell.getId(), (id, existing) -> {
             if (existing != null && Objects.equals(existing.signature(), signature)) {
                 return existing;
             }
 
-            ShellConnection next = createConnection(shell, profile);
+            ShellConnection next = createConnection(shell, profile, loaderProfile);
             if (existing != null) {
                 safeDisconnect(existing.connection());
             }
@@ -59,7 +60,11 @@ public class ShellConnectionPool {
 
     public ShellConnection createUncached(Shell shell) {
         Profile profile = loadProfile(shell.getProfileId());
-        return createConnection(shell, profile);
+        Profile loaderProfile = null;
+        if (shell.getStaging()) {
+            loaderProfile = loadProfile(shell.getLoaderProfileId());
+        }
+        return createConnection(shell, profile, loaderProfile);
     }
 
     public void evict(Long shellId) {
@@ -77,21 +82,33 @@ public class ShellConnectionPool {
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found: " + profileId));
     }
 
-    private ShellConnection createConnection(Shell shell, Profile profile) {
+    private ShellConnection createConnection(Shell shell, Profile profile, Profile loaderProfile) {
         ClientConfig config = buildClientConfig(shell, profile);
-
-        Client client;
-        if (profile.getProtocolType() == ProtocolType.WEBSOCKET) {
-            client = new WebSocketClient(shell.getUrl(), config);
-        } else {
-            client = new HttpClient(shell.getUrl(), config);
+        Client coreClient = null;
+        if (profile.getProtocolType() == ProtocolType.HTTP) {
+            coreClient = new HttpClient(shell.getUrl(), config);
         }
 
         ShellLanguage language = effectiveLanguage(shell);
+        Client loaderClient = null;
+        if (shell.getStaging()) {
+            ClientConfig loaderConfig = buildClientConfig(shell, loaderProfile);
+            if (profile.getProtocolType() == ProtocolType.HTTP) {
+                loaderClient = new HttpClient(shell.getUrl(), loaderConfig);
+            }
+        }
+
+        ConnectionConfig connectionConfig = ConnectionConfig.builder()
+                .coreClient(coreClient)
+                .loaderClient(loaderClient)
+                .shellType(shell.getShellType())
+                .coreProfile(profile)
+                .build();
+
         return switch (language) {
-            case JAVA -> new JavaConnection(client);
-            case NODEJS -> new NodeJsConnection(client);
-            case DOTNET ->  new DotNetConnection(client);
+            case JAVA -> new JavaConnection(connectionConfig);
+            case NODEJS -> new NodeJsConnection(connectionConfig);
+            case DOTNET -> new DotNetConnection(connectionConfig);
         };
     }
 
@@ -249,10 +266,12 @@ public class ShellConnectionPool {
         }
     }
 
-    private String signature(Shell shell, Profile profile) {
+    private String signature(Shell shell, Profile profile, Profile loaderProfile) {
         StringBuilder sb = new StringBuilder();
         sb.append("url=").append(nullToEmpty(shell.getUrl())).append(SIG_DELIMITER);
         sb.append("language=").append(effectiveLanguage(shell).getValue()).append(SIG_DELIMITER);
+        sb.append("staging=").append(Boolean.TRUE.equals(shell.getStaging())).append(SIG_DELIMITER);
+        sb.append("shellType=").append(nullToEmpty(shell.getShellType())).append(SIG_DELIMITER);
         sb.append("profileId=").append(shell.getProfileId()).append(SIG_DELIMITER);
         sb.append("protocolType=").append(profile.getProtocolType()).append(SIG_DELIMITER);
         sb.append("profileUpdatedAt=").append(nullToEmpty(profile.getUpdatedAt())).append(SIG_DELIMITER);
@@ -263,6 +282,10 @@ public class ShellConnectionPool {
         sb.append("maxRetries=").append(shell.getMaxRetries()).append(SIG_DELIMITER);
         sb.append("retryDelayMs=").append(shell.getRetryDelayMs()).append(SIG_DELIMITER);
         sb.append("customHeaders=").append(stableHeaders(shell.getCustomHeaders())).append(SIG_DELIMITER);
+        if (loaderProfile != null) {
+            sb.append("loaderProfileId=").append(loaderProfile.getId()).append(SIG_DELIMITER);
+            sb.append("loaderProfileUpdatedAt=").append(nullToEmpty(loaderProfile.getUpdatedAt())).append(SIG_DELIMITER);
+        }
         return sb.toString();
     }
 
@@ -292,4 +315,3 @@ public class ShellConnectionPool {
     private record CacheEntry(String signature, ShellConnection connection) {
     }
 }
-

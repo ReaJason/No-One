@@ -17,10 +17,13 @@ export const memShellFormSchema = z.object({
   headerValue: z.string().optional(),
   injectorClassName: z.string().optional(),
   packingMethod: z.string().min(1),
+  packerCustomConfig: z.record(z.string(), z.any()).optional(),
   shrink: z.boolean().optional(),
   lambdaSuffix: z.boolean().optional(),
   probe: z.boolean().optional(),
-  profileId: z.string().optional(),
+  coreProfileId: z.string().optional(),
+  loaderProfileId: z.string().optional(),
+  staging: z.boolean().optional(),
 });
 
 export type MemShellFormSchema = z.infer<typeof memShellFormSchema>;

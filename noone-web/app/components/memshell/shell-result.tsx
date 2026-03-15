@@ -1,23 +1,10 @@
 import type { MemShellResult } from "@/types/memshell";
 
-import { DownloadIcon, PlusIcon } from "lucide-react";
-import { memo, useCallback, useState } from "react";
-import { useNavigate } from "react-router";
+import { DownloadIcon } from "lucide-react";
+import { memo } from "react";
 import { toast } from "sonner";
 
-import { QuickUsage } from "@/components/memshell/quick-usage";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { downloadBytes } from "@/lib/utils";
 
@@ -27,7 +14,6 @@ import { ResultComponent } from "./results/result-component";
 
 interface ShellResultProps {
   packResult: string | undefined;
-  allPackResults: Map<string, string> | undefined;
   packMethod: string;
   generateResult?: MemShellResult;
 }
@@ -35,63 +21,11 @@ interface ShellResultProps {
 // Optimize: Memoize component (rerender-memo)
 const ShellResult = memo(function ShellResult({
   packResult,
-  allPackResults,
   packMethod,
   generateResult,
 }: Readonly<ShellResultProps>) {
-  const navigate = useNavigate();
-  const [targetUrl, setTargetUrl] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [urlError, setUrlError] = useState("");
-  const profileId = generateResult?.shellToolConfig.profile?.id;
-
-  // Optimize: Stable callback (rerender-functional-setstate)
-  const handleUrlChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTargetUrl(e.target.value);
-      if (urlError) setUrlError("");
-    },
-    [urlError],
-  );
-
-  const handleAddShell = useCallback(() => {
-    // Validate URL
-    if (!targetUrl.trim()) {
-      setUrlError("URL is required");
-      return;
-    }
-
-    try {
-      new URL(targetUrl);
-    } catch {
-      setUrlError("Please enter a valid URL");
-      return;
-    }
-
-    if (!profileId) {
-      toast.error("No profile selected");
-      return;
-    }
-
-    // Redirect to create shell page with URL and profile as query params
-    const params = new URLSearchParams({
-      shellUrl: targetUrl,
-      profileId: profileId,
-    });
-    navigate(`/shells/create?${params.toString()}`);
-  }, [targetUrl, profileId, navigate]);
-
-  const handleDialogOpenChange = useCallback((open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      // Reset state when dialog closes
-      setTargetUrl("");
-      setUrlError("");
-    }
-  }, []);
-
   if (!generateResult) {
-    return <QuickUsage />;
+    return <></>;
   }
 
   const height = 553;
@@ -107,51 +41,9 @@ const ShellResult = memo(function ShellResult({
         <BasicInfo generateResult={generateResult} />
         <ResultComponent
           packResult={packResult}
-          allPackResults={allPackResults}
           packMethod={packMethod}
           generateResult={generateResult}
         />
-        {/* Add Shell Button */}
-        <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-          <DialogTrigger
-            render={
-              <Button className="w-full" variant="outline">
-                <PlusIcon className="h-4 w-4" />
-                Add Shell
-              </Button>
-            }
-          ></DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Shell Connection</DialogTitle>
-            </DialogHeader>
-            <Field data-invalid={!!urlError}>
-              <FieldLabel htmlFor="target-url">Shell URL *</FieldLabel>
-              <Input
-                id="target-url"
-                type="url"
-                placeholder="http://example.com/shell.jsp"
-                value={targetUrl}
-                onChange={handleUrlChange}
-                aria-invalid={!!urlError}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddShell();
-                  }
-                }}
-              />
-              {urlError && <FieldError>{urlError}</FieldError>}
-            </Field>
-            <DialogFooter>
-              <DialogClose render={<Button variant="outline">Cancel</Button>}></DialogClose>
-              <Button onClick={handleAddShell}>
-                <PlusIcon className="h-4 w-4" />
-                Continue
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </TabsContent>
       <TabsContent value="shell" className="mt-4">
         <CodeViewer

@@ -21,6 +21,10 @@ public class ShellCreateRequest {
     @NotBlank(message = "URL cannot be blank")
     private String url;
 
+    private Boolean staging;
+
+    private String shellType;
+
     private ShellLanguage language;
 
     private String group;
@@ -29,6 +33,8 @@ public class ShellCreateRequest {
 
     @NotNull(message = "Profile ID cannot be null")
     private Long profileId;
+
+    private Long loaderProfileId;
 
     private String proxyUrl;
 

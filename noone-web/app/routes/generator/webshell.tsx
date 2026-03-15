@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from "react-router";
 
-import { Download, FileCode2, LoaderCircle, PlusIcon, WandSparkles } from "lucide-react";
+import { Download, FileCode2, LoaderCircle, WandSparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Form, useActionData, useNavigate, useNavigation } from "react-router";
+import { Form, useActionData, useNavigation } from "react-router";
 import { toast } from "sonner";
 
 import { createAuthFetch } from "@/api.server";
@@ -14,17 +14,9 @@ import {
   type WebShellLanguage,
 } from "@/api/webshell-api";
 import CodeViewer from "@/components/memshell/code-viewer";
+import AddShellButton from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Empty,
   EmptyDescription,
@@ -32,8 +24,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -137,7 +127,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 export default function WebShell() {
   const { profiles } = useGeneratorContext();
-  const navigate = useNavigate();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isGenerating = navigation.state === "submitting";
@@ -146,9 +135,6 @@ export default function WebShell() {
   const [format, setFormat] = useState<WebShellFormat>(getDefaultWebShellFormat("java"));
   const [servletModule, setServletModule] = useState<"JAVAX" | "JAKARTA">("JAVAX");
   const [result, setResult] = useState<WebShellGenerateResponse | null>(null);
-  const [targetUrl, setTargetUrl] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [urlError, setUrlError] = useState("");
   const isJavaLanguage = language === "java";
   const formatOptions = getFormatsByLanguage(language);
 
@@ -183,48 +169,6 @@ export default function WebShell() {
   const handleFormatChange = useCallback((nextFormat: string) => {
     setFormat(nextFormat as WebShellFormat);
     setResult(null);
-  }, []);
-
-  const handleUrlChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTargetUrl(e.target.value);
-      if (urlError) setUrlError("");
-    },
-    [urlError],
-  );
-
-  const handleAddShell = useCallback(() => {
-    if (!targetUrl.trim()) {
-      setUrlError("URL is required");
-      return;
-    }
-
-    try {
-      new URL(targetUrl);
-    } catch {
-      setUrlError("Please enter a valid URL");
-      return;
-    }
-
-    if (!selectedProfileId) {
-      toast.error("No profile selected");
-      return;
-    }
-
-    const params = new URLSearchParams({
-      shellUrl: targetUrl,
-      profileId: selectedProfileId,
-      language: generatedLanguage,
-    });
-    navigate(`/shells/create?${params.toString()}`);
-  }, [targetUrl, selectedProfileId, generatedLanguage, navigate]);
-
-  const handleDialogOpenChange = useCallback((open: boolean) => {
-    setIsDialogOpen(open);
-    if (!open) {
-      setTargetUrl("");
-      setUrlError("");
-    }
   }, []);
 
   const handleDownload = useCallback(() => {
@@ -366,19 +310,29 @@ export default function WebShell() {
 
             <Separator />
 
-            <Button
-              type="submit"
-              disabled={isGenerating || !selectedProfileId}
-              className="w-full sm:w-auto"
-              size="lg"
-            >
-              {isGenerating ? (
-                <LoaderCircle className="size-4 animate-spin" />
-              ) : (
-                <WandSparkles className="size-4" />
+            <div className="flex gap-2">
+              <Button
+                type="submit"
+                disabled={isGenerating || !selectedProfileId}
+                className="flex-1 sm:flex-initial"
+              >
+                {isGenerating ? (
+                  <LoaderCircle className="size-4 animate-spin" />
+                ) : (
+                  <WandSparkles className="size-4" />
+                )}
+                {isGenerating ? "Generating..." : "Generate"}
+              </Button>
+              {result && (
+                <AddShellButton
+                  params={{
+                    profileId: selectedProfileId,
+                    language: generatedLanguage,
+                  }}
+                  placeholder={`http://example.com/${result.fileName}`}
+                />
               )}
-              {isGenerating ? "Generating..." : "Generate WebShell"}
-            </Button>
+            </div>
           </CardContent>
         </Card>
       </Form>
@@ -392,51 +346,9 @@ export default function WebShell() {
             <span className="text-sm font-medium text-muted-foreground">{result.fileName}</span>
           }
           button={
-            <div className="flex items-center gap-1">
-              <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
-                <DialogTrigger
-                  render={
-                    <Button variant="ghost" size="sm" className="gap-1.5">
-                      <PlusIcon className="size-4" />
-                      Add Shell
-                    </Button>
-                  }
-                ></DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Shell Connection</DialogTitle>
-                  </DialogHeader>
-                  <Field data-invalid={!!urlError}>
-                    <FieldLabel htmlFor="ws-target-url">Shell URL *</FieldLabel>
-                    <Input
-                      id="ws-target-url"
-                      type="url"
-                      placeholder={`http://example.com/${result.fileName}`}
-                      value={targetUrl}
-                      onChange={handleUrlChange}
-                      aria-invalid={!!urlError}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddShell();
-                        }
-                      }}
-                    />
-                    {urlError && <FieldError>{urlError}</FieldError>}
-                  </Field>
-                  <DialogFooter>
-                    <DialogClose render={<Button variant="outline">Cancel</Button>}></DialogClose>
-                    <Button onClick={handleAddShell}>
-                      <PlusIcon className="h-4 w-4" />
-                      Continue
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-              <Button variant="ghost" size="sm" onClick={handleDownload}>
-                <Download className="size-4" />
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={handleDownload}>
+              <Download className="size-4" />
+            </Button>
           }
           height="70vh"
         />

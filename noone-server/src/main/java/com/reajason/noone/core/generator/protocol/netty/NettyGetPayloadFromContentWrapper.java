@@ -6,6 +6,8 @@ import com.reajason.noone.server.profile.config.HttpRequestBodyType;
 import net.bytebuddy.asm.Advice;
 import net.bytebuddy.dynamic.DynamicType;
 
+import java.net.URLDecoder;
+
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
 public class NettyGetPayloadFromContentWrapper {
@@ -92,7 +94,7 @@ public class NettyGetPayloadFromContentWrapper {
                 if (!parameterName.equals(key)) {
                     continue;
                 }
-                value = eq < 0 ? "" : part.substring(eq + 1);
+                value = URLDecoder.decode(eq < 0 ? "" : part.substring(eq + 1), "UTF-8");
                 break;
             }
             returned = value.substring(start, value.length() - suffix).getBytes("UTF-8");

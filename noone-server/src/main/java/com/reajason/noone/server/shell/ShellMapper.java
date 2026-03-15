@@ -23,12 +23,15 @@ public class ShellMapper {
         Shell shell = new Shell();
         shell.setName(request.getName());
         shell.setUrl(request.getUrl());
+        shell.setStaging(Boolean.TRUE.equals(request.getStaging()));
+        shell.setShellType(normalizeText(request.getShellType()));
         shell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         shell.setProjectId(request.getProjectId());
         shell.setStatus(ShellStatus.DISCONNECTED);
 
         // New fields
         shell.setProfileId(request.getProfileId());
+        shell.setLoaderProfileId(request.getLoaderProfileId());
         shell.setProxyUrl(request.getProxyUrl());
         shell.setCustomHeaders(request.getCustomHeaders());
         shell.setConnectTimeoutMs(request.getConnectTimeoutMs());
@@ -53,6 +56,13 @@ public class ShellMapper {
         if (request.getProjectId() != null) {
             shell.setProjectId(request.getProjectId());
         }
+        boolean staging = request.getStaging() != null ? request.getStaging() : Boolean.TRUE.equals(shell.getStaging());
+        if (request.getStaging() != null) {
+            shell.setStaging(request.getStaging());
+        }
+        if (request.getShellType() != null) {
+            shell.setShellType(normalizeText(request.getShellType()));
+        }
 
         if (request.getLanguage() != null) {
             shell.setLanguage(request.getLanguage());
@@ -62,6 +72,11 @@ public class ShellMapper {
 
         // New fields - profileId is required
         shell.setProfileId(request.getProfileId());
+        if (!staging) {
+            shell.setLoaderProfileId(null);
+        } else if (request.getLoaderProfileId() != null) {
+            shell.setLoaderProfileId(request.getLoaderProfileId());
+        }
         if (request.getProxyUrl() != null) {
             shell.setProxyUrl(request.getProxyUrl());
         }
@@ -90,7 +105,9 @@ public class ShellMapper {
         response.setId(shell.getId());
         response.setName(shell.getName());
         response.setUrl(shell.getUrl());
+        response.setStaging(shell.getStaging());
         response.setLanguage(shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA);
+        response.setShellType(shell.getShellType());
         response.setStatus(shell.getStatus().name());
         response.setProjectId(shell.getProjectId());
         response.setCreatedAt(shell.getCreatedAt());
@@ -99,6 +116,7 @@ public class ShellMapper {
 
         // New fields
         response.setProfileId(shell.getProfileId());
+        response.setLoaderProfileId(shell.getLoaderProfileId());
         response.setProxyUrl(shell.getProxyUrl());
         response.setCustomHeaders(shell.getCustomHeaders());
         response.setConnectTimeoutMs(shell.getConnectTimeoutMs());
@@ -115,5 +133,13 @@ public class ShellMapper {
         }
 
         return response;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -343,9 +343,6 @@ public final class TransformSupport {
     }
 
     static byte[] encodeBase64(byte[] input) {
-        if (input == null || input.length == 0) {
-            return new byte[0];
-        }
         try {
             Class<?> base64Class = Class.forName("java.util.Base64");
             Object encoder = base64Class.getMethod("getEncoder").invoke(null);
@@ -363,29 +360,22 @@ public final class TransformSupport {
     }
 
     public static byte[] decodeBase64(byte[] input) {
-        if (input == null || input.length == 0) {
-            return new byte[0];
-        }
+        Class<?> decoderClass;
         try {
-            Class<?> base64Class = Class.forName("java.util.Base64");
-            Object decoder = base64Class.getMethod("getDecoder").invoke(null);
+            decoderClass = Class.forName("java.util.Base64");
+            Object decoder = decoderClass.getMethod("getDecoder").invoke(null);
             return (byte[]) decoder.getClass().getMethod("decode", byte[].class).invoke(decoder, input);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             try {
-                Class<?> decoderClass = Class.forName("sun.misc.BASE64Decoder");
-                Object decoder = decoderClass.newInstance();
-                String inputStr = newString(input);
-                return (byte[]) decoderClass.getMethod("decodeBuffer", String.class).invoke(decoder, inputStr);
-            } catch (Exception ex) {
+                decoderClass = Class.forName("sun.misc.BASE64Decoder");
+                return (byte[]) decoderClass.getMethod("decodeBuffer", String.class).invoke(decoderClass.newInstance(), new String(input));
+            }catch (Throwable ex) {
                 throw new IllegalStateException("No Base64 decoder available", ex);
             }
         }
     }
 
     public static byte[] decodeBase64(String input) {
-        if (input == null || input.isEmpty()) {
-            return new byte[0];
-        }
         return decodeBase64(getBytes(input));
     }
 

@@ -13,7 +13,6 @@ public class WebSocketConfig implements ServerApplicationConfig {
                 .build();
 
         result.add(config);
-        System.out.println("websocket init success");
         return result;
     }
 

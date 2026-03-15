@@ -5,16 +5,14 @@ import com.reajason.javaweb.memshell.ServerFactory;
 import com.reajason.javaweb.memshell.config.InjectorConfig;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.memshell.config.ShellToolConfig;
-import com.reajason.javaweb.packer.AggregatePacker;
-import com.reajason.javaweb.packer.JarPacker;
-import com.reajason.javaweb.packer.Packer;
-import com.reajason.javaweb.packer.Packers;
+import com.reajason.javaweb.packer.*;
+import com.reajason.noone.Constants;
 import com.reajason.noone.core.generator.JavaMemShellGenerator;
-import com.reajason.noone.core.generator.NoOneConfig;
+import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.server.generator.memshell.dto.MemShellGenerateRequest;
 import com.reajason.noone.server.generator.memshell.dto.MemShellGenerateResponse;
-import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
+import lombok.Data;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -38,19 +36,35 @@ public class MemShellGeneratorController {
     @PostMapping("/generate")
     public MemShellGenerateResponse generate(@RequestBody MemShellGenerateRequest request) {
         ShellConfig shellConfig = request.getShellConfig();
-        Optional<Profile> profile = profileRepository.findById(request.getShellToolConfig().getProfileId());
-        ShellToolConfig shellToolConfig = new NoOneConfig(profile.get());
-        shellToolConfig.setShellClassName(request.getShellToolConfig().getShellClassName());
+        ShellToolConfig shellToolConfig = toNoOneConfig(request);
         InjectorConfig injectorConfig = request.getInjectorConfig();
         MemShellResult generateResult = javaMemShellGenerator.generate(shellConfig, injectorConfig, shellToolConfig);
-        Packer packer = request.getPacker().getInstance();
-        if (packer instanceof AggregatePacker) {
-            return new MemShellGenerateResponse(generateResult, ((AggregatePacker) packer).packAll(generateResult.toClassPackerConfig()));
-        }
+        Packers packers = Packers.fromName(request.getPackerSpec().getName());
+        Packer<?> packer = packers.getInstance();
         if (packer instanceof JarPacker) {
-            return new MemShellGenerateResponse(generateResult, Base64.getEncoder().encodeToString(((JarPacker) packer).packBytes(generateResult.toJarPackerConfig())));
+            JarPackerConfig<?> jarPackerConfig = generateResult.toJarPackerConfig();
+            return new MemShellGenerateResponse(generateResult, Base64.getEncoder().encodeToString(((JarPacker) packer).packBytes(jarPackerConfig)));
         }
-        return new MemShellGenerateResponse(generateResult, packer.pack(generateResult.toClassPackerConfig()));
+        ClassPackerConfig classPackerConfig = generateResult.toClassPackerConfig();
+        classPackerConfig.setCustomConfig(packer.resolveCustomConfig(request.getPackerSpec().getConfig()));
+        return new MemShellGenerateResponse(generateResult, packer.pack(classPackerConfig));
+    }
+
+
+    public NoOneConfig toNoOneConfig(MemShellGenerateRequest request) {
+        MemShellGenerateRequest.ShellToolConfigDTO shellToolConfig = request.getShellToolConfig();
+        if (shellToolConfig.getStaging()) {
+            request.getShellConfig().setShellTool(Constants.NO_ONE_STAGING);
+            return NoOneConfig.builder()
+                    .shellClassName(shellToolConfig.getShellClassName())
+                    .loaderProfile(profileRepository.findById(shellToolConfig.getLoaderProfileId()).get())
+                    .build();
+        }
+        request.getShellConfig().setShellTool(Constants.NO_ONE);
+        return NoOneConfig.builder()
+                .shellClassName(shellToolConfig.getShellClassName())
+                .coreProfile(profileRepository.findById(shellToolConfig.getCoreProfileId()).get())
+                .build();
     }
 
     @RequestMapping("/config/servers")
@@ -66,14 +80,43 @@ public class MemShellGeneratorController {
     }
 
     @RequestMapping("/config/packers")
-    public List<String> getPackers() {
-        return Arrays.stream(Packers.values())
-                .filter(packers -> packers.getParentPacker() == null)
-                .map(Packers::name).toList();
+    public List<PackerCategoryDTO> getPackers() {
+        List<PackerCategoryDTO> result = new ArrayList<>();
+        for (Map.Entry<String, List<Packers>> entry : Packers.groupedPackers().entrySet()) {
+            PackerCategoryDTO category = new PackerCategoryDTO();
+            category.setName(entry.getKey());
+            List<PackerOptionDTO> options = new ArrayList<>();
+            for (Packers packer : entry.getValue()) {
+                PackerOptionDTO option = new PackerOptionDTO();
+                option.setName(packer.name());
+                option.setOutputKind(packer.getOutputKind());
+                option.setSchema(packer.getSchema());
+                if(!packer.hasChildren()){
+                    options.add(option);
+                }
+            }
+            category.setPackers(options);
+            result.add(category);
+        }
+        return result;
     }
 
     @RequestMapping("/config")
     public Map<String, Map<?, ?>> config() {
         return javaMemShellGenerator.getConfigMap();
+    }
+
+    @Data
+    public static class PackerCategoryDTO {
+        private String name;
+        private List<PackerOptionDTO> packers;
+    }
+
+    @Data
+    public static class PackerOptionDTO {
+        private String name;
+        private String outputKind;
+        private boolean categoryAnchor;
+        private Object schema;
     }
 }

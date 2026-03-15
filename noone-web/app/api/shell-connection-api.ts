@@ -12,10 +12,13 @@ const baseUrl = "/shells";
 export interface CreateShellConnectionRequest {
   name: string;
   url: string;
+  staging?: boolean;
+  shellType?: string;
   language: ShellLanguage;
   group?: string;
   projectId?: number;
   profileId: number;
+  loaderProfileId?: number;
   proxyUrl?: string;
   customHeaders?: Record<string, string>;
   connectTimeoutMs?: number;
@@ -28,10 +31,13 @@ export interface CreateShellConnectionRequest {
 export interface UpdateShellConnectionRequest {
   name?: string;
   url?: string;
+  staging?: boolean;
+  shellType?: string | null;
   language: ShellLanguage;
   group?: string;
   projectId?: number | null;
   profileId: number;
+  loaderProfileId?: number | null;
   proxyUrl?: string;
   customHeaders?: Record<string, string>;
   connectTimeoutMs?: number;
@@ -98,7 +104,6 @@ export async function createShellConnection(
   payload: CreateShellConnectionRequest,
   authFetch: AuthFetch,
 ): Promise<ShellConnection> {
-  console.log(payload);
   return await authFetch<ShellConnection>(baseUrl, {
     method: "POST",
     body: payload,
@@ -127,8 +132,11 @@ export async function deleteShellConnection(
 
 export interface TestShellConfigRequest {
   url: string;
+  staging?: boolean;
+  shellType?: string;
   language: ShellLanguage;
   profileId: number;
+  loaderProfileId?: number;
   proxyUrl?: string;
   customHeaders?: Record<string, string>;
   connectTimeoutMs?: number;

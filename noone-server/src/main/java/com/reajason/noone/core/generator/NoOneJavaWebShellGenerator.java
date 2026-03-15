@@ -3,6 +3,8 @@ package com.reajason.noone.core.generator;
 import com.reajason.javaweb.buddy.TargetJreVersionVisitorWrapper;
 import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.core.NoOneCore;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
 import com.reajason.noone.core.generator.protocol.HttpProtocolMetadata;
 import com.reajason.noone.core.generator.transform.TransformDirection;
 import com.reajason.noone.core.transform.*;
@@ -20,7 +22,7 @@ import java.util.*;
  * Generates JSP and JSPX web shells by filling stub methods in the template
  * with implementations derived from the Profile configuration.
  * <p>
- * This is the source-code-level counterpart of {@link NoOneMemShellGenerator},
+ * This is the source-code-level counterpart of {@link NoOneStagelessGenerator},
  * which operates at bytecode level via ByteBuddy.
  *
  * @author ReaJason
@@ -64,7 +66,7 @@ public class NoOneJavaWebShellGenerator {
                 "coreGzipBase64 = \"" + generateCoreGzipBase64() + "\""
         );
 
-        Profile profile = config.getProfile();
+        Profile profile = config.getCoreProfile();
         if (profile == null) {
             return result;
         }
@@ -113,7 +115,7 @@ public class NoOneJavaWebShellGenerator {
     }
 
     private String insertExtras(String content, boolean isJspx) {
-        Profile profile = config.getProfile();
+        Profile profile = config.getCoreProfile();
         if (profile == null) {
             return content;
         }

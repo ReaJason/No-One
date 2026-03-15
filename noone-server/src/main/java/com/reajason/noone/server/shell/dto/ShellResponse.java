@@ -17,6 +17,7 @@ public class ShellResponse {
     private Long id;
     private String name;
     private String url;
+    private Boolean staging;
     private ShellLanguage language;
     private String shellType;
     private String status;
@@ -27,6 +28,7 @@ public class ShellResponse {
 
     // Profile related fields
     private Long profileId;
+    private Long loaderProfileId;
     private String profileName;
 
     // Connection configuration

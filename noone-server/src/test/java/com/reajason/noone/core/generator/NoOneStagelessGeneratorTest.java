@@ -4,7 +4,9 @@ import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.Constants;
-import com.reajason.noone.core.shelltool.NoOneNettyHandler;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
+import com.reajason.noone.core.shelltool.NoOneStagelessNettyHandler;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.config.*;
 import lombok.SneakyThrows;
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-class NoOneMemShellGeneratorTest {
+class NoOneStagelessGeneratorTest {
 
     @Test
     @SneakyThrows
@@ -43,14 +45,14 @@ class NoOneMemShellGeneratorTest {
         profile.setRequestTransformations(List.of("Gzip", "AES", "Base64"));
         profile.setResponseTransformations(List.of("Gzip", "AES", "Base64"));
 
-        noOneConfig.setShellClass(NoOneNettyHandler.class);
-        noOneConfig.setProfile(profile);
+        noOneConfig.setShellClass(NoOneStagelessNettyHandler.class);
+        noOneConfig.setCoreProfile(profile);
         ShellConfig shellConfig = ShellConfig.builder()
                 .shellType(ShellType.NETTY_HANDLER)
                 .shellTool(Constants.NO_ONE)
                 .build();
-        NoOneMemShellGenerator noOneMemShellGenerator = new NoOneMemShellGenerator(shellConfig, noOneConfig);
-        byte[] bytes = noOneMemShellGenerator.getBytes();
+        NoOneStagelessGenerator noOneStagelessGenerator = new NoOneStagelessGenerator(shellConfig, noOneConfig);
+        byte[] bytes = noOneStagelessGenerator.getBytes();
 //        Files.write(Paths.get("hello.class"), bytes);
     }
 

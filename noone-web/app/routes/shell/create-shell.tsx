@@ -21,11 +21,11 @@ import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
 import {
   createShellConnection,
+  type CreateShellConnectionRequest,
   getShellConnectionById,
   testShellConfig,
-  updateShellConnection,
-  type CreateShellConnectionRequest,
   type TestShellConfigRequest,
+  updateShellConnection,
   type UpdateShellConnectionRequest,
 } from "@/api/shell-connection-api";
 import { FormPageShell } from "@/components/form-page-shell";
@@ -63,6 +63,9 @@ type LoaderData =
       shell?: undefined;
       shellUrlParam: string;
       profileIdParam: string;
+      loaderProfileIdParam: string;
+      shellTypeParam: string;
+      stagingParam: boolean;
       languageParam?: ShellLanguage;
       projects: Project[];
       profiles: Profile[];
@@ -77,8 +80,11 @@ type ShellActionData = {
 type ShellFormSeed = {
   name: string;
   url: string;
+  shellType: string;
+  staging: boolean;
   projectId: string;
   profileId: string;
+  loaderProfileId: string;
   language: ShellLanguage;
   proxyUrl: string;
   customHeaders: string;
@@ -98,6 +104,22 @@ const LANGUAGE_ITEMS: SelectOption[] = [
   { label: "Java", value: "java" },
   { label: "NodeJs", value: "nodejs" },
   { label: "DotNet", value: "dotnet" },
+];
+
+const COMMON_SHELL_TYPES = [
+  "Servlet",
+  "JakartaServlet",
+  "Filter",
+  "JakartaFilter",
+  "Listener",
+  "JakartaListener",
+  "NettyHandler",
+  "Valve",
+  "JakartaValve",
+  "Action",
+  "SpringWebFluxWebFilter",
+  "SpringWebMvcInterceptor",
+  "SpringWebMvcJakartaInterceptor",
 ];
 
 export async function loader({ request, context, params }: LoaderFunctionArgs) {
@@ -120,12 +142,18 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const shellUrlParam = url.searchParams.get("shellUrl") ?? "";
   const profileIdParam = url.searchParams.get("profileId") ?? "";
+  const loaderProfileIdParam = url.searchParams.get("loaderProfileId") ?? "";
+  const shellTypeParam = (url.searchParams.get("shellType") ?? "").trim();
+  const stagingParamRaw = (url.searchParams.get("staging") ?? "").trim().toLowerCase();
   const languageParamRaw = (url.searchParams.get("language") ?? "").trim().toLowerCase();
   const projectIdParam = url.searchParams.get("projectId") ?? "";
   const parsedProjectId = Number(projectIdParam);
   return {
     shellUrlParam,
     profileIdParam,
+    loaderProfileIdParam,
+    shellTypeParam,
+    stagingParam: stagingParamRaw === "true" || stagingParamRaw === "1" || stagingParamRaw === "on",
     languageParam: isShellLanguage(languageParamRaw) ? languageParamRaw : undefined,
     projects,
     profiles,
@@ -234,7 +262,7 @@ export default function CreateOrEditShell() {
   const formSeed = getShellFormSeed(loaderData);
   const formKey = shell
     ? `edit:${shell.id}:${shell.updatedAt}`
-    : `create:${formSeed.url}:${formSeed.profileId}:${formSeed.language}:${formSeed.projectId}`;
+    : `create:${formSeed.url}:${formSeed.profileId}:${formSeed.loaderProfileId}:${formSeed.language}:${formSeed.projectId}:${formSeed.shellType}:${formSeed.staging}`;
 
   return (
     <FormPageShell
@@ -259,6 +287,7 @@ export default function CreateOrEditShell() {
         formSeed={formSeed}
         errors={actionData?.errors}
         isEdit={isEdit}
+        isPrefilled={hasPrefill}
         projectItems={projectItems}
         profileItems={profileItems}
         onCancel={() => navigate("/shells")}
@@ -271,6 +300,7 @@ type ShellFormProps = {
   formSeed: ShellFormSeed;
   errors?: Record<string, string>;
   isEdit: boolean;
+  isPrefilled: boolean;
   projectItems: SelectOption[];
   profileItems: SelectOption[];
   onCancel: () => void;
@@ -280,6 +310,7 @@ function ShellForm({
   formSeed,
   errors,
   isEdit,
+  isPrefilled,
   projectItems,
   profileItems,
   onCancel,
@@ -289,6 +320,9 @@ function ShellForm({
   const testFetcher = useFetcher<ShellActionData>();
   const [projectId, setProjectId] = useState(formSeed.projectId);
   const [profileId, setProfileId] = useState(formSeed.profileId);
+  const [loaderProfileId, setLoaderProfileId] = useState(formSeed.loaderProfileId);
+  const [shellType, setShellType] = useState(formSeed.shellType);
+  const [staging, setStaging] = useState(formSeed.staging);
   const [language, setLanguage] = useState<ShellLanguage>(formSeed.language);
   const [skipSslVerify, setSkipSslVerify] = useState(formSeed.skipSslVerify);
 
@@ -310,6 +344,12 @@ function ShellForm({
       toast.error(testFetcher.data.errors.general);
     }
   }, [testFetcher.data, testFetcher.state]);
+
+  useEffect(() => {
+    if (staging && !loaderProfileId) {
+      setLoaderProfileId(profileId);
+    }
+  }, [loaderProfileId, profileId, staging]);
 
   const handleTestConnection = () => {
     const formElement = formRef.current;
@@ -378,6 +418,7 @@ function ShellForm({
                         setLanguage(value);
                       }
                     }}
+                    disabled={isPrefilled}
                   >
                     <SelectTrigger
                       id="language"
@@ -427,6 +468,7 @@ function ShellForm({
                     items={profileItems}
                     value={profileId}
                     onValueChange={(value) => setProfileId(value ?? "")}
+                    disabled={isPrefilled}
                   >
                     <SelectTrigger
                       id="profileId"
@@ -449,6 +491,30 @@ function ShellForm({
                     Profile determines the request format and protocol settings.
                   </FieldDescription>
                   <FieldError>{errors?.profileId}</FieldError>
+                </Field>
+
+                <Field data-invalid={Boolean(errors?.shellType)}>
+                  <FieldLabel htmlFor="shellType">Shell Type</FieldLabel>
+                  <Input
+                    id="shellType"
+                    name="shellType"
+                    type="text"
+                    list="shell-type-options"
+                    value={shellType}
+                    onChange={(event) => setShellType(event.target.value)}
+                    placeholder="Servlet"
+                    aria-invalid={Boolean(errors?.shellType) || undefined}
+                    disabled={isPrefilled}
+                  />
+                  <datalist id="shell-type-options">
+                    {COMMON_SHELL_TYPES.map((item) => (
+                      <option key={item} value={item} />
+                    ))}
+                  </datalist>
+                  <FieldDescription>
+                    Runtime shell type, such as `Servlet`, `Filter`, or `NettyHandler`.
+                  </FieldDescription>
+                  <FieldError>{errors?.shellType}</FieldError>
                 </Field>
 
                 <Field data-invalid={Boolean(errors?.projectId)}>
@@ -480,6 +546,56 @@ function ShellForm({
                   <FieldError>{errors?.projectId}</FieldError>
                 </Field>
               </div>
+
+              <Field orientation="horizontal">
+                <input type="hidden" name="staging" value={staging ? "on" : "off"} />
+                <Checkbox
+                  id="staging"
+                  checked={staging}
+                  onCheckedChange={(checked) => setStaging(checked === true)}
+                  disabled={isPrefilled}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="staging">Use staging loader</FieldLabel>
+                  <FieldDescription>
+                    Enable two-stage loading and attach a dedicated loader profile.
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+
+              {staging ? (
+                <Field data-invalid={Boolean(errors?.loaderProfileId)}>
+                  <FieldLabel htmlFor="loaderProfileId">Loader Profile *</FieldLabel>
+                  <input type="hidden" name="loaderProfileId" value={loaderProfileId} />
+                  <Select
+                    items={profileItems}
+                    value={loaderProfileId}
+                    onValueChange={(value) => setLoaderProfileId(value ?? "")}
+                    disabled={isPrefilled}
+                  >
+                    <SelectTrigger
+                      id="loaderProfileId"
+                      aria-invalid={Boolean(errors?.loaderProfileId) || undefined}
+                      className="w-full"
+                    >
+                      <SelectValue placeholder="Select loader profile" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        {profileItems.map((profile) => (
+                          <SelectItem key={profile.value} value={profile.value}>
+                            {profile.label}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FieldDescription>
+                    Loader profile used before the staged core payload is activated.
+                  </FieldDescription>
+                  <FieldError>{errors?.loaderProfileId}</FieldError>
+                </Field>
+              ) : null}
             </FieldGroup>
           </FieldSet>
         </CardContent>
@@ -607,8 +723,11 @@ function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
     return {
       name: shell.name ?? "",
       url: shell.url ?? "",
+      shellType: shell.shellType ?? "",
+      staging: shell.staging ?? false,
       projectId: shell.projectId == null ? "" : String(shell.projectId),
       profileId: String(shell.profileId),
+      loaderProfileId: shell.loaderProfileId == null ? "" : String(shell.loaderProfileId),
       language: shell.language,
       proxyUrl: shell.proxyUrl ?? "",
       customHeaders: shell.customHeaders ? JSON.stringify(shell.customHeaders) : "",
@@ -626,6 +745,8 @@ function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
   return {
     name: "",
     url: loaderData.shellUrlParam,
+    shellType: loaderData.shellTypeParam,
+    staging: loaderData.stagingParam,
     projectId:
       loaderData.initialProjectId != null
         ? String(loaderData.initialProjectId)
@@ -633,6 +754,10 @@ function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
           ? String(firstProjectId)
           : "",
     profileId: loaderData.profileIdParam || (firstProfileId != null ? String(firstProfileId) : ""),
+    loaderProfileId:
+      loaderData.loaderProfileIdParam ||
+      loaderData.profileIdParam ||
+      (firstProfileId != null ? String(firstProfileId) : ""),
     language: loaderData.languageParam ?? "java",
     proxyUrl: "",
     customHeaders: "",
@@ -650,6 +775,9 @@ function hasIncomingPrefill(loaderData: LoaderData) {
     Boolean(
       loaderData.shellUrlParam ||
       loaderData.profileIdParam ||
+      loaderData.loaderProfileIdParam ||
+      loaderData.shellTypeParam ||
+      loaderData.stagingParam ||
       loaderData.languageParam ||
       loaderData.initialProjectId != null,
     )
@@ -662,8 +790,11 @@ function parseTestConfigFormData(
   | { payload: TestShellConfigRequest; errors?: undefined }
   | { payload?: undefined; errors: Record<string, string> } {
   const url = readTrimmedField(formData, "url");
+  const shellType = readTextField(formData, "shellType");
+  const staging = formData.get("staging") === "on";
   const language = parseLanguage(readTrimmedField(formData, "language"));
   const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
+  const loaderProfileId = parseFiniteNumber(readTrimmedField(formData, "loaderProfileId"));
   const proxyUrl = readTrimmedField(formData, "proxyUrl");
   const connectTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "connectTimeoutMs"));
   const readTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "readTimeoutMs"));
@@ -674,6 +805,9 @@ function parseTestConfigFormData(
   if (!url || profileId === undefined) {
     return { errors: { general: "URL and Profile are required to test connection" } };
   }
+  if (staging && loaderProfileId === undefined) {
+    return { errors: { general: "Loader Profile is required when staging is enabled" } };
+  }
 
   const parsedHeaders = parseCustomHeaders(readTrimmedField(formData, "customHeaders"));
   if (parsedHeaders.error) {
@@ -683,8 +817,11 @@ function parseTestConfigFormData(
   return {
     payload: {
       url,
+      staging: staging || undefined,
+      shellType: shellType || undefined,
       language: language ?? "java",
       profileId,
+      loaderProfileId: staging ? loaderProfileId : undefined,
       proxyUrl,
       customHeaders: parsedHeaders.value,
       connectTimeoutMs,
@@ -717,8 +854,11 @@ function parseShellFormData(
   const errors: Record<string, string> = {};
   const name = readTrimmedField(formData, "name");
   const url = readTrimmedField(formData, "url");
+  const shellType = readTextField(formData, "shellType");
+  const staging = formData.get("staging") === "on";
   const language = parseLanguage(readTrimmedField(formData, "language"));
   const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
+  const loaderProfileId = parseFiniteNumber(readTrimmedField(formData, "loaderProfileId"));
   const proxyUrl = readTrimmedField(formData, "proxyUrl");
   const connectTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "connectTimeoutMs"));
   const readTimeoutMs = parseFiniteNumber(readTrimmedField(formData, "readTimeoutMs"));
@@ -732,6 +872,9 @@ function parseShellFormData(
   if (!language) errors.language = "Language is required";
   if (profileId === undefined) {
     errors.profileId = "Profile is required";
+  }
+  if (staging && loaderProfileId === undefined) {
+    errors.loaderProfileId = "Loader Profile is required when staging is enabled";
   }
 
   let projectId: number | null | undefined;
@@ -758,9 +901,12 @@ function parseShellFormData(
       payload: {
         name,
         url,
+        staging,
+        shellType: shellType ?? null,
         language: language as ShellLanguage,
         projectId,
         profileId: profileId as number,
+        loaderProfileId: staging ? (loaderProfileId ?? null) : null,
         proxyUrl,
         customHeaders: parsedHeaders.value,
         connectTimeoutMs,
@@ -776,9 +922,12 @@ function parseShellFormData(
     payload: {
       name: name as string,
       url: url as string,
+      staging: staging || undefined,
+      shellType: shellType || undefined,
       language: language as ShellLanguage,
       projectId: projectId ?? undefined,
       profileId: profileId as number,
+      loaderProfileId: staging ? loaderProfileId : undefined,
       proxyUrl,
       customHeaders: parsedHeaders.value,
       connectTimeoutMs,
@@ -810,6 +959,15 @@ function readTrimmedField(formData: FormData, name: string) {
 
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
+}
+
+function readTextField(formData: FormData, name: string) {
+  const value = formData.get(name);
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return value.trim();
 }
 
 function parseFiniteNumber(raw: string | undefined) {

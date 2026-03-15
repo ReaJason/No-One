@@ -49,6 +49,18 @@ class TransformSupportTest {
     }
 
     @Test
+    void base64_shouldDecode_whenPayloadContainsWhitespace() {
+        byte[] input = new byte[256];
+        new SecureRandom().nextBytes(input);
+
+        String encoded = new String(TransformSupport.encode(input, EncodingAlgorithm.BASE64), StandardCharsets.UTF_8);
+        String wrapped = "  \n" + encoded.substring(0, 80) + "\r\n" + encoded.substring(80, 160) + "\n\t" + encoded.substring(160) + "  ";
+
+        byte[] decoded = TransformSupport.decode(wrapped.getBytes(StandardCharsets.UTF_8), EncodingAlgorithm.BASE64);
+        assertArrayEquals(input, decoded);
+    }
+
+    @Test
     void bigInteger_shouldRoundTrip_withLeadingZeros() {
         byte[] input = new byte[128];
         new SecureRandom().nextBytes(input);
@@ -93,4 +105,3 @@ class TransformSupportTest {
         assertArrayEquals(input, inbound);
     }
 }
-

@@ -1,10 +1,9 @@
 package com.reajason.noone.server.shell.dto;
 
+import com.reajason.noone.server.shell.ShellLanguage;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import com.reajason.noone.server.shell.ShellLanguage;
 
 import java.util.Map;
 
@@ -19,10 +18,16 @@ public class ShellTestConfigRequest {
     @NotBlank(message = "URL cannot be blank")
     private String url;
 
+    private Boolean staging;
+
+    private String shellType;
+
     private ShellLanguage language;
 
     @NotNull(message = "Profile ID cannot be null")
     private Long profileId;
+
+    private Long loaderProfileId;
 
     private String proxyUrl;
 

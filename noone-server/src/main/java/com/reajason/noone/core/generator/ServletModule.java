@@ -1,5 +1,8 @@
 package com.reajason.noone.core.generator;
 
+import lombok.Getter;
+
+@Getter
 public enum ServletModule {
     JAVAX("javax.servlet"),
     JAKARTA("jakarta.servlet");
@@ -8,10 +11,6 @@ public enum ServletModule {
 
     ServletModule(String basePackage) {
         this.basePackage = basePackage;
-    }
-
-    public String getBasePackage() {
-        return basePackage;
     }
 
     public String httpServletRequest() {

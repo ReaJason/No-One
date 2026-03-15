@@ -1,4 +1,4 @@
-export type ShellType = "WEBSHELL" | "REVERSE" | "BIND";
+export type ShellType = string;
 export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
 export type ShellLanguage = "java" | "nodejs" | "dotnet";
 
@@ -25,8 +25,9 @@ export interface ShellConnection {
   id: number;
   url: string;
   name: string;
+  staging?: boolean;
   language: ShellLanguage;
-  shellType: ShellType;
+  shellType?: ShellType | null;
   status: ShellStatus;
   projectId?: number | null;
   createdAt: string;
@@ -35,6 +36,7 @@ export interface ShellConnection {
 
   // Profile related fields
   profileId: number;
+  loaderProfileId?: number | null;
   profileName?: string;
 
   // Connection configuration

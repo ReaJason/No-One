@@ -25,8 +25,15 @@ public class WrapResDataWrapper {
                 .and(takesArguments(1))
                 .and(returns(byte[].class));
 
-        String prefixBase64 = Base64.getEncoder().encodeToString(responseParts.prefixBytes());
-        String suffixBase64 = Base64.getEncoder().encodeToString(responseParts.suffixBytes());
+        byte[] prefixBytes = responseParts.prefixBytes();
+        byte[] suffixBytes = responseParts.suffixBytes();
+
+        if (prefixBytes.length == 0 && suffixBytes.length == 0) {
+            return builder;
+        }
+
+        String prefixBase64 = Base64.getEncoder().encodeToString(prefixBytes);
+        String suffixBase64 = Base64.getEncoder().encodeToString(suffixBytes);
 
         return builder
                 .visit(MethodCallReplaceVisitorWrapper.newInstance(

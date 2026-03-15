@@ -13,7 +13,7 @@ reactor-netty = "1.1.25"
 jackson = "2.19.0"
 jetbrains-annotations = "26.0.2"
 
-memshell-party = "2.5.1-SNAPSHOT"
+memshell-party = "2.7.0-SNAPSHOT"
 byte-buddy = "1.18.3"
 commons-io = "2.21.0"
 commons-lang3 = "3.20.0"

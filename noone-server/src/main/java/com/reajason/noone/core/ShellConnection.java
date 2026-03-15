@@ -2,36 +2,34 @@ package com.reajason.noone.core;
 
 import com.reajason.noone.Constants;
 import com.reajason.noone.core.client.Client;
-import com.reajason.noone.core.exception.RequestSerializeException;
-import com.reajason.noone.core.exception.ResponseBusinessException;
-import com.reajason.noone.core.exception.ResponseDecodeException;
-import com.reajason.noone.core.exception.ShellCommunicationException;
-import com.reajason.noone.core.exception.ShellRequestException;
-import lombok.Getter;
-import lombok.Setter;
+import com.reajason.noone.core.exception.*;
+import com.reajason.noone.server.profile.Profile;
+import lombok.Data;
 
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+@Data
 public abstract class ShellConnection {
     private static final String COMMAND_EXECUTE_PLUGIN = "command-execute";
     private static final String FILE_MANAGER_PLUGIN = "file-manager";
     private static final String CMD_PLACEHOLDER = "{{cmd}}";
     private static final String CWD_PLACEHOLDER = "{{cwd}}";
 
-    @Setter
-    @Getter
-    protected Client client;
+    protected Client coreClient;
+    protected Client loaderClient;
+    protected String shellType;
+    protected Profile coreProfile;
+    private boolean coreInit = false;
 
     protected Map<String, String> serverPluginCaches = new LinkedHashMap<>();
     protected boolean pluginCacheInitialized;
 
-    public ShellConnection(Client client) {
-        this.client = client;
+    public ShellConnection(ConnectionConfig connectionConfig) {
+        this.coreClient = connectionConfig.getCoreClient();
+        this.loaderClient = connectionConfig.getLoaderClient();
+        this.shellType = connectionConfig.getShellType();
+        this.coreProfile = connectionConfig.getCoreProfile();
     }
 
     /**
@@ -40,14 +38,14 @@ public abstract class ShellConnection {
      * @return 是否连接成功
      */
     public boolean connect() {
-        return client.connect();
+        return coreClient.connect();
     }
 
     /**
      * 断开与服务器的连接
      */
     public void disconnect() {
-        client.disconnect();
+        coreClient.disconnect();
     }
 
     /**
@@ -56,7 +54,7 @@ public abstract class ShellConnection {
      * @return 是否已连接
      */
     public boolean isConnected() {
-        return client.isConnected();
+        return coreClient.isConnected();
     }
 
     /**
@@ -77,7 +75,7 @@ public abstract class ShellConnection {
 
         byte[] result;
         try {
-            result = client.send(bytes);
+            result = coreClient.send(bytes);
         } catch (ShellCommunicationException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -96,13 +94,38 @@ public abstract class ShellConnection {
         } catch (Exception e) {
             throw new ResponseDecodeException("Failed to deserialize shell response", e);
         }
-        if (response == null) {
-            throw new ResponseDecodeException("Shell response is null after deserialization");
-        }
         return response;
     }
 
+    public boolean init() {
+        if (loaderClient != null) {
+            byte[] coreBytes = getCoreBytes(shellType, coreProfile);
+            return loadCore(coreBytes);
+        }
+        return true;
+    }
+
+    protected abstract byte[] getCoreBytes(String shellType, Profile loaderProfile);
+
+    protected boolean loadCore(byte[] coreByes) {
+        byte[] result;
+        try {
+            result = loaderClient.send(coreByes);
+        } catch (ShellCommunicationException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new ShellRequestException("Failed to send shell loader request", false, e);
+        }
+
+        if (result == null || result.length == 0) {
+            throw new ResponseDecodeException("Shell loader response payload is empty");
+        }
+        coreInit = new String(result).equals("ok");
+        return coreInit;
+    }
+
     public boolean test() {
+        init();
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put(Constants.ACTION, Constants.ACTION_STATUS);
         Map<String, Object> response = sendRequest(requestMap);
@@ -211,10 +234,6 @@ public abstract class ShellConnection {
             return null;
         }
         return serverPluginCaches.get(pluginId);
-    }
-
-    public boolean isPluginCacheInitialized() {
-        return pluginCacheInitialized;
     }
 
     private String stringifyPluginVersion(Object value) {

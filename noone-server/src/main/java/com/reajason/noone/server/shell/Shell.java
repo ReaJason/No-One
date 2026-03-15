@@ -34,6 +34,12 @@ public class Shell {
     @Column(nullable = false, length = 1000)
     private String url;
 
+    @Column
+    private Boolean staging = false;
+
+    @Column(name = "shell_type")
+    private String shellType;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "language")
     private ShellLanguage language = ShellLanguage.JAVA;
@@ -48,13 +54,12 @@ public class Shell {
     @Column(name = "project_id")
     private Long projectId;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "project_id", nullable = false)
-//    private Project project;
-
 
     @Column(name = "profile_id", nullable = false)
     private Long profileId;
+
+    @Column(name = "loader_profile_id")
+    private Long loaderProfileId;
 
     /**
      * Shell-level proxy configuration (overrides Profile default).

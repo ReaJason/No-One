@@ -16,6 +16,7 @@ import java.util.Map;
 public class ShellUpdateRequest {
     private String name;
     private String url;
+    private Boolean staging;
     private String shellType;
     private String status;
     private String group;
@@ -25,6 +26,8 @@ public class ShellUpdateRequest {
 
     @NotNull(message = "Profile ID cannot be null")
     private Long profileId;
+
+    private Long loaderProfileId;
 
     private String proxyUrl;
 

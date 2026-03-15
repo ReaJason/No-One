@@ -7,6 +7,9 @@ import com.reajason.javaweb.memshell.config.ShellToolConfig;
 import com.reajason.javaweb.memshell.server.AbstractServer;
 import com.reajason.javaweb.memshell.server.ToolMapping;
 import com.reajason.noone.Constants;
+import com.reajason.noone.core.generator.config.NoOneConfig;
+import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
+import com.reajason.noone.core.generator.memshell.NoOneStagingGenerator;
 import com.reajason.noone.core.shelltool.*;
 import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
@@ -30,22 +33,39 @@ public class JavaMemShellGenerator {
         ServerFactory.addToolMapping(ShellTool.AntSword, ToolMapping.builder().build());
 
         ServerFactory.addToolMapping(Constants.NO_ONE, ToolMapping.builder()
-                .addShellClass(SERVLET, NoOneServlet.class)
-                .addShellClass(JAKARTA_SERVLET, NoOneServlet.class)
-                .addShellClass(FILTER, NoOneFilter.class)
-                .addShellClass(JAKARTA_FILTER, NoOneFilter.class)
-                .addShellClass(LISTENER, NoOneListener.class)
-                .addShellClass(JAKARTA_LISTENER, NoOneListener.class)
-                .addShellClass(NETTY_HANDLER, NoOneNettyHandler.class)
-                .addShellClass(VALVE, NoOneValve.class)
-                .addShellClass(JAKARTA_VALVE, NoOneValve.class)
-                .addShellClass(ACTION, NoOneStruct2Action.class)
-                .addShellClass(SPRING_WEBFLUX_WEB_FILTER, NoOneWebFilter.class)
-                .addShellClass(SPRING_WEBMVC_INTERCEPTOR, NoOneInterceptor.class)
-                .addShellClass(SPRING_WEBMVC_JAKARTA_INTERCEPTOR, NoOneInterceptor.class)
+                .addShellClass(SERVLET, NoOneStagelessServlet.class)
+                .addShellClass(JAKARTA_SERVLET, NoOneStagelessServlet.class)
+                .addShellClass(FILTER, NoOneStagelessFilter.class)
+                .addShellClass(JAKARTA_FILTER, NoOneStagelessFilter.class)
+                .addShellClass(LISTENER, NoOneStagelessListener.class)
+                .addShellClass(JAKARTA_LISTENER, NoOneStagelessListener.class)
+                .addShellClass(NETTY_HANDLER, NoOneStagelessNettyHandler.class)
+                .addShellClass(VALVE, NoOneStagelessValve.class)
+                .addShellClass(JAKARTA_VALVE, NoOneStagelessValve.class)
+                .addShellClass(ACTION, NoOneStagelessStruct2Action.class)
+                .addShellClass(SPRING_WEBFLUX_WEB_FILTER, NoOneStagelessWebFilter.class)
+                .addShellClass(SPRING_WEBMVC_INTERCEPTOR, NoOneStagelessInterceptor.class)
+                .addShellClass(SPRING_WEBMVC_JAKARTA_INTERCEPTOR, NoOneStagelessInterceptor.class)
                 .build());
 
-        ShellToolFactory.register(Constants.NO_ONE, NoOneMemShellGenerator.class, NoOneConfig.class);
+        ServerFactory.addToolMapping(Constants.NO_ONE_STAGING, ToolMapping.builder()
+                .addShellClass(SERVLET, NoOneStagingServlet.class)
+                .addShellClass(JAKARTA_SERVLET, NoOneStagingServlet.class)
+                .addShellClass(FILTER, NoOneStagingFilter.class)
+                .addShellClass(JAKARTA_FILTER, NoOneStagingFilter.class)
+                .addShellClass(LISTENER, NoOneStagingListener.class)
+                .addShellClass(JAKARTA_LISTENER, NoOneStagingListener.class)
+                .addShellClass(NETTY_HANDLER, NoOneStagingNettyHandler.class)
+                .addShellClass(VALVE, NoOneStagingValve.class)
+                .addShellClass(JAKARTA_VALVE, NoOneStagingValve.class)
+                .addShellClass(ACTION, NoOneStagingStruct2Action.class)
+                .addShellClass(SPRING_WEBFLUX_WEB_FILTER, NoOneStagingWebFilter.class)
+                .addShellClass(SPRING_WEBMVC_INTERCEPTOR, NoOneStagingInterceptor.class)
+                .addShellClass(SPRING_WEBMVC_JAKARTA_INTERCEPTOR, NoOneStagingInterceptor.class)
+                .build());
+
+        ShellToolFactory.register(Constants.NO_ONE, NoOneStagelessGenerator.class, NoOneConfig.class);
+        ShellToolFactory.register(Constants.NO_ONE_STAGING, NoOneStagingGenerator.class, NoOneConfig.class);
     }
 
     public MemShellResult generate(ShellConfig shellConfig,
