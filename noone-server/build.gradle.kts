@@ -1,5 +1,6 @@
 plugins {
     java
+    jacoco
     id("org.springframework.boot") version "3.5.9"
     id("io.spring.dependency-management") version "1.1.7"
     alias(libs.plugins.lombok)
@@ -42,7 +43,6 @@ dependencies {
     implementation(libs.commons.lang3)
     implementation(libs.okhttp3)
     implementation(libs.fastjson2)
-    implementation(libs.java.websocket)
     implementation(libs.jackson.annotations)
     implementation(libs.reactor.netty.core)
     implementation(libs.javax.servlet.api)
@@ -70,6 +70,38 @@ dependencies {
     implementation("dev.samstevens.totp:totp:1.7.1")
 }
 
+tasks.withType<JacocoReport> {
+    val coverageExclusions = listOf(
+        "**/*MapperImpl.class",
+        "org/mapstruct/extensions/spring/converter/**"
+    )
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.map {
+            fileTree(it) {
+                exclude(coverageExclusions)
+            }
+        }))
+    }
+
+    doFirst {
+        reports.html.outputLocation.orNull?.asFile?.let { delete(it) }
+        reports.xml.outputLocation.orNull?.asFile?.let { delete(it) }
+    }
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = false
+    }
+    finalizedBy(tasks.named("jacocoTestReport"))
 }

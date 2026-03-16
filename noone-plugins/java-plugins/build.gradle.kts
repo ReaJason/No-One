@@ -1,5 +1,6 @@
 plugins {
-    id("java")
+    java
+    jacoco
 }
 
 group = "com.reajason.javaweb"
@@ -25,7 +26,21 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
+tasks.withType<JacocoReport> {
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+}
+
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = false
+    }
+    finalizedBy(tasks.named("jacocoTestReport"))
     jvmArgs("--add-opens", "java.base/java.net=ALL-UNNAMED")
 }
