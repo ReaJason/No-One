@@ -1,22 +1,38 @@
+import type { Profile } from "@/types/profile";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { LoaderCircle, WandSparklesIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { toast } from "sonner";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
 import ShellResult from "@/components/memshell/shell-result";
 import AddShellButton from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { transformToPostData } from "@/lib/transformer";
 import { type MemShellResult } from "@/types/memshell";
 import { type MemShellFormSchema } from "@/types/schema";
 
 import { useGeneratorContext } from "./generator-context";
+
+type MemShellLoaderData = {
+  serverConfig: ReturnType<typeof getServers>;
+  mainConfig: ReturnType<typeof getMainConfig>;
+  packerConfig: ReturnType<typeof getPackers>;
+};
+
+type AddShellParams = {
+  profileId?: string;
+  loaderProfileId?: string;
+  shellType?: string;
+  staging?: boolean;
+} | null;
 
 // Validation helper functions
 const urlPatternIsNeeded = (shellType: string) => {
@@ -36,18 +52,13 @@ const isInvalidUrl = (urlPattern: string | undefined) =>
   urlPattern === "/" || urlPattern === "/*" || !urlPattern?.startsWith("/") || !urlPattern;
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
-  try {
-    const authFetch = createAuthFetch(request, context);
-    const [serverConfig, mainConfig, packerConfig] = await Promise.all([
-      getServers(authFetch),
-      getMainConfig(authFetch),
-      getPackers(authFetch),
-    ]);
-    return { serverConfig, mainConfig, packerConfig };
-  } catch (error) {
-    console.error("Failed to load config:", error);
-    throw new Response("Failed to load configuration", { status: 500 });
-  }
+  const authFetch = createAuthFetch(request, context);
+
+  return {
+    serverConfig: getServers(authFetch),
+    mainConfig: getMainConfig(authFetch),
+    packerConfig: getPackers(authFetch),
+  };
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -160,7 +171,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 }
 
 export default function MemShell() {
-  const { serverConfig, mainConfig, packerConfig } = useLoaderData<typeof loader>();
+  const { serverConfig, mainConfig, packerConfig } = useLoaderData() as MemShellLoaderData;
   const { profiles } = useGeneratorContext();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -220,27 +231,21 @@ export default function MemShell() {
   return (
     <Form method="post" className="flex flex-col gap-6">
       <div className="flex w-full flex-col gap-2">
-        <MainConfigCard
-          servers={serverConfig}
-          mainConfig={mainConfig}
-          errors={actionData?.errors}
-          profiles={profiles}
-          onServerChange={handleServerChange}
-          onShellTypeChange={handleShellTypeChange}
-        />
-        <PackageConfigCard
-          packerConfig={packerConfig}
-          errors={actionData?.errors}
-          server={selectedServer}
-          shellType={selectedShellType}
-        />
-        <div className="flex gap-2">
-          <Button className="flex-1" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
-            Generate
-          </Button>
-          {addShellParams && <AddShellButton params={addShellParams} />}
-        </div>
+        <Suspense fallback={<MemShellFormSkeleton />}>
+          <DeferredConfigSection
+            serverConfig={serverConfig}
+            mainConfig={mainConfig}
+            packerConfig={packerConfig}
+            errors={actionData?.errors}
+            profilesPromise={profiles}
+            onServerChange={handleServerChange}
+            onShellTypeChange={handleShellTypeChange}
+            server={selectedServer}
+            shellType={selectedShellType}
+            isSubmitting={isSubmitting}
+            addShellParams={addShellParams}
+          />
+        </Suspense>
       </div>
       <div className="flex w-full flex-col gap-2">
         <ShellResult
@@ -250,5 +255,101 @@ export default function MemShell() {
         />
       </div>
     </Form>
+  );
+}
+
+function DeferredConfigSection({
+  serverConfig,
+  mainConfig,
+  packerConfig,
+  errors,
+  profilesPromise,
+  onServerChange,
+  onShellTypeChange,
+  server,
+  shellType,
+  isSubmitting,
+  addShellParams,
+}: Readonly<{
+  serverConfig: MemShellLoaderData["serverConfig"];
+  mainConfig: MemShellLoaderData["mainConfig"];
+  packerConfig: MemShellLoaderData["packerConfig"];
+  errors?: Record<string, string>;
+  profilesPromise: Promise<Profile[]>;
+  onServerChange?: (server: string) => void;
+  onShellTypeChange?: (shellType: string) => void;
+  server: string;
+  shellType?: string;
+  isSubmitting: boolean;
+  addShellParams: AddShellParams;
+}>) {
+  const resolvedServerConfig = use(serverConfig);
+  const resolvedMainConfig = use(mainConfig);
+  const resolvedPackerConfig = use(packerConfig);
+  const resolvedProfiles = use(profilesPromise);
+
+  return (
+    <>
+      <MainConfigCard
+        servers={resolvedServerConfig}
+        mainConfig={resolvedMainConfig}
+        errors={errors}
+        profiles={resolvedProfiles}
+        onServerChange={onServerChange}
+        onShellTypeChange={onShellTypeChange}
+      />
+      <PackageConfigCard
+        packerConfig={resolvedPackerConfig}
+        errors={errors}
+        server={server}
+        shellType={shellType}
+      />
+      <div className="flex gap-2">
+        <Button className="flex-1" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? <LoaderCircle className="animate-spin" /> : <WandSparklesIcon />}
+          Generate
+        </Button>
+        {addShellParams ? <AddShellButton params={addShellParams} /> : null}
+      </div>
+    </>
+  );
+}
+
+function MemShellFormSkeleton() {
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-1">
+          <Skeleton className="h-6 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-8 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="space-y-4 pt-6">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+          </div>
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-14 w-full rounded-xl" />
+        </CardContent>
+      </Card>
+    </>
   );
 }

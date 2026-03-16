@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "react-router";
 
 import { redirect, useActionData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { createPlugin } from "@/api/plugin-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { PluginForm } from "@/components/plugin/plugin-form";

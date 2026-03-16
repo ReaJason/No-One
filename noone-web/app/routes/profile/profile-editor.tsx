@@ -1,12 +1,21 @@
+import type { Route } from "./+types/profile-editor";
 import type { CreateProfileRequest, Profile } from "@/types/profile";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Edit, Plus } from "lucide-react";
-import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import { useMemo } from "react";
+import { type ActionFunctionArgs, type LoaderFunctionArgs, useParams } from "react-router";
+import {
+  isRouteErrorResponse,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+} from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { createProfile, getProfileById, updateProfile } from "@/api/profile-api";
 import { FormPageShell } from "@/components/form-page-shell";
+import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import {
@@ -31,10 +40,6 @@ export async function loader({
 
   const authFetch = createAuthFetch(request, context);
   const profile = await getProfileById(profileId, authFetch);
-  if (!profile) {
-    throw new Response("Profile not found", { status: 404 });
-  }
-
   return { profile };
 }
 
@@ -83,12 +88,29 @@ export const handle = createBreadcrumb(({ params }) => {
   };
 });
 
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const params = useParams();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <NotFoundErrorBoundary
+        title={"Profile not found"}
+        backLabel={"Back to Profile"}
+        backHref={"/profiles"}
+        resourceType={"Profile"}
+        resourceId={params.profileId}
+      />
+    );
+  }
+  throw error;
+}
+
 export default function ProfileEditor() {
   const { profile } = useLoaderData() as LoaderData;
   const actionData = useActionData() as ProfileActionData | undefined;
   const navigate = useNavigate();
   const isEdit = Boolean(profile);
-  const initialValues = actionData?.values ?? getProfileFormSeed(profile);
+  const loaderInitialValues = useMemo(() => getProfileFormSeed(profile), [profile]);
+  const initialValues = actionData?.values ?? loaderInitialValues;
 
   return (
     <FormPageShell
@@ -109,13 +131,12 @@ export default function ProfileEditor() {
       }
     >
       <ProfileForm
-        key={`${isEdit ? "edit" : "create"}:${JSON.stringify(initialValues)}`}
         mode={isEdit ? "edit" : "create"}
         icon={isEdit ? Edit : Plus}
         submitLabel={isEdit ? "Update Profile" : "Create Profile"}
         initialValues={initialValues}
         errors={actionData?.errors}
-        onCancel={() => navigate("/profiles")}
+        onCancel={() => navigate(-1)}
       />
     </FormPageShell>
   );

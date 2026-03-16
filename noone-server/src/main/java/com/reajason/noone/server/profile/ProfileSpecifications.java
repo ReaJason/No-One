@@ -6,6 +6,13 @@ import org.springframework.util.ObjectUtils;
 
 public class ProfileSpecifications {
 
+    public static Specification<Profile> notDeleted() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.or(
+                criteriaBuilder.isFalse(root.get("deleted")),
+                criteriaBuilder.isNull(root.get("deleted"))
+        );
+    }
+
     public static Specification<Profile> hasName(String name) {
         return (root, query, cb) -> {
             if (ObjectUtils.isEmpty(name)) {
@@ -15,26 +22,13 @@ public class ProfileSpecifications {
         };
     }
 
-    public static Specification<Profile> hasProtocolType(ProtocolType protocolType) {
-        return (root, query, cb) -> {
-            if (protocolType == null) {
-                return cb.conjunction();
-            }
-            return cb.equal(root.get("protocolType"), protocolType);
-        };
-    }
-
     public static Specification<Profile> hasProtocolType(String protocolType) {
         return (root, query, cb) -> {
             if (ObjectUtils.isEmpty(protocolType)) {
                 return cb.conjunction();
             }
-            try {
-                ProtocolType type = ProtocolType.valueOf(protocolType.toUpperCase());
-                return cb.equal(root.get("protocolType"), type);
-            } catch (IllegalArgumentException e) {
-                return cb.conjunction();
-            }
+            ProtocolType type = ProtocolType.valueOf(protocolType.toUpperCase());
+            return cb.equal(root.get("protocolType"), type);
         };
     }
 }

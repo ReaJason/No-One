@@ -5,7 +5,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import React, { use } from "react";
 import { useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getAuditLogs, loadAuditSearchParams } from "@/api/audit-api";
 import { auditColumns } from "@/components/audit/audit-columns";
 import { DataTable } from "@/components/data-table/data-table";
@@ -17,13 +17,13 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const { module, action, username, success, page, perPage, sortBy, sortOrder } =
     loadAuditSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const auditResponse = await getAuditLogs(
+  const auditResponse = getAuditLogs(
     { module, action, username, success, page, perPage, sortBy, sortOrder },
     authFetch,
   );
 
   return {
-    auditResponse: Promise.resolve(auditResponse),
+    auditResponse,
   };
 }
 
@@ -33,7 +33,7 @@ export default function Audit() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Audit Logs</h1>

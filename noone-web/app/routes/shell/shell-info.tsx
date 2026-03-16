@@ -7,7 +7,7 @@ import {
   useRevalidator,
 } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import * as shellApi from "@/api/shell-api";
 import * as opLogApi from "@/api/shell-operation-log-api";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";

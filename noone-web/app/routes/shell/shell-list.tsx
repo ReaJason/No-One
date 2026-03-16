@@ -7,7 +7,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use, useMemo } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { deleteShellConnection, getShellConnections } from "@/api/shell-connection-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -40,14 +40,10 @@ async function getAllProject(authFetch: ReturnType<typeof createAuthFetch>) {
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const params = await loadShellConnectionSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const [shellConnectionResponse, projectsResponse] = await Promise.all([
-    getShellConnections(params, authFetch),
-    getAllProject(authFetch),
-  ]);
 
   return {
-    shellConnectionResponse: Promise.resolve(shellConnectionResponse),
-    projectsResponse: Promise.resolve(projectsResponse),
+    shellConnectionResponse: getShellConnections(params, authFetch),
+    projectsResponse: getAllProject(authFetch),
   };
 }
 
@@ -91,7 +87,7 @@ export default function ShellList() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Shell Connections</h1>

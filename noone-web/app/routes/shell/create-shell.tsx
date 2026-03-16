@@ -16,7 +16,7 @@ import {
 } from "react-router";
 import { toast } from "sonner";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
 import {
@@ -468,7 +468,7 @@ function ShellForm({
                     items={profileItems}
                     value={profileId}
                     onValueChange={(value) => setProfileId(value ?? "")}
-                    disabled={isPrefilled}
+                    disabled={isPrefilled && !staging}
                   >
                     <SelectTrigger
                       id="profileId"
@@ -552,7 +552,7 @@ function ShellForm({
                 <Checkbox
                   id="staging"
                   checked={staging}
-                  onCheckedChange={(checked) => setStaging(checked === true)}
+                  onCheckedChange={(checked) => setStaging(checked)}
                   disabled={isPrefilled}
                 />
                 <FieldContent>

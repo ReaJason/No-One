@@ -6,7 +6,7 @@ import {
   useRevalidator,
 } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { dispatchPlugin } from "@/api/shell-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import FileManager from "@/components/shell/file-manager";

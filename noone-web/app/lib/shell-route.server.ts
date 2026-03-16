@@ -1,6 +1,6 @@
 import type { PluginRuntimeStatus } from "@/types/plugin";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { dispatchPlugin, getPluginStatus, updatePlugin } from "@/api/shell-api";
 import { resolveApiErrorMessage } from "@/lib/api-error";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";

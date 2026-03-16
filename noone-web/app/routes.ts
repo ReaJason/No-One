@@ -33,7 +33,7 @@ export default [
       route("/edit/:profileId", "routes/profile/profile-editor.tsx", { id: "profiles-edit" }),
     ]),
     ...prefix("plugins", [
-      index("routes/plugins.tsx"),
+      index("routes/plugins/list.tsx"),
       route("/create", "routes/plugins/create.tsx"),
     ]),
     route("/settings", "routes/settings.tsx"),

@@ -6,7 +6,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { deleteProject, getProjects, loadProjectSearchParams } from "@/api/project-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -19,13 +19,13 @@ import { useDataTable } from "@/hooks/use-data-table";
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, status, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const projectResponse = await getProjects(
+  const projectResponse = getProjects(
     { name, status, page, perPage, sortBy, sortOrder },
     authFetch,
   );
 
   return {
-    projectResponse: Promise.resolve(projectResponse),
+    projectResponse,
   };
 }
 
@@ -54,7 +54,7 @@ export default function ProjectList() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">Project Management</h1>

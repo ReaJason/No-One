@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api.server";
+import type { AuthFetch } from "@/api/api.server";
 
 const baseUrl = "/webshell";
 

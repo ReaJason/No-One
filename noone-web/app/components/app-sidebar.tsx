@@ -4,7 +4,6 @@ import {
   Folder,
   Home,
   Key,
-  Loader,
   PlugZap2,
   Settings,
   Shield,
@@ -64,12 +63,8 @@ function NavItemRenderer({ item, location }: NavItemRendererProps) {
             </div>
           ) : (
             <NavLink to={item.url} viewTransition>
-              {({ isPending }) => (
-                <>
-                  {isPending ? <Loader className="animate-spin" /> : <item.icon />}
-                  <span>{item.title}</span>
-                </>
-              )}
+              <item.icon />
+              <span>{item.title}</span>
             </NavLink>
           )
         }

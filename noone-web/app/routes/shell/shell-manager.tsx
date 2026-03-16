@@ -13,7 +13,7 @@ import {
 } from "react-router";
 import { Toaster } from "sonner";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";

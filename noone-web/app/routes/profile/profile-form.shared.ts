@@ -143,16 +143,16 @@ export function parseProfileFormData(
   }
 
   const identifier = buildIdentifier(values);
-  const requestTransformations = compactTransformers([
+  const requestTransformations = [
     values.requestCompression,
     values.requestEncryption,
     values.requestEncoding,
-  ]);
-  const responseTransformations = compactTransformers([
+  ];
+  const responseTransformations = [
     values.responseCompression,
     values.responseEncryption,
     values.responseEncoding,
-  ]);
+  ];
 
   let protocolConfig: HttpProtocolConfig | WebSocketProtocolConfig;
 
@@ -230,13 +230,6 @@ function buildIdentifier(values: ProfileFormSeed): IdentifierConfig | null {
         value: values.identifierValue || undefined,
       }
     : null;
-}
-
-function compactTransformers(values: string[]) {
-  return values.filter((value) => {
-    const normalized = value.trim().toLowerCase();
-    return normalized.length > 0 && normalized !== "none";
-  });
 }
 
 function parseJsonRecord(raw: string) {

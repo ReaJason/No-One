@@ -14,7 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getShellConnectionById, testShellConnection } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";

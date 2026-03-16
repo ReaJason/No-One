@@ -6,7 +6,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { deleteProfile, getProfiles, loadProfileSearchParams } from "@/api/profile-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -20,7 +20,7 @@ import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, protocolType, page, perPage, sortBy, sortOrder } = loadProfileSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const profileResponse = await getProfiles(
+  const profileResponse = getProfiles(
     {
       name,
       protocolType,
@@ -32,9 +32,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     authFetch,
   );
 
-  return {
-    profileResponse: Promise.resolve(profileResponse),
-  };
+  return { profileResponse };
 }
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -68,7 +66,7 @@ export default function ProfileList() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">Profile Management</h1>

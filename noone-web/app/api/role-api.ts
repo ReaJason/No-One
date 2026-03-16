@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api.server";
+import type { AuthFetch } from "@/api/api.server";
 import type { Role } from "@/types/admin";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 

@@ -1,8 +1,9 @@
 import type { ProfileFormSeed } from "@/routes/profile/profile-form.shared";
 import type { LucideIcon } from "lucide-react";
 
+import { Loader } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Form } from "react-router";
+import { Form, useNavigation } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import {
   WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS,
   type HttpRequestBodyType,
   type HttpResponseBodyType,
+  type MessageFormat,
   type ProtocolType,
 } from "@/types/profile";
 
@@ -44,6 +46,116 @@ type ProfileFormProps = {
   submitLabel: string;
 };
 
+type ProfileFormDraft = Pick<
+  ProfileFormSeed,
+  | "identifierLocation"
+  | "identifierOperator"
+  | "messageFormat"
+  | "protocolType"
+  | "requestBodyType"
+  | "requestCompression"
+  | "requestEncoding"
+  | "requestEncryption"
+  | "requestMethod"
+  | "requestTemplate"
+  | "responseBodyType"
+  | "responseCompression"
+  | "responseEncoding"
+  | "responseEncryption"
+  | "responseTemplate"
+>;
+
+const IDENTIFIER_LOCATION_OPTIONS_BY_PROTOCOL = {
+  HTTP: HTTP_IDENTIFIER_LOCATION_OPTIONS,
+  WEBSOCKET: WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS,
+} satisfies Record<ProtocolType, Array<{ label: string; value: string }>>;
+
+const UNCONTROLLED_FIELD_NAMES = [
+  "handshakeHeaders",
+  "identifierName",
+  "identifierValue",
+  "messageTemplate",
+  "name",
+  "password",
+  "requestHeaders",
+  "responseHeaders",
+  "responseStatusCode",
+  "subprotocol",
+  "wsResponseTemplate",
+] as const;
+
+type UncontrolledFieldName = (typeof UNCONTROLLED_FIELD_NAMES)[number];
+
+function buildProfileFormDraft(initialValues: ProfileFormSeed): ProfileFormDraft {
+  return {
+    identifierLocation: initialValues.identifierLocation,
+    identifierOperator: initialValues.identifierOperator,
+    messageFormat: initialValues.messageFormat,
+    protocolType: initialValues.protocolType,
+    requestBodyType: initialValues.requestBodyType,
+    requestCompression: initialValues.requestCompression,
+    requestEncoding: initialValues.requestEncoding,
+    requestEncryption: initialValues.requestEncryption,
+    requestMethod: initialValues.requestMethod,
+    requestTemplate: initialValues.requestTemplate,
+    responseBodyType: initialValues.responseBodyType,
+    responseCompression: initialValues.responseCompression,
+    responseEncoding: initialValues.responseEncoding,
+    responseEncryption: initialValues.responseEncryption,
+    responseTemplate: initialValues.responseTemplate,
+  };
+}
+
+function getUncontrolledFieldValues(
+  initialValues: ProfileFormSeed,
+): Record<UncontrolledFieldName, string> {
+  return {
+    handshakeHeaders: initialValues.handshakeHeaders,
+    identifierName: initialValues.identifierName,
+    identifierValue: initialValues.identifierValue,
+    messageTemplate: initialValues.messageTemplate,
+    name: initialValues.name,
+    password: initialValues.password,
+    requestHeaders: initialValues.requestHeaders,
+    responseHeaders: initialValues.responseHeaders,
+    responseStatusCode: initialValues.responseStatusCode,
+    subprotocol: initialValues.subprotocol,
+    wsResponseTemplate: initialValues.wsResponseTemplate,
+  };
+}
+
+function syncUncontrolledField(form: HTMLFormElement, name: UncontrolledFieldName, value: string) {
+  const element = form.elements.namedItem(name);
+  if (element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement) {
+    element.defaultValue = value;
+    element.value = value;
+  }
+}
+
+function syncUncontrolledFields(form: HTMLFormElement | null, initialValues: ProfileFormSeed) {
+  if (!form) {
+    return;
+  }
+
+  const values = getUncontrolledFieldValues(initialValues);
+  for (const name of UNCONTROLLED_FIELD_NAMES) {
+    syncUncontrolledField(form, name, values[name]);
+  }
+}
+
+function getNextTemplateValue<T extends string>(
+  currentTemplate: string,
+  previousType: T,
+  nextType: T,
+  defaults: Record<T, string>,
+) {
+  const previousDefault = defaults[previousType];
+  if (currentTemplate.trim() === "" || currentTemplate === previousDefault) {
+    return defaults[nextType];
+  }
+  return currentTemplate;
+}
+
 export function ProfileForm({
   action,
   errors,
@@ -53,76 +165,20 @@ export function ProfileForm({
   onCancel,
   submitLabel,
 }: ProfileFormProps) {
-  const [protocolType, setProtocolType] = useState<ProtocolType>(initialValues.protocolType);
-  const [method, setMethod] = useState(initialValues.requestMethod);
-  const [requestBodyType, setRequestBodyType] = useState<HttpRequestBodyType>(
-    initialValues.requestBodyType,
-  );
-  const [responseBodyType, setResponseBodyType] = useState<HttpResponseBodyType>(
-    initialValues.responseBodyType,
-  );
-  const [identifierLocation, setIdentifierLocation] = useState(initialValues.identifierLocation);
-  const [identifierOperator, setIdentifierOperator] = useState(initialValues.identifierOperator);
-  const [messageFormat, setMessageFormat] = useState<"TEXT" | "BINARY">(
-    initialValues.messageFormat,
-  );
-  const [requestTemplate, setRequestTemplate] = useState(initialValues.requestTemplate);
-  const [responseTemplate, setResponseTemplate] = useState(initialValues.responseTemplate);
-  const [reqCompression, setReqCompression] = useState(initialValues.requestCompression);
-  const [reqEncryption, setReqEncryption] = useState(initialValues.requestEncryption);
-  const [reqEncoding, setReqEncoding] = useState(initialValues.requestEncoding);
-  const [resCompression, setResCompression] = useState(initialValues.responseCompression);
-  const [resEncryption, setResEncryption] = useState(initialValues.responseEncryption);
-  const [resEncoding, setResEncoding] = useState(initialValues.responseEncoding);
-
-  const previousRequestBodyType = useRef<HttpRequestBodyType>(requestBodyType);
-  const previousResponseBodyType = useRef<HttpResponseBodyType>(responseBodyType);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [draft, setDraft] = useState(() => buildProfileFormDraft(initialValues));
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === "submitting";
 
   useEffect(() => {
-    setProtocolType(initialValues.protocolType);
-    setMethod(initialValues.requestMethod);
-    setRequestBodyType(initialValues.requestBodyType);
-    setResponseBodyType(initialValues.responseBodyType);
-    setIdentifierLocation(initialValues.identifierLocation);
-    setIdentifierOperator(initialValues.identifierOperator);
-    setMessageFormat(initialValues.messageFormat);
-    setRequestTemplate(initialValues.requestTemplate);
-    setResponseTemplate(initialValues.responseTemplate);
-    setReqCompression(initialValues.requestCompression);
-    setReqEncryption(initialValues.requestEncryption);
-    setReqEncoding(initialValues.requestEncoding);
-    setResCompression(initialValues.responseCompression);
-    setResEncryption(initialValues.responseEncryption);
-    setResEncoding(initialValues.responseEncoding);
-    previousRequestBodyType.current = initialValues.requestBodyType;
-    previousResponseBodyType.current = initialValues.responseBodyType;
+    setDraft(buildProfileFormDraft(initialValues));
+    syncUncontrolledFields(formRef.current, initialValues);
   }, [initialValues]);
 
-  useEffect(() => {
-    const previous = previousRequestBodyType.current;
-    const previousDefault = DEFAULT_REQUEST_TEMPLATES[previous];
-    if (requestTemplate.trim() === "" || requestTemplate === previousDefault) {
-      setRequestTemplate(DEFAULT_REQUEST_TEMPLATES[requestBodyType]);
-    }
-    previousRequestBodyType.current = requestBodyType;
-  }, [requestBodyType, requestTemplate]);
-
-  useEffect(() => {
-    const previous = previousResponseBodyType.current;
-    const previousDefault = DEFAULT_RESPONSE_TEMPLATES[previous];
-    if (responseTemplate.trim() === "" || responseTemplate === previousDefault) {
-      setResponseTemplate(DEFAULT_RESPONSE_TEMPLATES[responseBodyType]);
-    }
-    previousResponseBodyType.current = responseBodyType;
-  }, [responseBodyType, responseTemplate]);
-
-  const identifierLocationOptions =
-    protocolType === "HTTP"
-      ? HTTP_IDENTIFIER_LOCATION_OPTIONS
-      : WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS;
+  const identifierLocationOptions = IDENTIFIER_LOCATION_OPTIONS_BY_PROTOCOL[draft.protocolType];
 
   return (
-    <Form method="post" action={action} className="space-y-6">
+    <Form ref={formRef} method="post" action={action} className="space-y-6">
       {errors?.general ? (
         <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
           {errors.general}
@@ -168,10 +224,15 @@ export function ProfileForm({
             </Field>
             <Field>
               <FieldLabel>Protocol Type</FieldLabel>
-              <input type="hidden" name="protocolType" value={protocolType} />
+              <input type="hidden" name="protocolType" value={draft.protocolType} />
               <Select
-                value={protocolType}
-                onValueChange={(value) => setProtocolType(value as ProtocolType)}
+                value={draft.protocolType}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    protocolType: (value as ProtocolType) ?? current.protocolType,
+                  }))
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select protocol" />
@@ -196,10 +257,15 @@ export function ProfileForm({
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Field>
               <FieldLabel>Location</FieldLabel>
-              <input type="hidden" name="identifierLocation" value={identifierLocation} />
+              <input type="hidden" name="identifierLocation" value={draft.identifierLocation} />
               <Select
-                value={identifierLocation}
-                onValueChange={(value) => setIdentifierLocation(value ?? "")}
+                value={draft.identifierLocation}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    identifierLocation: value ?? "",
+                  }))
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select location" />
@@ -217,10 +283,15 @@ export function ProfileForm({
             </Field>
             <Field>
               <FieldLabel>Operator</FieldLabel>
-              <input type="hidden" name="identifierOperator" value={identifierOperator} />
+              <input type="hidden" name="identifierOperator" value={draft.identifierOperator} />
               <Select
-                value={identifierOperator}
-                onValueChange={(value) => setIdentifierOperator(value ?? "")}
+                value={draft.identifierOperator}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    identifierOperator: value ?? "",
+                  }))
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select operator" />
@@ -258,7 +329,7 @@ export function ProfileForm({
         </CardContent>
       </Card>
 
-      {protocolType === "HTTP" ? (
+      {draft.protocolType === "HTTP" ? (
         <Card>
           <CardHeader>
             <CardTitle>HTTP Config</CardTitle>
@@ -268,8 +339,16 @@ export function ProfileForm({
               <div className="space-y-4">
                 <Field>
                   <FieldLabel>Request Method</FieldLabel>
-                  <input type="hidden" name="requestMethod" value={method} />
-                  <Select value={method} onValueChange={(value) => setMethod(value ?? "")}>
+                  <input type="hidden" name="requestMethod" value={draft.requestMethod} />
+                  <Select
+                    value={draft.requestMethod}
+                    onValueChange={(value) =>
+                      setDraft((current) => ({
+                        ...current,
+                        requestMethod: value ?? "",
+                      }))
+                    }
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select method" />
                     </SelectTrigger>
@@ -286,10 +365,24 @@ export function ProfileForm({
                 </Field>
                 <Field>
                   <FieldLabel>Request Body Type</FieldLabel>
-                  <input type="hidden" name="requestBodyType" value={requestBodyType} />
+                  <input type="hidden" name="requestBodyType" value={draft.requestBodyType} />
                   <Select
-                    value={requestBodyType}
-                    onValueChange={(value) => setRequestBodyType(value as HttpRequestBodyType)}
+                    value={draft.requestBodyType}
+                    onValueChange={(value) => {
+                      const nextRequestBodyType =
+                        (value as HttpRequestBodyType) ?? draft.requestBodyType;
+
+                      setDraft((current) => ({
+                        ...current,
+                        requestBodyType: nextRequestBodyType,
+                        requestTemplate: getNextTemplateValue(
+                          current.requestTemplate,
+                          current.requestBodyType,
+                          nextRequestBodyType,
+                          DEFAULT_REQUEST_TEMPLATES,
+                        ),
+                      }));
+                    }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select body type" />
@@ -320,10 +413,24 @@ export function ProfileForm({
                 </Field>
                 <Field>
                   <FieldLabel>Response Body Type</FieldLabel>
-                  <input type="hidden" name="responseBodyType" value={responseBodyType} />
+                  <input type="hidden" name="responseBodyType" value={draft.responseBodyType} />
                   <Select
-                    value={responseBodyType}
-                    onValueChange={(value) => setResponseBodyType(value as HttpResponseBodyType)}
+                    value={draft.responseBodyType}
+                    onValueChange={(value) => {
+                      const nextResponseBodyType =
+                        (value as HttpResponseBodyType) ?? draft.responseBodyType;
+
+                      setDraft((current) => ({
+                        ...current,
+                        responseBodyType: nextResponseBodyType,
+                        responseTemplate: getNextTemplateValue(
+                          current.responseTemplate,
+                          current.responseBodyType,
+                          nextResponseBodyType,
+                          DEFAULT_RESPONSE_TEMPLATES,
+                        ),
+                      }));
+                    }}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select body type" />
@@ -377,8 +484,13 @@ export function ProfileForm({
                   name="requestTemplate"
                   rows={10}
                   className="font-mono text-sm leading-6"
-                  value={requestTemplate}
-                  onChange={(event) => setRequestTemplate(event.target.value)}
+                  value={draft.requestTemplate}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      requestTemplate: event.target.value,
+                    }))
+                  }
                 />
               </Field>
               <Field>
@@ -388,8 +500,13 @@ export function ProfileForm({
                   name="responseTemplate"
                   rows={10}
                   className="font-mono text-sm leading-6"
-                  value={responseTemplate}
-                  onChange={(event) => setResponseTemplate(event.target.value)}
+                  value={draft.responseTemplate}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      responseTemplate: event.target.value,
+                    }))
+                  }
                 />
               </Field>
             </div>
@@ -413,10 +530,15 @@ export function ProfileForm({
               </Field>
               <Field>
                 <FieldLabel>Message Format</FieldLabel>
-                <input type="hidden" name="messageFormat" value={messageFormat} />
+                <input type="hidden" name="messageFormat" value={draft.messageFormat} />
                 <Select
-                  value={messageFormat}
-                  onValueChange={(value) => setMessageFormat(value as "TEXT" | "BINARY")}
+                  value={draft.messageFormat}
+                  onValueChange={(value) =>
+                    setDraft((current) => ({
+                      ...current,
+                      messageFormat: (value as MessageFormat) ?? current.messageFormat,
+                    }))
+                  }
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select format" />
@@ -482,22 +604,37 @@ export function ProfileForm({
                 label="Compression"
                 name="requestCompression"
                 options={COMPRESSION_OPTIONS}
-                value={reqCompression}
-                onValueChange={setReqCompression}
+                value={draft.requestCompression}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    requestCompression: value,
+                  }))
+                }
               />
               <TransformerSelect
                 label="Encryption"
                 name="requestEncryption"
                 options={ENCRYPTION_OPTIONS}
-                value={reqEncryption}
-                onValueChange={setReqEncryption}
+                value={draft.requestEncryption}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    requestEncryption: value,
+                  }))
+                }
               />
               <TransformerSelect
                 label="Encoding"
                 name="requestEncoding"
                 options={ENCODING_OPTIONS}
-                value={reqEncoding}
-                onValueChange={setReqEncoding}
+                value={draft.requestEncoding}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    requestEncoding: value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -509,22 +646,37 @@ export function ProfileForm({
                 label="Compression"
                 name="responseCompression"
                 options={COMPRESSION_OPTIONS}
-                value={resCompression}
-                onValueChange={setResCompression}
+                value={draft.responseCompression}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    responseCompression: value,
+                  }))
+                }
               />
               <TransformerSelect
                 label="Encryption"
                 name="responseEncryption"
                 options={ENCRYPTION_OPTIONS}
-                value={resEncryption}
-                onValueChange={setResEncryption}
+                value={draft.responseEncryption}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    responseEncryption: value,
+                  }))
+                }
               />
               <TransformerSelect
                 label="Encoding"
                 name="responseEncoding"
                 options={ENCODING_OPTIONS}
-                value={resEncoding}
-                onValueChange={setResEncoding}
+                value={draft.responseEncoding}
+                onValueChange={(value) =>
+                  setDraft((current) => ({
+                    ...current,
+                    responseEncoding: value,
+                  }))
+                }
               />
             </div>
           </div>
@@ -532,9 +684,13 @@ export function ProfileForm({
       </Card>
 
       <div className="flex gap-4 pt-2">
-        <Button type="submit" className="flex items-center gap-2">
-          <Icon className="h-4 w-4" />
-          {submitLabel}
+        <Button type="submit" className="flex items-center gap-2" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <Loader className="h-4 w-4 animate-spin" />
+          ) : (
+            <Icon className="h-4 w-4" />
+          )}
+          {isSubmitting ? `${submitLabel}...` : submitLabel}
         </Button>
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

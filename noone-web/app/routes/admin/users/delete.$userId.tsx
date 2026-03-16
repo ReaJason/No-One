@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "react-router";
 
 import { redirect } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { deleteUser } from "@/api/user-api";
 
 export async function action({ request, context, params }: ActionFunctionArgs) {

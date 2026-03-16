@@ -4,7 +4,7 @@ import { Puzzle, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import PluginCatalog from "@/components/shell/plugin-catalog";

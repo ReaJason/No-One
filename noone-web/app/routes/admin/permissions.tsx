@@ -6,7 +6,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getPermissions, loadPermissionSearchParams } from "@/api/permission-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -19,7 +19,7 @@ import { useDataTable } from "@/hooks/use-data-table";
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } = loadPermissionSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const permissionResponse = await getPermissions(
+  const permissionResponse = getPermissions(
     {
       name,
       page,
@@ -31,7 +31,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   );
 
   return {
-    permissionResponse: Promise.resolve(permissionResponse),
+    permissionResponse,
   };
 }
 
@@ -41,7 +41,7 @@ export default function Permissions() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Permission Management</h1>

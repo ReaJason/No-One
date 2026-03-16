@@ -7,7 +7,7 @@ import * as React from "react";
 import { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { getUsers, loadUserSearchParams } from "@/api/user-api";
 import { DataTable } from "@/components/data-table/data-table";
@@ -41,7 +41,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     status ?? (enabled == null ? null : enabled ? "ENABLED" : "DISABLED");
 
   const authFetch = createAuthFetch(request, context);
-  const userResponse = await getUsers(
+  const userResponse = getUsers(
     {
       username,
       roleId: explicitRoleId ?? roleId,
@@ -54,11 +54,11 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
     },
     authFetch,
   );
-  const roles = await getAllRoles(authFetch);
+  const roles = getAllRoles(authFetch);
 
   return {
-    userResponse: Promise.resolve(userResponse),
-    roles: Promise.resolve(roles),
+    userResponse,
+    roles,
   };
 }
 
@@ -69,7 +69,7 @@ export default function Users() {
   };
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>

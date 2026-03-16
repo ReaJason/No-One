@@ -1,11 +1,12 @@
+import type { Profile } from "@/types/profile";
 import type { ActionFunctionArgs } from "react-router";
 
 import { Download, FileCode2, LoaderCircle, WandSparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Form, useActionData, useNavigation } from "react-router";
 import { toast } from "sonner";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import {
   generateWebShell,
   type WebShellFormat,
@@ -34,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { downloadContent } from "@/lib/utils";
 
 import { useGeneratorContext } from "./generator-context";
@@ -127,6 +129,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 export default function WebShell() {
   const { profiles } = useGeneratorContext();
+  return (
+    <Suspense fallback={<WebShellPageSkeleton />}>
+      <DeferredWebShellContent profilesPromise={profiles} />
+    </Suspense>
+  );
+}
+
+function DeferredWebShellContent({ profilesPromise }: { profilesPromise: Promise<Profile[]> }) {
+  const profiles = use(profilesPromise);
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const isGenerating = navigation.state === "submitting";
@@ -371,6 +382,69 @@ export default function WebShell() {
           </CardContent>
         </Card>
       )}
+    </div>
+  );
+}
+
+function WebShellPageSkeleton() {
+  return (
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-5 w-88 max-w-full" />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-10 w-full max-w-sm" />
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-24" />
+              <div className="space-y-2">
+                <Skeleton className="h-18 w-full rounded-lg" />
+                <Skeleton className="h-18 w-full rounded-lg" />
+                <Skeleton className="h-18 w-full rounded-lg" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-28" />
+              <div className="space-y-2">
+                <Skeleton className="h-18 w-full rounded-lg" />
+                <Skeleton className="h-18 w-full rounded-lg" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Skeleton className="h-5 w-30" />
+              <div className="space-y-2">
+                <Skeleton className="h-18 w-full rounded-lg" />
+                <Skeleton className="h-18 w-full rounded-lg" />
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <Skeleton className="h-10 w-full sm:w-36" />
+        </CardContent>
+      </Card>
+
+      <Card className="border-dashed">
+        <CardContent className="space-y-4 py-16">
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 text-center">
+            <Skeleton className="size-10 rounded-full" />
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

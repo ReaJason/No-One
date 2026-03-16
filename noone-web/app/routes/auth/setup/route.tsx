@@ -5,13 +5,13 @@ import { GalleryVerticalEnd, KeyRound } from "lucide-react";
 import React from "react";
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
-import { publicApi } from "@/api.server";
+import { publicApi } from "@/api/api.server";
+import { commitSession, getSession } from "@/api/sessions.server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { commitSession, getSession } from "@/sessions.server";
 
 type LoginApiSuccess = {
   token?: string;

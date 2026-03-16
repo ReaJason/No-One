@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 
 import { Outlet, useLoaderData, useLocation, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getAllProfiles } from "@/api/profile-api";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
@@ -16,8 +16,7 @@ export const handle = createBreadcrumb(() => ({
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const authFetch = createAuthFetch(request, context);
-  const profiles = await getAllProfiles(authFetch);
-  return { profiles };
+  return { profiles: getAllProfiles(authFetch) };
 }
 
 export default function GeneratorLayout() {
@@ -32,9 +31,9 @@ export default function GeneratorLayout() {
   };
 
   return (
-    <div className="@container/page flex flex-1 flex-col gap-6 p-6">
+    <div className="container mx-auto max-w-7xl gap-6 p-6">
       <Tabs value={currentTab} onValueChange={handleTabChange}>
-        <TabsList>
+        <TabsList className={"mb-8"}>
           <TabsTrigger value="memshell">MemShell</TabsTrigger>
           <TabsTrigger value="webshell">WebShell</TabsTrigger>
         </TabsList>

@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api.server";
+import type { AuthFetch } from "@/api/api.server";
 import type { PluginRuntimeStatus } from "@/types/plugin";
 import type { ShellPluginDispatchRequest } from "@/types/shell";
 import type { FetchOptions } from "ofetch";

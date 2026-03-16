@@ -2,11 +2,21 @@ import type { Profile } from "@/types/profile";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { Edit, Loader, MoreHorizontal, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -20,67 +30,101 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { formatDate } from "@/lib/format";
 
-function ProfileActionsCell({ profile }: { profile: Profile }) {
+type DeleteFetcherData = {
+  success?: boolean;
+  errors?: Record<string, string>;
+};
+
+export const ProfileActionsCell = React.memo(function ProfileActionsCell({
+  profile,
+}: {
+  profile: Profile;
+}) {
   const navigate = useNavigate();
-  const deleteFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
-  const lastStateRef = useRef(deleteFetcher.state);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const deleteFetcher = useFetcher<DeleteFetcherData>();
+  const isDeleting = deleteFetcher.state !== "idle";
+  const wasDeletingRef = useRef(isDeleting);
+  const deleteError = deleteFetcher.data?.errors?.general;
 
   useEffect(() => {
-    if (lastStateRef.current !== "submitting" || deleteFetcher.state !== "idle") {
-      lastStateRef.current = deleteFetcher.state;
+    if (!wasDeletingRef.current || isDeleting) {
+      wasDeletingRef.current = isDeleting;
       return;
     }
+
     if (deleteFetcher.data?.success) {
+      setIsDeleteOpen(false);
       toast.success("Profile deleted");
     } else if (deleteFetcher.data?.errors?.general) {
       toast.error(deleteFetcher.data.errors.general);
     }
-    lastStateRef.current = deleteFetcher.state;
-  }, [deleteFetcher.data, deleteFetcher.state]);
 
-  const handleDelete = () => {
-    if (!confirm("Are you sure you want to delete this profile?")) return;
-    const formData = new FormData();
-    formData.set("intent", "delete");
-    formData.set("profileId", String(profile.id));
-    deleteFetcher.submit(formData, { method: "post", action: "/profiles" });
-  };
+    wasDeletingRef.current = isDeleting;
+  }, [deleteFetcher.data, isDeleting]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        }
-      ></DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigate(`/profiles/edit/${profile.id}`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={handleDelete}
-            className="text-destructive"
-            disabled={deleteFetcher.state !== "idle"}
-          >
-            {deleteFetcher.state !== "idle" ? (
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          }
+        ></DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => navigate(`/profiles/edit/${profile.id}`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setIsDeleteOpen(true)}
+              className="text-destructive"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <deleteFetcher.Form method="post" action="/profiles">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="profileId" value={String(profile.id)} />
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete this profile?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The profile configuration will be permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction>
+                <Button type="submit" className="text-sm" disabled={isDeleting}>
+                  {isDeleting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirm
+                </Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </deleteFetcher.Form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
-}
+});
 
 export const profileColumns: ColumnDef<Profile>[] = [
   {

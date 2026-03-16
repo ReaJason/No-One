@@ -8,7 +8,7 @@ import * as React from "react";
 import { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getPlugins, loadPluginSearchParams } from "@/api/plugin-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -31,7 +31,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, language, type, page, perPage, sortBy, sortOrder } =
     loadPluginSearchParams(request);
   const authFetch = createAuthFetch(request, context);
-  const pluginResponse = await getPlugins(
+  const pluginResponse = getPlugins(
     {
       name,
       language,
@@ -45,7 +45,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   );
 
   return {
-    pluginResponse: Promise.resolve(pluginResponse),
+    pluginResponse,
   };
 }
 
@@ -65,7 +65,7 @@ export default function Plugins() {
   );
 
   return (
-    <div className="container mx-auto max-w-6xl p-6">
+    <div className="container mx-auto max-w-7xl p-6">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Plugin Management</h1>

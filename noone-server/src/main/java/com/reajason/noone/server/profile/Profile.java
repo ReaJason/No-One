@@ -31,7 +31,7 @@ public class Profile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -64,5 +64,7 @@ public class Profile {
     @Column(name = "updated_at", nullable = false)
     @LastModifiedDate
     private LocalDateTime updatedAt;
-}
 
+    @Column(nullable = false)
+    private Boolean deleted = Boolean.FALSE;
+}

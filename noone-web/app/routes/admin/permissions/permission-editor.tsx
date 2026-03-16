@@ -4,7 +4,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Edit, Plus } from "lucide-react";
 import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { createPermission, getPermissionById, updatePermission } from "@/api/permission-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { PermissionForm } from "@/components/permission/permission-form";

@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api.server";
+import type { AuthFetch } from "@/api/api.server";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { CreateProfileRequest, Profile } from "@/types/profile";
 
@@ -36,7 +36,7 @@ export async function getProfiles(
   return mapPaginatedResponse(response);
 }
 
-export async function getProfileById(id: string, authFetch: AuthFetch): Promise<Profile | null> {
+export async function getProfileById(id: string, authFetch: AuthFetch): Promise<Profile> {
   return await authFetch<Profile>(`${baseUrl}/${id}`);
 }
 

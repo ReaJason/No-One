@@ -8,6 +8,7 @@ import React from "react";
 import { data, Link, type LoaderFunctionArgs, Outlet } from "react-router";
 import { Toaster } from "sonner";
 
+import { getSession } from "@/api/sessions.server";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -24,7 +25,6 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { buildAuthState } from "@/lib/authz";
 import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
 import { authMiddleware } from "@/middleware/auth.server";
-import { getSession } from "@/sessions.server";
 
 export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
 

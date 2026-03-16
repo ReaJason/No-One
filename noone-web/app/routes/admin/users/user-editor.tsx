@@ -4,7 +4,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { Edit, Plus } from "lucide-react";
 import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getAllRoles } from "@/api/role-api";
 import { createUser, getUserById, updateUser } from "@/api/user-api";
 import { FormPageShell } from "@/components/form-page-shell";

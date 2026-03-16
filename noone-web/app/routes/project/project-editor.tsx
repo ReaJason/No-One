@@ -5,7 +5,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { PencilLine, Plus } from "lucide-react";
 import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { getProjectById, updateProject } from "@/api/project-api";
 import { createProject } from "@/api/project-api";
 import { getAllUsers } from "@/api/user-api";

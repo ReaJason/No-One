@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "react-router";
 
 import { redirect } from "react-router";
 
-import { createAuthFetch } from "@/api.server";
+import { createAuthFetch } from "@/api/api.server";
 import { updatePermission } from "@/api/permission-api";
 import { parsePermissionFormData } from "@/routes/admin/permissions/permission-form.shared";
 
