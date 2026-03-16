@@ -1,84 +1,35 @@
+import type { PaginatedResponse } from "@/types/api";
+import type { AuditLog } from "@/types/audit";
 import type { LoaderFunctionArgs } from "react-router";
 
 import React, { use } from "react";
 import { useLoaderData } from "react-router";
 
+import { createAuthFetch } from "@/api.server";
+import { getAuditLogs, loadAuditSearchParams } from "@/api/audit-api";
+import { auditColumns } from "@/components/audit/audit-columns";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/use-data-table";
 
-// Mock audit data
-interface AuditLog {
-  id: string;
-  userId: string;
-  userName: string;
-  action: string;
-  resource: string;
-  ipAddress: string;
-  userAgent: string;
-  timestamp: string;
-  status: "success" | "failed";
-}
+export async function loader({ request, context }: LoaderFunctionArgs) {
+  const { module, action, username, success, page, perPage, sortBy, sortOrder } =
+    loadAuditSearchParams(request);
+  const authFetch = createAuthFetch(request, context);
+  const auditResponse = await getAuditLogs(
+    { module, action, username, success, page, perPage, sortBy, sortOrder },
+    authFetch,
+  );
 
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: "1",
-    userId: "user_1",
-    userName: "张三",
-    action: "login",
-    resource: "system",
-    ipAddress: "192.168.1.100",
-    userAgent: "Mozilla/5.0...",
-    timestamp: "2024-01-20T10:00:00Z",
-    status: "success",
-  },
-  {
-    id: "2",
-    userId: "user_2",
-    userName: "李四",
-    action: "create_user",
-    resource: "user",
-    ipAddress: "192.168.1.101",
-    userAgent: "Mozilla/5.0...",
-    timestamp: "2024-01-20T10:30:00Z",
-    status: "success",
-  },
-  {
-    id: "3",
-    userId: "user_3",
-    userName: "王五",
-    action: "delete_role",
-    resource: "role",
-    ipAddress: "192.168.1.102",
-    userAgent: "Mozilla/5.0...",
-    timestamp: "2024-01-20T11:00:00Z",
-    status: "failed",
-  },
-];
-
-export async function loader(_args: LoaderFunctionArgs) {
-  // Mock loader - in real app, this would fetch from API
   return {
-    auditResponse: Promise.resolve({
-      data: mockAuditLogs,
-      total: mockAuditLogs.length,
-      page: 1,
-      pageSize: 10,
-      totalPages: 1,
-    }),
+    auditResponse: Promise.resolve(auditResponse),
   };
 }
 
 export default function Audit() {
   const { auditResponse } = useLoaderData() as {
-    auditResponse: Promise<{
-      data: AuditLog[];
-      total: number;
-      page: number;
-      pageSize: number;
-      totalPages: number;
-    }>;
+    auditResponse: Promise<PaginatedResponse<AuditLog>>;
   };
 
   return (
@@ -93,9 +44,9 @@ export default function Audit() {
       <React.Suspense
         fallback={
           <DataTableSkeleton
-            columnCount={7}
+            columnCount={8}
             filterCount={3}
-            cellWidths={["10rem", "12rem", "15rem", "12rem", "15rem", "12rem", "6rem"]}
+            cellWidths={["8rem", "7rem", "9rem", "8rem", "7rem", "9rem", "10rem", "6rem"]}
             shrinkZero
           />
         }
@@ -109,65 +60,12 @@ export default function Audit() {
 export function AuditTable({
   auditResponse,
 }: {
-  auditResponse: Promise<{
-    data: AuditLog[];
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
-  }>;
+  auditResponse: Promise<PaginatedResponse<AuditLog>>;
 }) {
   const auditResponseData = use(auditResponse);
   const { table } = useDataTable({
-    columns: [
-      {
-        id: "userName",
-        accessorKey: "userName",
-        header: "User",
-      },
-      {
-        id: "action",
-        accessorKey: "action",
-        header: "Action",
-      },
-      {
-        id: "resource",
-        accessorKey: "resource",
-        header: "Resource",
-      },
-      {
-        id: "ipAddress",
-        accessorKey: "ipAddress",
-        header: "IP Address",
-      },
-      {
-        id: "timestamp",
-        accessorKey: "timestamp",
-        header: "Timestamp",
-        cell: ({ row }) => {
-          const timestamp = row.getValue("timestamp") as string;
-          return new Date(timestamp).toLocaleString();
-        },
-      },
-      {
-        id: "status",
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const status = row.getValue("status") as string;
-          return (
-            <span
-              className={`rounded px-2 py-1 text-xs ${
-                status === "success" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-              }`}
-            >
-              {status}
-            </span>
-          );
-        },
-      },
-    ],
-    data: auditResponseData.data,
+    columns: auditColumns,
+    data: auditResponseData.content,
     pageCount: auditResponseData.totalPages,
     initialState: {
       pagination: {

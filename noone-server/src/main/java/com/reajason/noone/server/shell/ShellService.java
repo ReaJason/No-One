@@ -3,6 +3,9 @@ package com.reajason.noone.server.shell;
 import com.reajason.noone.Constants;
 import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.exception.*;
+import com.reajason.noone.server.audit.AuditAction;
+import com.reajason.noone.server.audit.AuditLog;
+import com.reajason.noone.server.audit.AuditModule;
 import com.reajason.noone.server.config.AuthorizationService;
 import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
 import com.reajason.noone.server.plugin.JavaPluginPayloadService;
@@ -61,6 +64,7 @@ public class ShellService {
     /**
      * Create a new shell connection (without automatic connection test)
      */
+    @AuditLog(module = AuditModule.SHELL, action = AuditAction.CREATE, targetType = "Shell", targetId = "#result.id")
     public ShellResponse create(ShellCreateRequest request) {
         validateRuntimeConfig(request.getStaging(), request.getLoaderProfileId());
         Shell shell = shellMapper.toEntity(request);
@@ -83,6 +87,7 @@ public class ShellService {
     /**
      * Update shell connection
      */
+    @AuditLog(module = AuditModule.SHELL, action = AuditAction.UPDATE, targetType = "Shell", targetId = "#id")
     public ShellResponse update(Long id, ShellUpdateRequest request) {
         Shell shell = shellRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
@@ -100,6 +105,7 @@ public class ShellService {
     /**
      * Delete shell connection
      */
+    @AuditLog(module = AuditModule.SHELL, action = AuditAction.DELETE, targetType = "Shell", targetId = "#id")
     public void delete(Long id) {
         Shell shell = shellRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));

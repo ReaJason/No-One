@@ -3,6 +3,9 @@ package com.reajason.noone.server.admin.user;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.dto.*;
+import com.reajason.noone.server.audit.AuditAction;
+import com.reajason.noone.server.audit.AuditLog;
+import com.reajason.noone.server.audit.AuditModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +36,7 @@ public class UserService {
     private final LoginLogRepository loginLogRepository;
     private final UserAuthorityResolver userAuthorityResolver;
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.CREATE, targetType = "User", targetId = "#result.id")
     public UserResponse create(UserCreateRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("用户名已存在：" + request.getUsername());
@@ -62,6 +66,7 @@ public class UserService {
         return userMapper.toResponse(user);
     }
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.UPDATE, targetType = "User", targetId = "#id")
     public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
@@ -112,6 +117,7 @@ public class UserService {
         return userRepository.findAll(spec, pageable).map(userMapper::toResponse);
     }
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.PASSWORD_RESET, targetType = "User", targetId = "#id")
     public UserResponse resetPassword(Long id, ResetPasswordRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
@@ -135,6 +141,7 @@ public class UserService {
         return userMapper.toResponse(savedUser);
     }
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.PASSWORD_RESET, targetType = "User", targetId = "#id", description = "'Force reset password'")
     public UserResponse forceResetPassword(Long id, String temporaryPassword) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
@@ -147,6 +154,7 @@ public class UserService {
         return userMapper.toResponse(userRepository.save(user));
     }
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.PASSWORD_CHANGE, targetType = "User", targetId = "#user.id")
     public UserResponse changePassword(User user, String oldPassword, String newPassword) {
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
             throw new IllegalArgumentException("旧密码不正确");

@@ -6,6 +6,9 @@ import com.reajason.noone.server.admin.role.dto.RoleCreateRequest;
 import com.reajason.noone.server.admin.role.dto.RoleQueryRequest;
 import com.reajason.noone.server.admin.role.dto.RoleResponse;
 import com.reajason.noone.server.admin.role.dto.RoleUpdateRequest;
+import com.reajason.noone.server.audit.AuditAction;
+import com.reajason.noone.server.audit.AuditLog;
+import com.reajason.noone.server.audit.AuditModule;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ public class RoleService {
     private final PermissionRepository permissionRepository;
     private final RoleMapper roleMapper;
 
+    @AuditLog(module = AuditModule.ROLE, action = AuditAction.CREATE, targetType = "Role", targetId = "#result.id")
     public RoleResponse createRole(RoleCreateRequest request) {
         if (roleRepository.existsByName(request.getName())) {
             throw new IllegalArgumentException("角色名称已存在：" + request.getName());
@@ -53,6 +57,7 @@ public class RoleService {
         return roleMapper.toResponse(role);
     }
 
+    @AuditLog(module = AuditModule.ROLE, action = AuditAction.UPDATE, targetType = "Role", targetId = "#id")
     public RoleResponse updateRole(Long id, RoleUpdateRequest request) {
         Role role = roleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在：" + id));
@@ -76,6 +81,7 @@ public class RoleService {
         return roleMapper.toResponse(savedRole);
     }
 
+    @AuditLog(module = AuditModule.ROLE, action = AuditAction.DELETE, targetType = "Role", targetId = "#id")
     public void deleteRole(Long id) {
         if (!roleRepository.existsById(id)) {
             throw new IllegalArgumentException("角色不存在：" + id);
@@ -99,6 +105,7 @@ public class RoleService {
         return roleRepository.findAll(spec, pageable).map(roleMapper::toResponse);
     }
 
+    @AuditLog(module = AuditModule.ROLE, action = AuditAction.UPDATE, targetType = "Role", targetId = "#roleId", description = "'Assign permissions'")
     public RoleResponse assignPermissions(Long roleId, Set<Long> permissionIds) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在：" + roleId));
@@ -110,6 +117,7 @@ public class RoleService {
         return roleMapper.toResponse(savedRole);
     }
 
+    @AuditLog(module = AuditModule.ROLE, action = AuditAction.UPDATE, targetType = "Role", targetId = "#roleId", description = "'Remove permissions'")
     public RoleResponse removePermissions(Long roleId, Set<Long> permissionIds) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new IllegalArgumentException("角色不存在：" + roleId));

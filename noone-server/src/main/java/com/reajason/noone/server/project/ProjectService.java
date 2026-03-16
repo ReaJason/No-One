@@ -1,5 +1,8 @@
 package com.reajason.noone.server.project;
 
+import com.reajason.noone.server.audit.AuditAction;
+import com.reajason.noone.server.audit.AuditLog;
+import com.reajason.noone.server.audit.AuditModule;
 import com.reajason.noone.server.config.AuthorizationService;
 import com.reajason.noone.server.project.dto.ProjectCreateRequest;
 import com.reajason.noone.server.project.dto.ProjectQueryRequest;
@@ -28,6 +31,7 @@ public class ProjectService {
     @Resource
     private AuthorizationService authorizationService;
 
+    @AuditLog(module = AuditModule.PROJECT, action = AuditAction.CREATE, targetType = "Project", targetId = "#result.id")
     public ProjectResponse create(ProjectCreateRequest request) {
         if (projectRepository.existsByNameAndDeletedFalse(request.getName())) {
             throw new IllegalArgumentException("项目名称已存在：" + request.getName());
@@ -49,6 +53,7 @@ public class ProjectService {
         return projectMapper.toResponse(project);
     }
 
+    @AuditLog(module = AuditModule.PROJECT, action = AuditAction.UPDATE, targetType = "Project", targetId = "#id")
     public ProjectResponse update(Long id, ProjectUpdateRequest request) {
         Project project = projectRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
@@ -66,6 +71,7 @@ public class ProjectService {
         return projectMapper.toResponse(projectRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow());
     }
 
+    @AuditLog(module = AuditModule.PROJECT, action = AuditAction.DELETE, targetType = "Project", targetId = "#id")
     public void delete(Long id) {
         Project project = projectRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
