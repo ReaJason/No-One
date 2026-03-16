@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -175,6 +176,52 @@ export const profileColumns: ColumnDef<Profile>[] = [
       ],
     },
     enableColumnFilter: true,
+    enableSorting: false,
+    size: 100,
+  },
+  {
+    id: "identifier",
+    accessorKey: "identifier",
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Identifier" />,
+    cell: ({ row }) => {
+      return row.getValue("identifier") ? (
+        <Badge className="dark:bg-violet--950 dark:text-violet--300 bg-violet-50 text-violet-700">
+          Filtered
+        </Badge>
+      ) : (
+        <Badge className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300">
+          Wildcard
+        </Badge>
+      );
+    },
+    size: 80,
+    enableSorting: false,
+  },
+  {
+    id: "requestTransformations",
+    accessorKey: "requestTransformations",
+    header: ({ column }) => <DataTableColumnHeader column={column} label="RequestTransformation" />,
+    cell: ({ row }) => {
+      const values = (row.getValue("requestTransformations") as Array<string>).filter(
+        (v) => v !== "None",
+      );
+      return values.length === 0 ? "RAW" : values.join(" -> ");
+    },
+    enableSorting: false,
+  },
+  {
+    id: "responseTransformations",
+    accessorKey: "responseTransformations",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} label="ResponseTransformations" />
+    ),
+    cell: ({ row }) => {
+      const values = (row.getValue("responseTransformations") as Array<string>).filter(
+        (v) => v !== "None",
+      );
+      return values.length === 0 ? "RAW" : values.join(" -> ");
+    },
+    enableSorting: false,
   },
   {
     id: "updatedAt",

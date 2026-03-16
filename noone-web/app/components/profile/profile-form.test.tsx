@@ -1,20 +1,20 @@
-import type { ProfileFormSeed } from "@/routes/profile/profile-form.shared";
+import type { ProfileFormValues } from "@/routes/profile/profile-form.shared";
 import type { ComponentProps } from "react";
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Plus } from "lucide-react";
 
 vi.mock("react-router", async () => {
-  const React = await import("react");
   const actual = await vi.importActual<typeof import("react-router")>("react-router");
 
   return {
     ...actual,
-    Form: React.forwardRef<HTMLFormElement, React.ComponentPropsWithoutRef<"form">>(
-      function MockForm(props, ref) {
-        return <form ref={ref} {...props} />;
-      },
-    ),
+    useFetcher: () => ({
+      state: "idle",
+      data: undefined,
+      submit: vi.fn(),
+      load: vi.fn(),
+    }),
   };
 });
 
@@ -126,7 +126,7 @@ import { DEFAULT_REQUEST_TEMPLATES, DEFAULT_RESPONSE_TEMPLATES } from "@/types/p
 
 type ProfileFormProps = ComponentProps<typeof ProfileForm>;
 
-const defaultInitialValues: ProfileFormSeed = {
+const defaultInitialValues: ProfileFormValues = {
   name: "Alpha Profile",
   password: "",
   protocolType: "HTTP",
@@ -166,7 +166,7 @@ function buildProps(overrides: Partial<ProfileFormProps> = {}): ProfileFormProps
   };
 }
 
-function buildInitialValues(overrides: Partial<ProfileFormSeed> = {}): ProfileFormSeed {
+function buildInitialValues(overrides: Partial<ProfileFormValues> = {}): ProfileFormValues {
   return {
     ...defaultInitialValues,
     ...overrides,
@@ -184,29 +184,20 @@ function renderProfileForm(overrides: Partial<ProfileFormProps> = {}) {
   };
 }
 
-function getHiddenInput(container: HTMLElement, name: string) {
-  const input = container.querySelector(`input[type="hidden"][name="${name}"]`);
-  if (!(input instanceof HTMLInputElement)) {
-    throw new Error(`Hidden input "${name}" not found`);
+function getSelectByLabel(labelText: string): HTMLSelectElement {
+  const label = screen.getByText(labelText);
+  const field = label.closest('[data-slot="field"]');
+  const select = field?.querySelector('select[data-slot="mock-select-trigger"]');
+  if (!(select instanceof HTMLSelectElement)) {
+    throw new Error(`Select for "${labelText}" not found`);
   }
-  return input;
+  return select;
 }
 
-function getSelectTrigger(container: HTMLElement, hiddenInputName: string) {
-  const hiddenInput = getHiddenInput(container, hiddenInputName);
-  const trigger = hiddenInput.parentElement?.querySelector(
-    'select[data-slot="mock-select-trigger"]',
-  );
-  if (!(trigger instanceof HTMLSelectElement)) {
-    throw new Error(`Select trigger for "${hiddenInputName}" not found`);
-  }
-  return trigger;
-}
-
-async function chooseSelectOption(container: HTMLElement, hiddenInputName: string, label: string) {
+async function chooseSelectOption(labelText: string, value: string) {
   await act(async () => {
-    fireEvent.change(getSelectTrigger(container, hiddenInputName), {
-      target: { value: label === "WebSocket" ? "WEBSOCKET" : label },
+    fireEvent.change(getSelectByLabel(labelText), {
+      target: { value },
     });
   });
 }
@@ -229,19 +220,21 @@ describe("ProfileForm", () => {
       subprotocol: "graphql-ws",
     });
 
-    const { container, rerenderWith } = renderProfileForm({ initialValues: firstValues });
+    const { rerenderWith } = renderProfileForm({ initialValues: firstValues });
 
-    expect(screen.getByPlaceholderText("Profile unique name")).toHaveValue("Alpha Profile");
-    expect(getHiddenInput(container, "protocolType")).toHaveValue("HTTP");
-    expect(screen.getByLabelText("Request Template")).toHaveValue(DEFAULT_REQUEST_TEMPLATES.JSON);
-    expect(screen.getByText("HTTP Config")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Profile unique name")).toHaveValue("Alpha Profile");
+      expect(getSelectByLabel("Protocol Type")).toHaveValue("HTTP");
+      expect(screen.getByLabelText("Request Template")).toHaveValue(DEFAULT_REQUEST_TEMPLATES.JSON);
+      expect(screen.getByText("HTTP Config")).toBeInTheDocument();
+    });
 
     rerenderWith({ initialValues: nextValues });
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Profile unique name")).toHaveValue("Bravo Profile");
-      expect(getHiddenInput(container, "protocolType")).toHaveValue("WEBSOCKET");
-      expect(getHiddenInput(container, "messageFormat")).toHaveValue("BINARY");
+      expect(getSelectByLabel("Protocol Type")).toHaveValue("WEBSOCKET");
+      expect(getSelectByLabel("Message Format")).toHaveValue("BINARY");
       expect(screen.getByText("WebSocket Config")).toBeInTheDocument();
       expect(screen.getByLabelText("Subprotocol")).toHaveValue("graphql-ws");
     });
@@ -254,19 +247,19 @@ describe("ProfileForm", () => {
       responseBodyType: "JSON",
       responseTemplate: "",
     });
-    const { container } = renderProfileForm({ initialValues });
+    renderProfileForm({ initialValues });
 
-    await chooseSelectOption(container, "requestBodyType", "XML");
+    await chooseSelectOption("Request Body Type", "XML");
 
     await waitFor(() => {
-      expect(getHiddenInput(container, "requestBodyType")).toHaveValue("XML");
+      expect(getSelectByLabel("Request Body Type")).toHaveValue("XML");
       expect(screen.getByLabelText("Request Template")).toHaveValue(DEFAULT_REQUEST_TEMPLATES.XML);
     });
 
-    await chooseSelectOption(container, "responseBodyType", "XML");
+    await chooseSelectOption("Response Body Type", "XML");
 
     await waitFor(() => {
-      expect(getHiddenInput(container, "responseBodyType")).toHaveValue("XML");
+      expect(getSelectByLabel("Response Body Type")).toHaveValue("XML");
       expect(screen.getByLabelText("Response Template")).toHaveValue(
         DEFAULT_RESPONSE_TEMPLATES.XML,
       );
@@ -278,21 +271,19 @@ describe("ProfileForm", () => {
       requestTemplate: "custom-request-template",
       responseTemplate: "custom-response-template",
     });
-    const { container } = renderProfileForm({ initialValues });
-
-    fireEvent.change(screen.getByLabelText("Request Template"), {
-      target: { value: "custom-request-template" },
-    });
-    fireEvent.change(screen.getByLabelText("Response Template"), {
-      target: { value: "custom-response-template" },
-    });
-
-    await chooseSelectOption(container, "requestBodyType", "XML");
-    await chooseSelectOption(container, "responseBodyType", "XML");
+    renderProfileForm({ initialValues });
 
     await waitFor(() => {
-      expect(getHiddenInput(container, "requestBodyType")).toHaveValue("XML");
-      expect(getHiddenInput(container, "responseBodyType")).toHaveValue("XML");
+      expect(screen.getByLabelText("Request Template")).toHaveValue("custom-request-template");
+      expect(screen.getByLabelText("Response Template")).toHaveValue("custom-response-template");
+    });
+
+    await chooseSelectOption("Request Body Type", "XML");
+    await chooseSelectOption("Response Body Type", "XML");
+
+    await waitFor(() => {
+      expect(getSelectByLabel("Request Body Type")).toHaveValue("XML");
+      expect(getSelectByLabel("Response Body Type")).toHaveValue("XML");
       expect(screen.getByLabelText("Request Template")).toHaveValue("custom-request-template");
       expect(screen.getByLabelText("Response Template")).toHaveValue("custom-response-template");
     });

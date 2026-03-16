@@ -26,29 +26,19 @@ describe("ProfileEditor ErrorBoundary", () => {
 
     expect(screen.getByText("404")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Profile not found" })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "The requested profile could not be found. Return to the profile list to choose another profile.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Return to profile list" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Back to Profile" })).toHaveAttribute(
       "href",
       "/profiles",
     );
   });
 
-  it("renders the generic error state for unexpected errors", () => {
-    render(
-      <MemoryRouter>
-        <ErrorBoundary error={new Error("boom")} params={{}} />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole("heading", { name: "Error" })).toBeInTheDocument();
-    expect(screen.getByText("boom")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Return to profile list" })).toHaveAttribute(
-      "href",
-      "/profiles",
-    );
+  it("rethrows unexpected errors to the parent boundary", () => {
+    expect(() =>
+      render(
+        <MemoryRouter>
+          <ErrorBoundary error={new Error("boom")} params={{}} />
+        </MemoryRouter>,
+      ),
+    ).toThrow("boom");
   });
 });
