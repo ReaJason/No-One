@@ -1,0 +1,67 @@
+name: Server CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/ci-server.yml"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "noone-core/**"
+      - "noone-server/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ci-server.yml"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+      - "noone-core/**"
+      - "noone-server/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Run server tests
+        run: ./gradlew --no-daemon :noone-server:test
+
+      - name: Build server artifact
+        run: ./gradlew --no-daemon :noone-server:build -x test
+
+      - name: Publish JUnit report
+        if: success() || failure()
+        uses: mikepenz/action-junit-report@v5
+        with:
+          report_paths: noone-server/build/test-results/test/TEST-*.xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: noone-server/build/reports/jacoco/test/jacocoTestReport.xml
+          flags: noone-server
