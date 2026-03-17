@@ -47,10 +47,10 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Run server tests
+      - name: Test
         run: ./gradlew --no-daemon :noone-server:test
 
-      - name: Build server artifact
+      - name: Build
         run: ./gradlew --no-daemon :noone-server:build -x test
 
       - name: Publish JUnit report
