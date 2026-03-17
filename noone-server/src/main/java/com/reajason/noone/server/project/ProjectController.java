@@ -51,6 +51,7 @@ public class ProjectController {
     }
 
     @GetMapping
+    @PreAuthorize("@authorizationService.hasSystemPermission('project:list')")
     public ResponseEntity<Page<ProjectResponse>> query(ProjectQueryRequest request) {
         return ResponseEntity.ok(projectService.query(request));
     }

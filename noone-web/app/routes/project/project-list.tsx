@@ -15,6 +15,7 @@ import { ProjectTableActionBar } from "@/components/project/project-action-bar";
 import { projectColumns } from "@/components/project/project-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
+import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 
 export async function loader({ request, context }: LoaderFunctionArgs) {
   const { name, status, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
@@ -48,6 +49,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
   }
 }
 
+export const handle = createBreadcrumb(() => ({
+  id: "projects",
+  label: "Projects",
+  to: "/projects",
+}));
+
 export default function ProjectList() {
   const { projectResponse } = useLoaderData() as {
     projectResponse: Promise<PaginatedResponse<Project>>;
@@ -58,7 +65,9 @@ export default function ProjectList() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-balance">Project Management</h1>
-          <p className="mt-2 text-muted-foreground">Manage your all projects</p>
+          <p className="mt-2 text-muted-foreground">
+            Manage project records, lifecycle details, and team assignments
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
@@ -77,9 +86,19 @@ export default function ProjectList() {
       <React.Suspense
         fallback={
           <DataTableSkeleton
-            columnCount={8}
+            columnCount={9}
             filterCount={4}
-            cellWidths={["10rem", "25rem", "12rem", "8rem", "8rem", "8rem", "15rem", "6rem"]}
+            cellWidths={[
+              "3rem",
+              "12rem",
+              "8rem",
+              "10rem",
+              "6rem",
+              "10rem",
+              "10rem",
+              "10rem",
+              "4rem",
+            ]}
             shrinkZero
           />
         }

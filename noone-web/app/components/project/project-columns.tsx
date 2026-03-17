@@ -2,11 +2,21 @@ import type { Project } from "@/types/project";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { CalendarIcon, Edit, Loader, MoreHorizontal, Terminal, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useFetcher, useNavigate } from "react-router";
 import { toast } from "sonner";
 
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -26,72 +36,106 @@ const PROJECT_STATUS_LABELS: Record<Project["status"], string> = {
   DRAFT: "Draft",
 };
 
-function ProjectActionsCell({ project }: { project: Project }) {
+type DeleteFetcherData = {
+  success?: boolean;
+  errors?: Record<string, string>;
+};
+
+export const ProjectActionsCell = React.memo(function ProjectActionsCell({
+  project,
+}: {
+  project: Project;
+}) {
   const navigate = useNavigate();
-  const deleteFetcher = useFetcher<{ success?: boolean; errors?: Record<string, string> }>();
-  const lastStateRef = useRef(deleteFetcher.state);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const deleteFetcher = useFetcher<DeleteFetcherData>();
+  const isDeleting = deleteFetcher.state !== "idle";
+  const wasDeletingRef = useRef(isDeleting);
+  const deleteError = deleteFetcher.data?.errors?.general;
 
   useEffect(() => {
-    if (lastStateRef.current !== "submitting" || deleteFetcher.state !== "idle") {
-      lastStateRef.current = deleteFetcher.state;
+    if (!wasDeletingRef.current || isDeleting) {
+      wasDeletingRef.current = isDeleting;
       return;
     }
+
     if (deleteFetcher.data?.success) {
+      setIsDeleteOpen(false);
       toast.success("Project deleted");
     } else if (deleteFetcher.data?.errors?.general) {
       toast.error(deleteFetcher.data.errors.general);
     }
-    lastStateRef.current = deleteFetcher.state;
-  }, [deleteFetcher.data, deleteFetcher.state]);
 
-  const handleDeleteProject = () => {
-    if (!confirm("Are you sure you want to delete this project? This action cannot be undone."))
-      return;
-    const formData = new FormData();
-    formData.set("intent", "delete");
-    formData.set("projectId", String(project.id));
-    deleteFetcher.submit(formData, { method: "post", action: "/projects" });
-  };
+    wasDeletingRef.current = isDeleting;
+  }, [deleteFetcher.data, isDeleting]);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="ghost" className="h-8 w-8 p-0">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        }
-      ></DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => navigate(`/projects/edit/${project.id}`)}>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate(`/shells?projectId=${project.id}`)}>
-            <Terminal className="mr-2 h-4 w-4" />
-            View Shells
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={handleDeleteProject}
-            className="text-destructive"
-            disabled={deleteFetcher.state !== "idle"}
-          >
-            {deleteFetcher.state !== "idle" ? (
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="mr-2 h-4 w-4" />
-            )}
-            Delete
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          }
+        ></DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => navigate(`/projects/edit/${project.id}`)}>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate(`/shells?projectId=${project.id}`)}>
+              <Terminal className="mr-2 h-4 w-4" />
+              View Shells
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => setIsDeleteOpen(true)}
+              className="text-destructive"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <deleteFetcher.Form method="post" action="/projects">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="projectId" value={String(project.id)} />
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. The project record and its metadata will be
+                permanently removed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction>
+                <Button type="submit" className="text-sm" disabled={isDeleting}>
+                  {isDeleting ? <Loader className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Confirm
+                </Button>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </deleteFetcher.Form>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
-}
+});
 
 export const projectColumns: ColumnDef<Project>[] = [
   {
@@ -135,6 +179,12 @@ export const projectColumns: ColumnDef<Project>[] = [
     cell: ({ row }) => row.getValue("code") as string,
   },
   {
+    id: "bizName",
+    accessorKey: "bizName",
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Business Name" />,
+    cell: ({ row }) => (row.getValue("bizName") as string) || "—",
+  },
+  {
     id: "status",
     accessorKey: "status",
     header: ({ column }) => <DataTableColumnHeader column={column} label="Status" />,
@@ -151,6 +201,21 @@ export const projectColumns: ColumnDef<Project>[] = [
     enableColumnFilter: true,
   },
   {
+    id: "members",
+    accessorKey: "members",
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Members" />,
+    cell: ({ row }) => {
+      const members = row.original.members;
+      if (!members || members.length === 0) return "—";
+      const display = members
+        .slice(0, 3)
+        .map((m) => m.username)
+        .join(", ");
+      return members.length > 3 ? `${display} +${members.length - 3}` : display;
+    },
+    enableSorting: false,
+  },
+  {
     id: "createdAt",
     accessorKey: "createdAt",
     header: ({ column }) => <DataTableColumnHeader column={column} label="Created Time" />,
@@ -161,6 +226,12 @@ export const projectColumns: ColumnDef<Project>[] = [
       icon: CalendarIcon,
     },
     enableColumnFilter: true,
+  },
+  {
+    id: "updatedAt",
+    accessorKey: "updatedAt",
+    header: ({ column }) => <DataTableColumnHeader column={column} label="Updated Time" />,
+    cell: ({ cell }) => formatDate(cell.getValue<Date>()),
   },
   {
     id: "actions",

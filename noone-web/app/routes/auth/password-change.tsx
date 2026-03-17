@@ -1,14 +1,20 @@
 import type { User } from "@/types/admin";
+import type { ComponentProps } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
-import { GalleryVerticalEnd, KeyRound } from "lucide-react";
-import React from "react";
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
 import { publicApi } from "@/api/api.server";
 import { commitSession, getSession } from "@/api/sessions.server";
+import {
+  authInputClassName,
+  authLabelClassName,
+  AuthPage,
+  authPrimaryButtonClassName,
+  AuthShell,
+  AuthStatusMessage,
+} from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -92,77 +98,82 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-function PasswordChangeForm({ className, ...props }: React.ComponentProps<"div">) {
+function PasswordChangeForm({ className, ...props }: ComponentProps<"div">) {
   const { token } = useLoaderData() as { token: string };
   const actionData = useActionData() as { error?: string } | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const statusId = "password-change-status-message";
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Update Temporary Password</CardTitle>
-          <CardDescription>
-            Your administrator issued a temporary password. Set a new password before entering the
-            system.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form method="post">
-            <input type="hidden" name="token" value={token} />
-            <div className="grid gap-6">
-              {actionData?.error ? (
-                <div className="text-center text-sm font-medium text-destructive">
-                  {actionData.error}
-                </div>
-              ) : null}
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    name="newPassword"
-                    type="password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <Button type="submit" className="mt-2 w-full" disabled={isSubmitting}>
-                  <KeyRound className="mr-2 h-4 w-4" />
-                  {isSubmitting ? "Updating..." : "Update Password"}
-                </Button>
+      <AuthShell
+        eyebrow="Security Update"
+        title="No One"
+        description="Your administrator issued a temporary password. Set a new password before entering the system."
+      >
+        <Form method="post" className="w-full">
+          <input type="hidden" name="token" value={token} />
+
+          <div className="grid gap-6">
+            <AuthStatusMessage
+              id={statusId}
+              message={actionData?.error ? { tone: "error", text: actionData.error } : null}
+              centered
+            />
+
+            <div className="grid gap-4">
+              <div className="grid gap-2.5">
+                <Label htmlFor="newPassword" className={authLabelClassName}>
+                  New Password
+                </Label>
+                <Input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  required
+                  disabled={isSubmitting}
+                  aria-invalid={actionData?.error ? true : undefined}
+                  aria-describedby={actionData?.error ? statusId : undefined}
+                  className={authInputClassName}
+                />
               </div>
+
+              <div className="grid gap-2.5">
+                <Label htmlFor="confirmPassword" className={authLabelClassName}>
+                  Confirm Password
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  disabled={isSubmitting}
+                  aria-invalid={actionData?.error ? true : undefined}
+                  aria-describedby={actionData?.error ? statusId : undefined}
+                  className={authInputClassName}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className={cn(authPrimaryButtonClassName, "mt-1")}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Updating..." : "Update Password"}
+              </Button>
             </div>
-          </Form>
-        </CardContent>
-      </Card>
+          </div>
+        </Form>
+      </AuthShell>
     </div>
   );
 }
 
 export default function PasswordChangePage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          No One Security
-        </div>
-        <PasswordChangeForm />
-      </div>
-    </div>
+    <AuthPage>
+      <PasswordChangeForm />
+    </AuthPage>
   );
 }

@@ -1,6 +1,5 @@
 import {
   Cable,
-  Command,
   Folder,
   Home,
   Key,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
 
+import { Icons } from "@/components/icons";
 import {
   Sidebar,
   SidebarContent,
@@ -164,9 +164,13 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" render={<Link to="/" viewTransition />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Command className="size-4" />
+            <SidebarMenuButton
+              size="lg"
+              render={<Link to="/" viewTransition />}
+              className="h-10 gap-3 [&_svg]:size-8"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center">
+                <Icons.logo className="size-8 drop-shadow-sm" />
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">No One</span>

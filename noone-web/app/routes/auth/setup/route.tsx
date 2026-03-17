@@ -1,14 +1,20 @@
 import type { User } from "@/types/admin";
+import type { ComponentProps } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
-import { GalleryVerticalEnd, KeyRound } from "lucide-react";
-import React from "react";
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
 import { publicApi } from "@/api/api.server";
 import { commitSession, getSession } from "@/api/sessions.server";
+import {
+  authInputClassName,
+  authLabelClassName,
+  AuthPage,
+  authPrimaryButtonClassName,
+  AuthShell,
+  AuthStatusMessage,
+} from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -114,107 +120,118 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-function SetupForm({ className, ...props }: React.ComponentProps<"div">) {
+function SetupForm({ className, ...props }: ComponentProps<"div">) {
   const { token, qrUri } = useLoaderData() as { token: string; qrUri: string };
   const actionData = useActionData() as { error?: string } | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
+  const statusId = "setup-status-message";
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Account Activation</CardTitle>
-          <CardDescription>
-            Secure your account by changing your password and setting up two-factor authentication.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form method="post">
-            <input type="hidden" name="token" value={token} />
-            <div className="grid gap-6">
-              {actionData?.error && (
-                <div className="text-center text-sm font-medium text-destructive">
-                  {actionData.error}
+      <AuthShell
+        eyebrow="Account Activation"
+        title="No One"
+        description="Secure your account by changing your password and setting up two-factor authentication."
+      >
+        <Form method="post" className="w-full">
+          <input type="hidden" name="token" value={token} />
+
+          <div className="grid gap-6">
+            <AuthStatusMessage
+              id={statusId}
+              message={actionData?.error ? { tone: "error", text: actionData.error } : null}
+              centered
+            />
+
+            <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-muted/40 p-4">
+              <div className="text-center text-sm font-medium text-foreground">
+                Scan this QR code with your authenticator app
+              </div>
+              {qrUri ? (
+                <img
+                  src={qrUri}
+                  alt="2FA QR code"
+                  className="size-40 rounded-xl border border-border bg-background p-2 shadow-sm"
+                />
+              ) : (
+                <div className="flex size-40 items-center justify-center rounded-xl border border-border bg-background text-sm text-muted-foreground shadow-sm">
+                  Unable to load QR
                 </div>
               )}
-
-              <div className="flex flex-col items-center gap-4 rounded-lg border bg-muted/50 p-4">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <KeyRound className="size-4" />
-                  <span>Scan this QR code with your Authenticator App</span>
-                </div>
-                {qrUri ? (
-                  <img
-                    src={qrUri}
-                    alt="2FA QR Code"
-                    className="size-48 rounded-md bg-white p-2 shadow-sm"
-                  />
-                ) : (
-                  <div className="flex size-48 items-center justify-center rounded-md bg-background text-muted-foreground shadow-sm">
-                    Unable to load QR
-                  </div>
-                )}
-              </div>
-
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    name="newPassword"
-                    type="password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="twoFactorCode">6-digit Authenticator Code</Label>
-                  <Input
-                    id="twoFactorCode"
-                    name="twoFactorCode"
-                    type="text"
-                    required
-                    maxLength={6}
-                    placeholder="123456"
-                    disabled={isSubmitting}
-                    className="text-center text-lg tracking-widest"
-                  />
-                </div>
-                <Button type="submit" className="mt-2 w-full" disabled={isSubmitting}>
-                  {isSubmitting ? "Activating..." : "Complete Setup"}
-                </Button>
-              </div>
             </div>
-          </Form>
-        </CardContent>
-      </Card>
+
+            <div className="grid gap-4">
+              <div className="grid gap-2.5">
+                <Label htmlFor="newPassword" className={authLabelClassName}>
+                  New Password
+                </Label>
+                <Input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  required
+                  disabled={isSubmitting}
+                  aria-invalid={actionData?.error ? true : undefined}
+                  aria-describedby={actionData?.error ? statusId : undefined}
+                  className={authInputClassName}
+                />
+              </div>
+
+              <div className="grid gap-2.5">
+                <Label htmlFor="confirmPassword" className={authLabelClassName}>
+                  Confirm Password
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  disabled={isSubmitting}
+                  aria-invalid={actionData?.error ? true : undefined}
+                  aria-describedby={actionData?.error ? statusId : undefined}
+                  className={authInputClassName}
+                />
+              </div>
+
+              <div className="grid gap-2.5">
+                <Label htmlFor="twoFactorCode" className={authLabelClassName}>
+                  6-digit Authenticator Code
+                </Label>
+                <Input
+                  id="twoFactorCode"
+                  name="twoFactorCode"
+                  type="text"
+                  required
+                  maxLength={6}
+                  placeholder="123456"
+                  disabled={isSubmitting}
+                  autoComplete="one-time-code"
+                  aria-invalid={actionData?.error ? true : undefined}
+                  aria-describedby={actionData?.error ? statusId : undefined}
+                  className={cn(authInputClassName, "text-center tracking-[0.16em]")}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className={cn(authPrimaryButtonClassName, "mt-1")}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Activating..." : "Complete Setup"}
+              </Button>
+            </div>
+          </div>
+        </Form>
+      </AuthShell>
     </div>
   );
 }
 
 export default function SetupPage() {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10">
-      <div className="flex w-full max-w-sm flex-col gap-6">
-        <div className="flex items-center gap-2 self-center font-medium">
-          <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <GalleryVerticalEnd className="size-4" />
-          </div>
-          No One Setup
-        </div>
-        <SetupForm />
-      </div>
-    </div>
+    <AuthPage>
+      <SetupForm />
+    </AuthPage>
   );
 }

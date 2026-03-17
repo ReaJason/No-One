@@ -2,17 +2,16 @@ package com.reajason.noone.server.profile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.TestPGContainerConfiguration;
-import com.reajason.noone.server.audit.*;
 import com.reajason.noone.server.admin.permission.Permission;
 import com.reajason.noone.server.admin.permission.PermissionRepository;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.*;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.IdentifierConfig;
-import com.reajason.noone.server.profile.config.IdentifierLocation;
-import com.reajason.noone.server.profile.config.IdentifierOperator;
-import com.reajason.noone.server.profile.config.ProtocolType;
+import com.reajason.noone.server.audit.AuditAction;
+import com.reajason.noone.server.audit.AuditLogEntity;
+import com.reajason.noone.server.audit.AuditLogRepository;
+import com.reajason.noone.server.audit.AuditModule;
+import com.reajason.noone.server.profile.config.*;
 import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
 import com.reajason.noone.server.profile.dto.ProfileUpdateRequest;
 import com.reajason.noone.server.util.JwtUtil;
@@ -38,7 +37,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -300,7 +300,7 @@ class ProfileControllerTest {
     }
 
     @Test
-    void shouldReturn400WhenUpdateNonExistentProfile() throws Exception {
+    void shouldReturn404WhenUpdateNonExistentProfile() throws Exception {
         ProfileUpdateRequest updateRequest = new ProfileUpdateRequest();
         updateRequest.setName("irrelevant");
 
@@ -308,7 +308,7 @@ class ProfileControllerTest {
                         .header("Authorization", "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Profile not found：99999"));
     }
 
@@ -337,22 +337,22 @@ class ProfileControllerTest {
     }
 
     @Test
-    void shouldReturn400WhenDeletingDeletedProfile() throws Exception {
+    void shouldReturn404WhenDeletingDeletedProfile() throws Exception {
         Profile deletedProfile = buildProfile("already-deleted");
         deletedProfile.setDeleted(Boolean.TRUE);
         Profile saved = profileRepository.save(deletedProfile);
 
         mockMvc.perform(delete("/api/profiles/{id}", saved.getId())
                         .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Profile not found：" + saved.getId()));
     }
 
     @Test
-    void shouldReturn400WhenDeleteNonExistentProfile() throws Exception {
+    void shouldReturn404WhenDeleteNonExistentProfile() throws Exception {
         mockMvc.perform(delete("/api/profiles/{id}", 99999)
                         .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("Profile not found：99999"));
     }
 

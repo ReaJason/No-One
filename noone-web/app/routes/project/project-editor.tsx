@@ -1,27 +1,36 @@
+import type { Route } from "./+types/project-editor";
 import type { User } from "@/types/admin";
 import type { Project } from "@/types/project";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { PencilLine, Plus } from "lucide-react";
-import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import { useMemo } from "react";
+import {
+  type ActionFunctionArgs,
+  isRouteErrorResponse,
+  type LoaderFunctionArgs,
+  redirect,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
-import { getProjectById, updateProject } from "@/api/project-api";
-import { createProject } from "@/api/project-api";
+import { createProject, getProjectById, updateProject } from "@/api/project-api";
 import { getAllUsers } from "@/api/user-api";
 import { FormPageShell } from "@/components/form-page-shell";
+import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { ProjectForm } from "@/components/project/project-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import {
-  getProjectFormSeed,
+  getDefaultValues,
   parseProjectFormData,
   type ProjectActionData,
 } from "@/routes/project/project-form.shared";
 
-interface LoaderData {
+type LoaderData = {
   project?: Project;
   users: User[];
-}
+};
 
 export async function loader({
   context,
@@ -30,7 +39,7 @@ export async function loader({
 }: LoaderFunctionArgs): Promise<LoaderData> {
   const authFetch = createAuthFetch(request, context);
   const usersPromise = getAllUsers(authFetch);
-  const projectId = params.projectId as string | undefined;
+  const projectId = params.projectId;
 
   if (!projectId) {
     return { users: await usersPromise };
@@ -45,8 +54,9 @@ export async function loader({
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
-  const parsed = parseProjectFormData(await request.formData());
-  if (parsed.errors) {
+  const mode = params.projectId ? "edit" : "create";
+  const parsed = parseProjectFormData(await request.formData(), { mode });
+  if ("errors" in parsed) {
     return {
       errors: parsed.errors,
       success: false,
@@ -88,40 +98,64 @@ export const handle = createBreadcrumb(({ params }) => {
   };
 });
 
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const params = useParams();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <NotFoundErrorBoundary
+        title={"Project not found"}
+        backLabel={"Back to Project"}
+        backHref={"/projects"}
+        resourceType={"Project"}
+        resourceId={params.projectId}
+      />
+    );
+  }
+  throw error;
+}
+
 export default function ProjectEditor() {
   const { project, users } = useLoaderData() as LoaderData;
-  const actionData = useActionData() as ProjectActionData | undefined;
   const navigate = useNavigate();
   const isEdit = Boolean(project);
-  const formSeed = actionData?.values ?? getProjectFormSeed(project);
+  const mode = isEdit ? "edit" : "create";
+  const initialValues = useMemo(() => getDefaultValues(project), [project]);
+
+  const pageMeta = isEdit
+    ? {
+        badge: { label: "Edit mode", variant: "secondary" as const },
+        description: `Update business details, lifecycle information, and team membership for ${project?.name}.`,
+        icon: PencilLine,
+        submitLabel: "Update Project",
+        title: "Edit Project",
+      }
+    : {
+        badge: { label: "New project", variant: "default" as const },
+        description:
+          "Register a project with business context, member assignments, and lifecycle notes in one structured form.",
+        icon: Plus,
+        submitLabel: "Create Project",
+        title: "Create Project",
+      };
 
   return (
     <FormPageShell
       backHref="/projects"
       backLabel="Return to project list"
       badges={[
-        {
-          label: isEdit ? "Edit mode" : "New project",
-          variant: isEdit ? "secondary" : "default",
-        },
+        pageMeta.badge,
         ...(project ? [{ label: project.status, variant: "outline" as const }] : []),
       ]}
-      title={isEdit ? "Edit Project" : "Create Project"}
-      description={
-        project
-          ? `Update business details, lifecycle information, and team membership for ${project.name}.`
-          : "Register a project with business context, member assignments, and lifecycle notes in one structured form."
-      }
+      title={pageMeta.title}
+      description={pageMeta.description}
     >
       <ProjectForm
-        key={`${isEdit ? "edit" : "create"}:${JSON.stringify(formSeed)}`}
-        mode={isEdit ? "edit" : "create"}
-        icon={isEdit ? PencilLine : Plus}
-        submitLabel={isEdit ? "Update Project" : "Create Project"}
+        mode={mode}
+        icon={pageMeta.icon}
+        submitLabel={pageMeta.submitLabel}
         users={users}
-        initialValues={formSeed}
-        errors={actionData?.errors}
-        onCancel={() => navigate("/projects")}
+        initialValues={initialValues}
+        onCancel={() => navigate(-1)}
       />
     </FormPageShell>
   );

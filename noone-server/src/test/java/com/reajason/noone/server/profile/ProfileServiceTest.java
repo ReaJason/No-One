@@ -1,5 +1,6 @@
 package com.reajason.noone.server.profile;
 
+import com.reajason.noone.server.api.ResourceNotFoundException;
 import com.reajason.noone.server.profile.config.HttpProtocolConfig;
 import com.reajason.noone.server.profile.config.ProtocolType;
 import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
@@ -108,7 +109,7 @@ class ProfileServiceTest {
         when(profileRepository.findByIdAndDeletedFalse(99999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> profileService.getById(99999L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Profile not found：99999");
     }
 
@@ -205,7 +206,7 @@ class ProfileServiceTest {
         updateRequest.setName("irrelevant");
 
         assertThatThrownBy(() -> profileService.update(99999L, updateRequest))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Profile not found：99999");
     }
 
@@ -228,7 +229,7 @@ class ProfileServiceTest {
         when(profileRepository.findByIdAndDeletedFalse(99999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> profileService.delete(99999L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Profile not found：99999");
 
         verify(profileRepository, never()).save(any());
@@ -239,7 +240,7 @@ class ProfileServiceTest {
         when(profileRepository.findByIdAndDeletedFalse(41L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> profileService.delete(41L))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Profile not found：41");
 
         verify(profileRepository, never()).save(any());

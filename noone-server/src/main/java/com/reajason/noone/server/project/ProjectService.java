@@ -1,5 +1,8 @@
 package com.reajason.noone.server.project;
 
+import com.reajason.noone.server.admin.user.User;
+import com.reajason.noone.server.admin.user.UserRepository;
+import com.reajason.noone.server.api.ResourceNotFoundException;
 import com.reajason.noone.server.audit.AuditAction;
 import com.reajason.noone.server.audit.AuditLog;
 import com.reajason.noone.server.audit.AuditModule;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -29,18 +33,24 @@ public class ProjectService {
     @Resource
     private ProjectMapper projectMapper;
     @Resource
+    private UserRepository userRepository;
+    @Resource
     private AuthorizationService authorizationService;
 
     @AuditLog(module = AuditModule.PROJECT, action = AuditAction.CREATE, targetType = "Project", targetId = "#result.id")
     public ProjectResponse create(ProjectCreateRequest request) {
         if (projectRepository.existsByNameAndDeletedFalse(request.getName())) {
-            throw new IllegalArgumentException("项目名称已存在：" + request.getName());
+            throw new IllegalArgumentException("Project name already exists：" + request.getName());
         }
         if (projectRepository.existsByCodeAndDeletedFalse(request.getCode())) {
-            throw new IllegalArgumentException("项目代号已存在：" + request.getCode());
+            throw new IllegalArgumentException("Project code already exists：" + request.getCode());
         }
 
         Project project = projectMapper.toEntity(request);
+        Set<User> members = toMembers(request.getMemberIds());
+        if (members != null) {
+            project.setMembers(members);
+        }
         syncArchivedAt(project);
         Project saved = projectRepository.save(project);
         return projectMapper.toResponse(projectRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow());
@@ -49,23 +59,27 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public ProjectResponse getById(Long id) {
         Project project = projectRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found：" + id));
         return projectMapper.toResponse(project);
     }
 
     @AuditLog(module = AuditModule.PROJECT, action = AuditAction.UPDATE, targetType = "Project", targetId = "#id")
     public ProjectResponse update(Long id, ProjectUpdateRequest request) {
         Project project = projectRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found：" + id));
 
         if (request.getName() != null && projectRepository.existsByNameAndIdNotAndDeletedFalse(request.getName(), id)) {
-            throw new IllegalArgumentException("项目名称已存在：" + request.getName());
+            throw new IllegalArgumentException("Project name already exists：" + request.getName());
         }
         if (request.getCode() != null && projectRepository.existsByCodeAndIdNotAndDeletedFalse(request.getCode(), id)) {
-            throw new IllegalArgumentException("项目代号已存在：" + request.getCode());
+            throw new IllegalArgumentException("Project code already exists：" + request.getCode());
         }
 
         projectMapper.updateEntity(project, request);
+        Set<User> members = toMembers(request.getMemberIds());
+        if (members != null) {
+            project.setMembers(members);
+        }
         syncArchivedAt(project);
         Project saved = projectRepository.save(project);
         return projectMapper.toResponse(projectRepository.findByIdAndDeletedFalse(saved.getId()).orElseThrow());
@@ -74,7 +88,7 @@ public class ProjectService {
     @AuditLog(module = AuditModule.PROJECT, action = AuditAction.DELETE, targetType = "Project", targetId = "#id")
     public void delete(Long id) {
         Project project = projectRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new IllegalArgumentException("项目不存在：" + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found：" + id));
         project.setDeleted(Boolean.TRUE);
         projectRepository.save(project);
     }
@@ -88,9 +102,9 @@ public class ProjectService {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize(), sort);
 
-        Specification<Project> spec = ProjectSpecifications.hasName(request.getName())
-                .or(ProjectSpecifications.hasCode(request.getName()))
-                .and(ProjectSpecifications.notDeleted())
+        Specification<Project> spec = ProjectSpecifications.notDeleted()
+                .and(ProjectSpecifications.hasName(request.getName()))
+                .and(ProjectSpecifications.hasCode(request.getCode()))
                 .and(ProjectSpecifications.hasStatus(parseStatus(request.getStatus())))
                 .and(ProjectSpecifications.createdAfter(request.getCreatedAfter()))
                 .and(ProjectSpecifications.createdBefore(request.getCreatedBefore()));
@@ -119,5 +133,14 @@ public class ProjectService {
             return;
         }
         project.setArchivedAt(null);
+    }
+
+    private Set<User> toMembers(Set<Long> memberIds) {
+        if (memberIds == null || memberIds.isEmpty()) {
+            return null;
+        }
+        return memberIds.stream()
+                .map(userRepository::getReferenceById)
+                .collect(Collectors.toSet());
     }
 }

@@ -1,5 +1,6 @@
 package com.reajason.noone.server.project.dto;
 
+import com.reajason.noone.server.project.ProjectStatus;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ public class ProjectCreateRequest {
     private String name;
     @NotBlank
     private String code;
-    private String status;
+    private ProjectStatus status;
     private String bizName;
     private String description;
     private Set<Long> memberIds;

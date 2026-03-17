@@ -10,4 +10,37 @@ export const Icons = {
       />
     </svg>
   ),
+  logo1: (props: IconProps) => (
+    <svg
+      viewBox="0 0 64 64"
+      {...props}
+      aria-hidden="true"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M21 10h8l4.8 14.5H15.2L21 10Z" fill="#E24329" />
+      <path d="M35 10h8l5.8 14.5H30.2L35 10Z" fill="#E24329" />
+      <path d="M15.2 24.5H48.8L32 38.2 15.2 24.5Z" fill="#FC6D26" />
+      <path d="M20.8 39 32 54l11.2-15L32 30.8 20.8 39Z" fill="#FCA326" />
+      <path d="M26.5 24.5h11L32 30.8l-5.5-6.3Z" fill="#C63A23" />
+    </svg>
+  ),
+  logo: (props: IconProps) => (
+    <svg
+      viewBox="0 0 64 64"
+      aria-hidden="true"
+      {...props}
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path d="M12 20C12 12 18.5 6 32 6C45.5 6 52 12 52 20V24H12V20Z" fill="#C63A23" />
+      <path d="M12 24H28V32C28 34.2 26.2 36 24 36H12V24Z" fill="#FC6D26" />
+      <path d="M36 24H52V36H40C37.8 36 36 34.2 36 32V24Z" fill="#FC6D26" />
+      <path d="M28 24H36L32 29L28 24Z" fill="#E24329" />
+      <path d="M16 40H22L26 48L18 52L16 40Z" fill="#FCA326" />
+      <path d="M48 40H42L38 48L46 52L48 40Z" fill="#FCA326" />
+      <path d="M28 50H36L32 58L28 50Z" fill="#FCA326" />
+      <path d="M30 40H34L32 43L30 40Z" fill="#E24329" />
+    </svg>
+  ),
 };
