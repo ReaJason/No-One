@@ -189,7 +189,7 @@ export function getShellColumns({
           <span className="text-sm text-muted-foreground">--</span>
         );
       },
-      size: 120,
+      size: 200,
       meta: {
         label: "Profile",
       },
