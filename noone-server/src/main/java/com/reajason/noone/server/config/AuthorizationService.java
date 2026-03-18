@@ -37,7 +37,7 @@ public class AuthorizationService {
         if (!isAuthenticated()) {
             return Optional.empty();
         }
-        return userRepository.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
+        return userRepository.findByUsernameAndDeletedFalse(SecurityContextHolder.getContext().getAuthentication().getName());
     }
 
     public User getCurrentUser() {

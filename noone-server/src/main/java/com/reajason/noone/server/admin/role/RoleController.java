@@ -30,54 +30,45 @@ public class RoleController {
 
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('role:create')")
-    public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody RoleCreateRequest request) {
-        RoleResponse response = roleService.createRole(request);
+    public ResponseEntity<RoleResponse> create(@Valid @RequestBody RoleCreateRequest request) {
+        RoleResponse response = roleService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:read')")
-    public ResponseEntity<RoleResponse> getRoleById(@PathVariable Long id) {
-        return ResponseEntity.ok(roleService.getRoleById(id));
+    public ResponseEntity<RoleResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(roleService.getById(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
-    public ResponseEntity<RoleResponse> updateRole(
+    public ResponseEntity<RoleResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody RoleUpdateRequest request) {
-        RoleResponse response = roleService.updateRole(id, request);
+        RoleResponse response = roleService.update(id, request);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:delete')")
-    public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
-        roleService.deleteRole(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        roleService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('role:list')")
-    public ResponseEntity<Page<RoleResponse>> queryRoles(RoleQueryRequest request) {
-        return ResponseEntity.ok(roleService.queryRoles(request));
+    public ResponseEntity<Page<RoleResponse>> query(RoleQueryRequest request) {
+        return ResponseEntity.ok(roleService.query(request));
     }
 
     @PutMapping("/{id}/permissions")
     @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
-    public ResponseEntity<RoleResponse> assignPermissions(
+    public ResponseEntity<RoleResponse> syncPermissions(
             @PathVariable Long id,
             @RequestBody Set<Long> permissionIds) {
-        RoleResponse response = roleService.assignPermissions(id, permissionIds);
-        return ResponseEntity.ok(response);
-    }
-
-    @DeleteMapping("/{id}/permissions")
-    @PreAuthorize("@authorizationService.hasSystemPermission('role:update')")
-    public ResponseEntity<RoleResponse> removePermissions(
-            @PathVariable Long id,
-            @RequestBody Set<Long> permissionIds) {
-        RoleResponse response = roleService.removePermissions(id, permissionIds);
+        RoleResponse response = roleService.syncPermissions(id, permissionIds);
         return ResponseEntity.ok(response);
     }
 }

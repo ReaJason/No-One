@@ -13,6 +13,9 @@ public class PluginResponse {
     private String language;
     private String type;
     private String runMode;
+    private String source;
+    private String description;
+    private String author;
     private Map<String, Object> actions;
     private Map<String, Object> meta;
     private LocalDateTime createdAt;

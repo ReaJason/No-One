@@ -25,6 +25,8 @@ export interface PluginMeta {
 
 export type PluginRunMode = "sync" | "async" | "scheduled";
 
+export type PluginSource = "BUILTIN" | "UPLOADED" | "REGISTRY";
+
 export type TaskStatus =
   | "SUBMITTED"
   | "SCHEDULED"
@@ -39,11 +41,34 @@ export interface Plugin {
   version: string;
   language: string;
   type: string;
+  source?: PluginSource;
+  description?: string;
+  author?: string;
   runMode?: PluginRunMode;
   actions?: Record<string, PluginAction>;
   meta?: PluginMeta;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  version: string;
+  language: string;
+  author?: string;
+  description?: string;
+  type: string;
+  downloadUrl: string;
+  installed: boolean;
+  installedVersion?: string;
+  updateAvailable: boolean;
+}
+
+export interface CatalogResponse {
+  enabled: boolean;
+  plugins: CatalogEntry[];
+  error?: string;
 }
 
 export interface PluginRuntimeStatus {

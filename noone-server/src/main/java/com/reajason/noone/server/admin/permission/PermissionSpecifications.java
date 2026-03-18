@@ -40,4 +40,8 @@ public class PermissionSpecifications {
             );
         };
     }
+
+    public static Specification<Permission> notDeleted() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted"));
+    }
 }

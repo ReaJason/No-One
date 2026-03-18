@@ -14,8 +14,12 @@ spring:
         format_sql: false
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://your-ip:5432/noone
+    url: jdbc:postgresql://152.136.232.45:5432/noone
     username: noone
-    password: your-password
+    password: K9P8kbELbZrKBti4
 jwt:
   secret: "u3SJYZOHd06qmX+AsSHKy9Mab8f3ciIWCQiqVvhsqlYZ9+HRmKp7akyzibfn1OdVMqCE2zjz1iHeWyj1Kg5zrg"
+noone:
+  plugin-registry:
+    enabled: false
+    catalog-url: ""

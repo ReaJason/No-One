@@ -42,6 +42,10 @@ public class Permission {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean deleted = Boolean.FALSE;
+
     public void setRoles(Set<Role> roles) {
         this.roles = roles == null ? new HashSet<>() : new HashSet<>(roles);
     }

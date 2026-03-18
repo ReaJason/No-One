@@ -80,4 +80,12 @@ public class User {
 
     @Column(name = "lock_time")
     private LocalDateTime lockTime;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean deleted = Boolean.FALSE;
+
+    public void setRoles(Set<Role> roles) {
+        this.roles = roles == null ? new HashSet<>() : new HashSet<>(roles);
+    }
 }

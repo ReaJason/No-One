@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @RestController
@@ -49,7 +50,7 @@ public class UserController {
     public ResponseEntity<Void> delete(
             @PathVariable Long id) {
         userSessionService.revokeUserSessions(id, "ADMIN_USER_DELETED");
-        userService.deleteUser(id);
+        userService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -66,6 +67,14 @@ public class UserController {
     @PreAuthorize("@authorizationService.hasSystemPermission('user:list')")
     public ResponseEntity<Page<UserResponse>> query(UserQueryRequest request) {
         return ResponseEntity.ok(userService.query(request));
+    }
+
+    @PutMapping("/{id}/roles")
+    @PreAuthorize("@authorizationService.hasSystemPermission('user:update')")
+    public ResponseEntity<UserResponse> syncRoles(
+            @PathVariable Long id,
+            @RequestBody Set<Long> roleIds) {
+        return ResponseEntity.ok(userService.syncRoles(id, roleIds));
     }
 
     @GetMapping("/{id}/login-logs")

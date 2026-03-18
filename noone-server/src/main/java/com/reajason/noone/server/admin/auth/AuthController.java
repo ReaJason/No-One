@@ -41,7 +41,7 @@ public class AuthController {
     public ResponseEntity<?> login(
             @Valid @RequestBody LoginTwoFactorRequest loginRequest,
             HttpServletRequest request) {
-        Optional<User> optionalUser = userRepository.findByUsername(loginRequest.getUsername());
+        Optional<User> optionalUser = userRepository.findByUsernameAndDeletedFalse(loginRequest.getUsername());
         if (optionalUser.isEmpty()) {
             return invalidCredentials(loginRequest.getUsername(), request, null);
         }

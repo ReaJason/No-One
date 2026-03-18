@@ -82,7 +82,7 @@ public class NooneApplication {
         }
 
         private void initializeAdminAccount() {
-            if (userRepository.findByUsername("admin").isPresent()) {
+            if (userRepository.findByUsernameAndDeletedFalse("admin").isPresent()) {
                 return;
             }
 
@@ -264,7 +264,7 @@ public class NooneApplication {
             project.setDescription("System default project for payload generation, link testing, and safe experimentation. Do not use for real client engagements.");
             project.setStartedAt(LocalDateTime.now());
             project.setRemark("Auto-generated during system initialization.");
-            User admin = userRepository.findByUsername("admin").orElseThrow();
+            User admin = userRepository.findByUsernameAndDeletedFalse("admin").orElseThrow();
             project.setMembers(Collections.singleton(admin));
             projectRepository.save(project);
         }

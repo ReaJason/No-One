@@ -1,5 +1,6 @@
 package com.reajason.noone.server.admin.user;
 
+import com.reajason.noone.server.api.ResourceNotFoundException;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.dto.*;
@@ -38,7 +39,7 @@ public class UserService {
 
     @AuditLog(module = AuditModule.USER, action = AuditAction.CREATE, targetType = "User", targetId = "#result.id")
     public UserResponse create(UserCreateRequest request) {
-        if (userRepository.existsByUsername(request.getUsername())) {
+        if (userRepository.existsByUsernameAndDeletedFalse(request.getUsername())) {
             throw new IllegalArgumentException("用户名已存在：" + request.getUsername());
         }
 
@@ -51,7 +52,9 @@ public class UserService {
         user.setMfaEnabled(false);
 
         if (request.getRoleIds() != null && !request.getRoleIds().isEmpty()) {
-            Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
+            Set<Role> roles = roleRepository.findAllById(request.getRoleIds()).stream()
+                    .filter(role -> !Boolean.TRUE.equals(role.getDeleted()))
+                    .collect(java.util.stream.Collectors.toSet());
             user.setRoles(roles);
         }
 
@@ -61,40 +64,24 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserResponse getById(Long id) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
+        User user = findActiveUser(id);
         return userMapper.toResponse(user);
     }
 
     @AuditLog(module = AuditModule.USER, action = AuditAction.UPDATE, targetType = "User", targetId = "#id")
     public UserResponse update(Long id, UserUpdateRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
-
-        if (request.getEmail() != null) {
-            user.setEmail(request.getEmail());
-        }
-
-        if (request.getStatus() != null) {
-            user.setStatus(request.getStatus());
-        }
-
-        if (request.getRoleIds() != null) {
-            Set<Role> roles = new HashSet<>(roleRepository.findAllById(request.getRoleIds()));
-            user.setRoles(roles);
-        } else {
-            user.setRoles(new HashSet<>(user.getRoles()));
-        }
+        User user = findActiveUser(id);
+        userMapper.updateEntity(user, request);
 
         User savedUser = userRepository.save(user);
         return userMapper.toResponse(savedUser);
     }
 
-    public void deleteUser(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new IllegalArgumentException("用户不存在：" + id);
-        }
-        userRepository.deleteById(id);
+    @AuditLog(module = AuditModule.USER, action = AuditAction.DELETE, targetType = "User", targetId = "#id")
+    public void delete(Long id) {
+        User user = findActiveUser(id);
+        user.setDeleted(Boolean.TRUE);
+        userRepository.save(user);
     }
 
     @Transactional(readOnly = true)
@@ -112,15 +99,27 @@ public class UserService {
                 .and(UserSpecifications.hasRole(request.getRoleId()))
                 .and(UserSpecifications.status(status))
                 .and(UserSpecifications.createdAfter(request.getCreatedAfter()))
-                .and(UserSpecifications.createdBefore(request.getCreatedBefore()));
+                .and(UserSpecifications.createdBefore(request.getCreatedBefore()))
+                .and(UserSpecifications.notDeleted());
 
         return userRepository.findAll(spec, pageable).map(userMapper::toResponse);
     }
 
+    @AuditLog(module = AuditModule.USER, action = AuditAction.UPDATE, targetType = "User", targetId = "#id", description = "'Sync roles'")
+    public UserResponse syncRoles(Long id, Set<Long> roleIds) {
+        User user = findActiveUser(id);
+        Set<Role> roles = roleIds == null
+                ? new HashSet<>()
+                : roleRepository.findAllById(roleIds).stream()
+                        .filter(role -> !Boolean.TRUE.equals(role.getDeleted()))
+                        .collect(java.util.stream.Collectors.toSet());
+        user.setRoles(roles);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
     @AuditLog(module = AuditModule.USER, action = AuditAction.PASSWORD_RESET, targetType = "User", targetId = "#id")
     public UserResponse resetPassword(Long id, ResetPasswordRequest request) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
+        User user = findActiveUser(id);
 
         if (request.getOldPassword() != null) {
             if (request.getOldPassword().isBlank()) {
@@ -143,8 +142,7 @@ public class UserService {
 
     @AuditLog(module = AuditModule.USER, action = AuditAction.PASSWORD_RESET, targetType = "User", targetId = "#id", description = "'Force reset password'")
     public UserResponse forceResetPassword(Long id, String temporaryPassword) {
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("用户不存在：" + id));
+        User user = findActiveUser(id);
         if (passwordEncoder.matches(temporaryPassword, user.getPassword())) {
             throw new IllegalArgumentException("新密码不能与旧密码相同");
         }
@@ -181,7 +179,7 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public User getByUsername(String username) {
-        return userRepository.findByUsername(username)
+        return userRepository.findByUsernameAndDeletedFalse(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
     }
 
@@ -227,5 +225,10 @@ public class UserService {
         response.setFailReason(log.getFailReason());
         response.setLoginTime(log.getLoginTime());
         return response;
+    }
+
+    private User findActiveUser(Long id) {
+        return userRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在：" + id));
     }
 }

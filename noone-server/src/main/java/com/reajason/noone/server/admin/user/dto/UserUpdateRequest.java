@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.Set;
-
 @Data
 public class UserUpdateRequest {
     @Email
@@ -14,5 +12,4 @@ public class UserUpdateRequest {
     private String email;
 
     private UserStatus status;
-    private Set<Long> roleIds;
 }

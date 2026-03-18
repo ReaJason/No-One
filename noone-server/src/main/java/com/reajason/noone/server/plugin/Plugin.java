@@ -44,6 +44,16 @@ public class Plugin {
     @Column(nullable = true)
     private String runMode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private PluginSource source = PluginSource.BUILTIN;
+
+    @Column(columnDefinition = "text")
+    private String description;
+
+    @Column
+    private String author;
+
     @Column(columnDefinition = "text")
     private String payload;
 

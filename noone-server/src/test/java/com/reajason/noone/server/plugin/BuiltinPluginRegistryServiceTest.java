@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 class BuiltinPluginRegistryServiceTest {
@@ -31,7 +32,7 @@ class BuiltinPluginRegistryServiceTest {
 
         assertTrue(result.isPresent());
         assertEquals("0.0.9", result.get().getVersion());
-        verify(pluginService, never()).create(any());
+        verify(pluginService, never()).create(any(), any());
     }
 
     @Test
@@ -47,7 +48,7 @@ class BuiltinPluginRegistryServiceTest {
         when(pluginRepository.findByPluginIdAndLanguage("file-manager", "java"))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(registered));
-        when(pluginService.create(any())).thenReturn(new PluginResponse());
+        when(pluginService.create(any(), any())).thenReturn(new PluginResponse());
 
         Optional<Plugin> result = service.findOrRegister("file-manager", "java");
 
@@ -57,7 +58,7 @@ class BuiltinPluginRegistryServiceTest {
                 "file-manager".equals(request.getId())
                         && "java".equals(request.getLanguage())
                         && "0.0.1".equals(request.getVersion())
-        ));
+        ), eq(PluginSource.BUILTIN));
     }
 
     @Test
@@ -74,7 +75,7 @@ class BuiltinPluginRegistryServiceTest {
         Optional<Plugin> result = service.findOrRegister("not-exists", "java");
 
         assertFalse(result.isPresent());
-        verify(pluginService, never()).create(any());
+        verify(pluginService, never()).create(any(), any());
     }
 
     private Plugin plugin(String pluginId, String version, String language) {

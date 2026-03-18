@@ -18,11 +18,17 @@ public interface RoleMapper {
     @Mapping(target = "permissions", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     Role toEntity(RoleCreateRequest request);
 
     RoleResponse toResponse(Role role);
 
     RolePermissionResponse toPermissionResponse(Permission permission);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "permissions", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     void updateEntity(@MappingTarget Role role, RoleUpdateRequest request);
 }

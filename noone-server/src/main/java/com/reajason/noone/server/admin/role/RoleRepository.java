@@ -8,8 +8,10 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
  * @since 2025/9/9
  */
 public interface RoleRepository extends JpaRepository<Role, Long>, JpaSpecificationExecutor<Role> {
-    
-    boolean existsByName(String name);
-    
-    boolean existsByNameAndIdNot(String name, Long id);
+
+    java.util.Optional<Role> findByIdAndDeletedFalse(Long id);
+
+    boolean existsByNameAndDeletedFalse(String name);
+
+    boolean existsByNameAndIdNotAndDeletedFalse(String name, Long id);
 }

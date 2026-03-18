@@ -4,8 +4,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.Set;
-
 @Data
 public class PermissionUpdateRequest {
     @Size(min = 2, max = 50, message = "权限代码长度必须在2-50个字符之间")
@@ -15,6 +13,4 @@ public class PermissionUpdateRequest {
 
     @Size(min = 2, max = 100, message = "权限名称长度必须在2-100个字符之间")
     private String name;
-
-    private Set<Long> roleIds;
 }

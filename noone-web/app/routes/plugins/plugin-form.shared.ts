@@ -14,40 +14,35 @@ export function getPluginFormSeed(values?: Partial<PluginFormSeed>): PluginFormS
   };
 }
 
-export function parsePluginFormData(formData: FormData) {
-  const values: PluginFormSeed = {
-    pluginJson: String(formData.get("pluginJson") ?? ""),
-  };
+export type PluginParsedResult =
+  | { payload: Record<string, unknown>; values: PluginFormSeed }
+  | { errors: Record<string, string>; values: PluginFormSeed };
 
-  const errors: Record<string, string> = {};
-  const jsonText = values.pluginJson.trim();
-  if (!jsonText) {
-    errors.pluginJson = "Plugin JSON is required";
-    return { errors, values };
+export function parsePluginJson(jsonText: string): PluginParsedResult {
+  const values: PluginFormSeed = { pluginJson: jsonText };
+  const trimmed = jsonText.trim();
+  if (!trimmed) {
+    return { errors: { pluginJson: "Plugin JSON is required" }, values };
   }
 
   let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(jsonText);
+    parsed = JSON.parse(trimmed);
   } catch {
-    return {
-      errors: { pluginJson: "Invalid JSON format" },
-      values,
-    };
+    return { errors: { pluginJson: "Invalid JSON format" }, values };
   }
 
   const requiredFields = ["id", "name", "version", "language", "type"];
   for (const field of requiredFields) {
     if (!parsed[field] || String(parsed[field]).trim() === "") {
-      return {
-        errors: { pluginJson: `Missing required field: "${field}"` },
-        values,
-      };
+      return { errors: { pluginJson: `Missing required field: "${field}"` }, values };
     }
   }
 
-  return {
-    payload: parsed,
-    values,
-  };
+  return { payload: parsed, values };
+}
+
+export function parsePluginFormData(formData: FormData): PluginParsedResult {
+  const jsonText = String(formData.get("pluginJson") ?? "");
+  return parsePluginJson(jsonText);
 }

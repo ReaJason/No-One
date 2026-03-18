@@ -70,7 +70,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testSuccessfulLogin() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
@@ -83,7 +83,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testFailedLoginIncrementsAttempts() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("wrongpassword", "encodedpassword")).thenReturn(false);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "wrongpassword", null);
@@ -96,7 +96,7 @@ class CustomAuthenticationProviderTest {
     @Test
     void testLockoutAfterMaxAttempts() {
         testUser.setFailedAttempts(4);
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("wrongpassword", "encodedpassword")).thenReturn(false);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "wrongpassword", null);
@@ -110,7 +110,7 @@ class CustomAuthenticationProviderTest {
     @Test
     void testLockedUserThrowsException() {
         testUser.setLockTime(LocalDateTime.now().minusMinutes(5)); // Locked 5 mins ago (still locked)
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
 
@@ -122,7 +122,7 @@ class CustomAuthenticationProviderTest {
     void testLockedUserUnlockAfterTimeout() {
         testUser.setLockTime(LocalDateTime.now().minusMinutes(35)); // Locked 35 mins ago (should unlock)
         testUser.setFailedAttempts(5);
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
@@ -137,7 +137,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testIpWhitelistBlocksUnlistedIp() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true); // User has whitelist
         when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "127.0.0.1")).thenReturn(false); // IP not listed
 
@@ -149,7 +149,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testIpWhitelistAllowsListedIp() {
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true); // User has whitelist
         when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "127.0.0.1")).thenReturn(true); // IP listed
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
@@ -163,7 +163,7 @@ class CustomAuthenticationProviderTest {
     @Test
     void testTwoFactorRequiredButMissing() {
         testUser.setMfaEnabled(true);
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
@@ -175,7 +175,7 @@ class CustomAuthenticationProviderTest {
     void testTwoFactorInvalidCode() {
         testUser.setMfaEnabled(true);
         testUser.setMfaSecret("secret");
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
         when(twoFactorAuthService.isCodeValid("secret", "123456")).thenReturn(false);
 
@@ -187,7 +187,7 @@ class CustomAuthenticationProviderTest {
     @Test
     void testUserNotActivatedThrowsException() {
         testUser.setStatus(UserStatus.UNACTIVATED);
-        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
         when(jwtUtil.generateSetupToken("testuser")).thenReturn("setup-token-123");
 

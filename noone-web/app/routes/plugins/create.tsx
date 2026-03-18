@@ -5,7 +5,7 @@ import { redirect, useActionData, useNavigate } from "react-router";
 import { createAuthFetch } from "@/api/api.server";
 import { createPlugin } from "@/api/plugin-api";
 import { FormPageShell } from "@/components/form-page-shell";
-import { PluginForm } from "@/components/plugin/plugin-form";
+import { PluginUploadForm } from "@/components/plugin/plugin-upload-form";
 import {
   getPluginFormSeed,
   parsePluginFormData,
@@ -48,7 +48,7 @@ export default function CreatePlugin() {
       title="Add Plugin"
       description="Paste the plugin JSON definition to register or replace a plugin version."
     >
-      <PluginForm
+      <PluginUploadForm
         key={`create:${JSON.stringify(initialValues)}`}
         initialValues={initialValues}
         errors={actionData?.errors}

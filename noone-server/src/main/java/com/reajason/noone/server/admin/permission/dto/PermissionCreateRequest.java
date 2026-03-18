@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import java.util.Set;
-
 @Data
 public class PermissionCreateRequest {
     @NotBlank(message = "权限代码不能为空")
@@ -18,6 +16,4 @@ public class PermissionCreateRequest {
     @NotBlank(message = "权限名称不能为空")
     @Size(min = 2, max = 100, message = "权限名称长度必须在2-100个字符之间")
     private String name;
-
-    private Set<Long> roleIds;
 }

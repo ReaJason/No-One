@@ -59,7 +59,7 @@ public class AuthSetupController {
         }
 
         String username = jwtUtil.getUsernameFromToken(setupToken);
-        Optional<User> optionalUser = userRepository.findByUsername(username);
+        Optional<User> optionalUser = userRepository.findByUsernameAndDeletedFalse(username);
         if (optionalUser.isEmpty() || optionalUser.get().getStatus() != UserStatus.UNACTIVATED) {
             return ResponseEntity.badRequest().body("User is already activated or does not exist");
         }

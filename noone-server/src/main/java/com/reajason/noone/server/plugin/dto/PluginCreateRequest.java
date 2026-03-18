@@ -26,6 +26,10 @@ public class PluginCreateRequest {
 
     private String runMode;
 
+    private String description;
+
+    private String author;
+
     private String payload;
 
     private Map<String, Object> actions;

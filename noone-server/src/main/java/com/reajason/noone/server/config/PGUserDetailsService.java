@@ -26,7 +26,7 @@ public class PGUserDetailsService implements UserDetailsService {
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndDeletedFalse(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
         Set<GrantedAuthority> authorities = userAuthorityResolver.resolveGrantedAuthorities(user);
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())

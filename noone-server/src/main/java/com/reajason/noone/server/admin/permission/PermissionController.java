@@ -13,8 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Set;
-
 /**
  * 权限管理控制器
  * @author ReaJason
@@ -30,54 +28,36 @@ public class PermissionController {
 
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:create')")
-    public ResponseEntity<PermissionResponse> createPermission(@Valid @RequestBody PermissionCreateRequest request) {
-        PermissionResponse response = permissionService.createPermission(request);
+    public ResponseEntity<PermissionResponse> create(@Valid @RequestBody PermissionCreateRequest request) {
+        PermissionResponse response = permissionService.create(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:read')")
-    public ResponseEntity<PermissionResponse> getPermissionById(@PathVariable Long id) {
-        return ResponseEntity.ok(permissionService.getPermissionById(id));
+    public ResponseEntity<PermissionResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(permissionService.getById(id));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:update')")
-    public ResponseEntity<PermissionResponse> updatePermission(
+    public ResponseEntity<PermissionResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody PermissionUpdateRequest request) {
-        PermissionResponse response = permissionService.updatePermission(id, request);
+        PermissionResponse response = permissionService.update(id, request);
         return ResponseEntity.ok(response);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:delete')")
-    public ResponseEntity<Void> deletePermission(@PathVariable Long id) {
-        permissionService.deletePermission(id);
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        permissionService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('permission:list')")
-    public ResponseEntity<Page<PermissionResponse>> queryPermissions(PermissionQueryRequest request) {
-        return ResponseEntity.ok(permissionService.queryPermissions(request));
-    }
-
-    @PutMapping("/{id}/roles")
-    @PreAuthorize("@authorizationService.hasSystemPermission('permission:update')")
-    public ResponseEntity<PermissionResponse> assignRoles(
-            @PathVariable Long id,
-            @RequestBody Set<Long> roleIds) {
-        PermissionResponse response = permissionService.assignRoles(id, roleIds);
-        return ResponseEntity.ok(response);
-    }
-
-    @DeleteMapping("/{id}/roles")
-    @PreAuthorize("@authorizationService.hasSystemPermission('permission:update')")
-    public ResponseEntity<PermissionResponse> removeRoles(
-            @PathVariable Long id,
-            @RequestBody Set<Long> roleIds) {
-        PermissionResponse response = permissionService.removeRoles(id, roleIds);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<Page<PermissionResponse>> query(PermissionQueryRequest request) {
+        return ResponseEntity.ok(permissionService.query(request));
     }
 }

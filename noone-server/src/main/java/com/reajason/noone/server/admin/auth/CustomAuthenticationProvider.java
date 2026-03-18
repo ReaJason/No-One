@@ -45,7 +45,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
             twoFactorCode = customToken.getTwoFactorCode();
         }
 
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameAndDeletedFalse(username)
                 .orElseThrow(() -> new BadCredentialsException("Invalid username or password"));
 
         if (user.getLockTime() != null) {

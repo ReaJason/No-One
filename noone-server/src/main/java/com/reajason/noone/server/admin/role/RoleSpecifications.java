@@ -22,4 +22,8 @@ public class RoleSpecifications {
             );
         };
     }
+
+    public static Specification<Role> notDeleted() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted"));
+    }
 }

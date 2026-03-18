@@ -75,4 +75,8 @@ public class UserSpecifications {
             return criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), createdBefore);
         };
     }
+
+    public static Specification<User> notDeleted() {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted"));
+    }
 }

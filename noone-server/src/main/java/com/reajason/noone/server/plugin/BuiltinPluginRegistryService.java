@@ -32,7 +32,7 @@ public class BuiltinPluginRegistryService {
             return Optional.empty();
         }
 
-        pluginService.create(builtinPlugin.get());
+        pluginService.create(builtinPlugin.get(), PluginSource.BUILTIN);
         return pluginRepository.findByPluginIdAndLanguage(pluginId, language);
     }
 

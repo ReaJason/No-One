@@ -15,6 +15,7 @@ public abstract class PermissionMapper {
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     public abstract Permission toEntity(PermissionCreateRequest request);
 
     @Mapping(target = "category", expression = "java(extractCategory(permission.getCode()))")
@@ -22,6 +23,11 @@ public abstract class PermissionMapper {
 
     public abstract PermissionRoleDTO toPermissionRoleDTO(Role role);
 
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "roles", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
     public abstract void updateEntity(@MappingTarget Permission permission, PermissionUpdateRequest request);
 
     protected static String extractCategory(String code) {

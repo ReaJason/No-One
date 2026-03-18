@@ -13,8 +13,10 @@ public interface PluginMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "source", ignore = true)
     Plugin toEntity(PluginCreateRequest request);
 
     @Mapping(target = "id", source = "pluginId")
+    @Mapping(target = "source", expression = "java(plugin.getSource() != null ? plugin.getSource().name() : null)")
     PluginResponse toResponse(Plugin plugin);
 }

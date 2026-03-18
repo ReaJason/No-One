@@ -3,6 +3,7 @@ package com.reajason.noone.server.plugin;
 import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.plugin.dto.PluginQueryRequest;
 import com.reajason.noone.server.plugin.dto.PluginResponse;
+import com.reajason.noone.server.plugin.dto.PluginUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -27,6 +28,10 @@ public class PluginService {
     private final PluginMapper pluginMapper;
 
     public PluginResponse create(PluginCreateRequest request) {
+        return create(request, PluginSource.UPLOADED);
+    }
+
+    public PluginResponse create(PluginCreateRequest request, PluginSource source) {
         validateRequest(request);
         Optional<Plugin> existing = pluginRepository.findByPluginIdAndLanguage(request.getId(), request.getLanguage());
 
@@ -42,12 +47,41 @@ public class PluginService {
             plugin.setPayload(request.getPayload());
             plugin.setActions(request.getActions());
             plugin.setMeta(request.getMeta());
+            plugin.setDescription(request.getDescription());
+            plugin.setAuthor(request.getAuthor());
+            plugin.setSource(source);
         } else {
             plugin = pluginMapper.toEntity(request);
+            plugin.setSource(source);
         }
 
         Plugin savedPlugin = pluginRepository.save(plugin);
         return pluginMapper.toResponse(savedPlugin);
+    }
+
+    @Transactional(readOnly = true)
+    public PluginResponse getById(Long id) {
+        Plugin plugin = pluginRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + id));
+        return pluginMapper.toResponse(plugin);
+    }
+
+    public PluginResponse update(Long id, PluginUpdateRequest request) {
+        Plugin plugin = pluginRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + id));
+        if (request.getName() != null) plugin.setName(request.getName());
+        if (request.getDescription() != null) plugin.setDescription(request.getDescription());
+        if (request.getAuthor() != null) plugin.setAuthor(request.getAuthor());
+        if (request.getType() != null) plugin.setType(request.getType());
+        if (request.getRunMode() != null) plugin.setRunMode(request.getRunMode());
+        Plugin saved = pluginRepository.save(plugin);
+        return pluginMapper.toResponse(saved);
+    }
+
+    public void delete(Long id) {
+        Plugin plugin = pluginRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + id));
+        pluginRepository.delete(plugin);
     }
 
     @Transactional(readOnly = true)
