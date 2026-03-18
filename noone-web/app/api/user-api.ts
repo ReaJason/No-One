@@ -63,7 +63,6 @@ export interface CreateUserRequest {
 export interface UpdateUserRequest {
   email?: string;
   status?: UserStatus;
-  roleIds?: number[];
 }
 
 export interface ResetUserPasswordRequest {
@@ -94,6 +93,17 @@ export async function deleteUser(id: number, authFetch: AuthFetch): Promise<bool
     method: "DELETE",
   });
   return true;
+}
+
+export async function syncUserRoles(
+  id: number,
+  roleIds: number[],
+  authFetch: AuthFetch,
+): Promise<User> {
+  return await authFetch<User>(`${baseUrl}/${id}/roles`, {
+    method: "PUT",
+    body: roleIds,
+  });
 }
 
 export async function resetUserPassword(

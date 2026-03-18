@@ -1,6 +1,6 @@
 import type { Role, User, UserStatus } from "@/types/admin";
 import type { PaginatedResponse } from "@/types/api";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Download, Plus } from "lucide-react";
 import * as React from "react";
@@ -9,7 +9,8 @@ import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { getAllRoles } from "@/api/role-api";
-import { getUsers, loadUserSearchParams } from "@/api/user-api";
+import { deleteUser, getUsers, loadUserSearchParams } from "@/api/user-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -62,6 +63,26 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  if (formData.get("intent") !== "delete") {
+    return { errors: { general: "Unsupported action" } };
+  }
+
+  const userId = Number(String(formData.get("userId") ?? ""));
+  if (!Number.isFinite(userId)) {
+    return { errors: { general: "Invalid user ID" } };
+  }
+
+  try {
+    const authFetch = createAuthFetch(request, context);
+    await deleteUser(userId, authFetch);
+    return { success: true };
+  } catch (error: any) {
+    return { errors: { general: error?.message || "Failed to delete user" } };
+  }
+}
+
 export default function Users() {
   const { userResponse, roles } = useLoaderData() as {
     userResponse: Promise<PaginatedResponse<User>>;
@@ -89,18 +110,20 @@ export default function Users() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={5}
-            filterCount={3}
-            cellWidths={["10rem", "30rem", "10rem", "10rem", "6rem", "6rem", "6rem"]}
-            shrinkZero
-          />
-        }
-      >
-        <UserTable userResponse={userResponse} roles={roles} />
-      </React.Suspense>
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={5}
+              filterCount={3}
+              cellWidths={["10rem", "30rem", "10rem", "10rem", "6rem", "6rem", "6rem"]}
+              shrinkZero
+            />
+          }
+        >
+          <UserTable userResponse={userResponse} roles={roles} />
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { Route } from "./+types/edit";
+import type { Plugin } from "@/types/plugin";
 
-import { PencilLine } from "lucide-react";
 import {
   type ActionFunctionArgs,
   isRouteErrorResponse,
@@ -17,7 +17,6 @@ import { FormPageShell } from "@/components/form-page-shell";
 import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { PluginEditForm } from "@/components/plugin/plugin-edit-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
-import type { Plugin } from "@/types/plugin";
 import {
   type PluginEditActionData,
   pluginEditSchema,
@@ -27,7 +26,11 @@ type LoaderData = {
   plugin: Plugin;
 };
 
-export async function loader({ context, params, request }: LoaderFunctionArgs): Promise<LoaderData> {
+export async function loader({
+  context,
+  params,
+  request,
+}: LoaderFunctionArgs): Promise<LoaderData> {
   const pluginId = params.pluginId;
   if (!pluginId) {
     throw new Response("Plugin ID is required", { status: 400 });

@@ -4,7 +4,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
-import { publicApi } from "@/api/api.server";
+import { createPublicApi } from "@/api/api.server";
 import { commitSession, getSession } from "@/api/sessions.server";
 import {
   authInputClassName,
@@ -63,15 +63,18 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const response = await publicApi<LoginApiSuccess>("/auth/password/change-required", {
-      method: "POST",
-      headers: {
-        "Password-Change-Token": passwordChangeToken,
+    const response = await createPublicApi(request)<LoginApiSuccess>(
+      "/auth/password/change-required",
+      {
+        method: "POST",
+        headers: {
+          "Password-Change-Token": passwordChangeToken,
+        },
+        body: {
+          newPassword,
+        },
       },
-      body: {
-        newPassword,
-      },
-    });
+    );
 
     if (!isLoginSuccessResponse(response)) {
       return { error: "Password change failed" };

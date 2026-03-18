@@ -1,11 +1,8 @@
-import { ArrowLeft, RotateCcw } from "lucide-react";
-import { Link } from "react-router";
+import { RotateCcw } from "lucide-react";
 
 interface ServerErrorBoundaryProps {
   title?: string;
   description?: string;
-  backHref?: string;
-  backLabel?: string;
   showRetry?: boolean;
   onRetry?: () => void;
   /** Pass the error object to show stack trace in dev mode */
@@ -17,8 +14,6 @@ interface ServerErrorBoundaryProps {
 export function ServerErrorBoundary({
   title = "Server error",
   description = "Sorry, something went wrong on our end. Please try again later.",
-  backHref = "/",
-  backLabel = "Back to home",
   showRetry = true,
   onRetry,
   error,
@@ -46,13 +41,6 @@ export function ServerErrorBoundary({
           <p className="mt-6 max-w-2xl text-lg text-muted-foreground">{description}</p>
 
           <div className="mt-10 flex flex-wrap items-center gap-6">
-            <Link
-              to={backHref}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-primary/80"
-            >
-              <ArrowLeft className="size-4" />
-              {backLabel}
-            </Link>
             {showRetry ? (
               <button
                 onClick={handleRetry}

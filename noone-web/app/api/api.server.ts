@@ -1,7 +1,6 @@
 import type { RouterContextProvider } from "react-router";
 
 import { type FetchOptions, type IFetchError, ofetch } from "ofetch";
-import { redirect } from "react-router";
 
 import {
   getAuthRefreshPromise,
@@ -10,7 +9,8 @@ import {
   setRefreshedAccessToken,
 } from "@/api/auth-context.server";
 import { pendingCookieContext } from "@/api/context.server";
-import { commitSession, destroySession, getSession } from "@/api/sessions.server";
+import { commitSession, getSession } from "@/api/sessions.server";
+import { AuthRedirectError } from "@/lib/auth-redirect-error";
 import { ApiClientError, type LoginResponse } from "@/types/api";
 
 const BASE_URL = process.env.INTERNAL_API_BASE_URL ?? import.meta.env.INTERNAL_API_BASE_URL;
@@ -128,21 +128,24 @@ export function createAuthFetch(
     const refreshToken = session.get("refreshToken");
 
     if (!accessToken || !refreshToken) {
-      console.log("api auth no authenticated, so redirect");
-      throw redirect("/auth/login");
+      throw new AuthRedirectError("missing-token");
     }
     const doRequest = (token: string) =>
       ofetch<T>(`${BASE_URL}${endpoint}`, {
         ...options,
-        async onRequest({ request, options }) {
+        async onRequest({ options }) {
           const headers = new Headers(options.headers);
+          const forwardedHeaders = pickForwardHeaders(request);
+          for (const [key, value] of Object.entries(forwardedHeaders)) {
+            headers.set(key, value);
+          }
           headers.set("Authorization", `Bearer ${token}`);
           options.headers = headers;
         },
         async onRequestError({ error }: any) {
           sanitizeRequestError(error);
         },
-        async onResponseError({ request, response }: any) {
+        async onResponseError({ r, response }: any) {
           const error = createApiClientErrorFromResponse(response);
           if (response.status === 404) {
             throw new Response("Resource not found", {
@@ -172,11 +175,8 @@ export function createAuthFetch(
           setAuthRefreshPromise(null);
         }
       });
-
       if (!newTokens) {
-        throw redirect("/auth/login", {
-          headers: { "Set-Cookie": await destroySession(session) },
-        });
+        throw new AuthRedirectError("refresh-failed");
       }
 
       setRefreshedAccessToken(newTokens.token);
@@ -200,3 +200,53 @@ export const publicApi = ofetch.create({
     throw createApiClientErrorFromResponse(response);
   },
 });
+
+export function createPublicApi(request: Request) {
+  return ofetch.create({
+    baseURL: BASE_URL,
+    async onRequest({ options }) {
+      const headers = new Headers(options.headers);
+      const forwardedHeaders = pickForwardHeaders(request);
+      for (const [key, value] of Object.entries(forwardedHeaders)) {
+        headers.set(key, value);
+      }
+      options.headers = headers;
+    },
+    async onRequestError({ error }: any) {
+      sanitizeRequestError(error);
+    },
+    async onResponseError({ request, response }: any) {
+      throw createApiClientErrorFromResponse(response);
+    },
+  });
+}
+
+export const FORWARD_HEADERS = [
+  "cookie",
+  "authorization",
+  "accept-language",
+  "x-request-id",
+  "x-trace-id",
+  "x-forwarded-for",
+  "x-real-ip",
+  "x-forwarded-proto",
+  "x-forwarded-host",
+] as const;
+export function pickForwardHeaders(requestOrHeaders: Request | Headers): Record<string, string> {
+  const headers = requestOrHeaders instanceof Request ? requestOrHeaders.headers : requestOrHeaders;
+
+  const result: Record<string, string> = {};
+  for (const key of FORWARD_HEADERS) {
+    const value = headers.get(key);
+    if (value) {
+      result[key] = value;
+    }
+  }
+  const ua = headers.get("user-agent");
+  if (ua) {
+    result["user-agent"] = ua;
+    result["x-forwarded-by"] = "ssr-node";
+  }
+
+  return result;
+}

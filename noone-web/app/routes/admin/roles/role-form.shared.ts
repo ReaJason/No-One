@@ -41,8 +41,9 @@ export function parseRoleFormData(formData: FormData) {
   }
 
   return {
+    permissionIds: values.permissionIds,
     errors: Object.keys(errors).length > 0 ? errors : undefined,
-    payload: values,
+    payload: { name: values.name },
     values,
   };
 }

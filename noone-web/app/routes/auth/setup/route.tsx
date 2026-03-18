@@ -4,7 +4,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
-import { publicApi } from "@/api/api.server";
+import { createPublicApi } from "@/api/api.server";
 import { commitSession, getSession } from "@/api/sessions.server";
 import {
   authInputClassName,
@@ -50,7 +50,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   try {
-    const response = await publicApi<SetupQrResponse>("/setup/2fa/qr", {
+    const response = await createPublicApi(request)<SetupQrResponse>("/setup/2fa/qr", {
       method: "GET",
       headers: {
         "Setup-Token": token,
@@ -83,7 +83,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const response = await publicApi<LoginApiSuccess>("/setup/activate", {
+    const response = await createPublicApi(request)<LoginApiSuccess>("/setup/activate", {
       method: "POST",
       headers: {
         "Setup-Token": setupToken,

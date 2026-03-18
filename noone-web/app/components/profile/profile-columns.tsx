@@ -156,7 +156,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
     header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
     cell: ({ row }) => row.getValue("name") as string,
     meta: {
-      label: "Profile",
+      label: "Name",
       variant: "text",
       placeholder: "Search by name...",
     },

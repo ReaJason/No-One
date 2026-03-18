@@ -38,6 +38,7 @@ export function parseUserFormData(
 ): {
   createPayload?: CreateUserRequest;
   updatePayload?: UpdateUserRequest;
+  roleIds: number[];
   errors?: Record<string, string>;
   values: UserFormSeed;
 } {
@@ -79,6 +80,7 @@ export function parseUserFormData(
   if (Object.keys(errors).length > 0) {
     return {
       errors,
+      roleIds: values.roleIds,
       values,
     };
   }
@@ -92,6 +94,7 @@ export function parseUserFormData(
         status: values.status,
         roleIds: values.roleIds,
       },
+      roleIds: values.roleIds,
       values,
     };
   }
@@ -100,8 +103,8 @@ export function parseUserFormData(
     updatePayload: {
       email: values.email,
       status: values.status,
-      roleIds: values.roleIds,
     },
+    roleIds: values.roleIds,
     values,
   };
 }

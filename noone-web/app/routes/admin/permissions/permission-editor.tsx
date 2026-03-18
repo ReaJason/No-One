@@ -1,12 +1,21 @@
+import type { Route } from "./+types/permission-editor";
 import type { Permission } from "@/types/admin";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Edit, Plus } from "lucide-react";
-import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import {
+  isRouteErrorResponse,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { createPermission, getPermissionById, updatePermission } from "@/api/permission-api";
 import { FormPageShell } from "@/components/form-page-shell";
+import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { PermissionForm } from "@/components/permission/permission-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import {
@@ -83,6 +92,22 @@ export const handle = createBreadcrumb(({ params }) => {
   };
 });
 
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const params = useParams();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <NotFoundErrorBoundary
+        title={"Permission not found"}
+        backLabel={"Back to Permissions"}
+        backHref={"/admin/permissions"}
+        resourceType={"Permission"}
+        resourceId={params.permissionId}
+      />
+    );
+  }
+  throw error;
+}
+
 export default function PermissionEditor() {
   const { permission } = useLoaderData() as LoaderData;
   const actionData = useActionData() as PermissionActionData | undefined;
@@ -106,7 +131,6 @@ export default function PermissionEditor() {
           ? `Update the permission definition for ${permission?.name}.`
           : "Add a new permission to the system and expose it to role assignment."
       }
-      contentClassName="max-w-3xl"
     >
       <PermissionForm
         key={`${isEdit ? "edit" : "create"}:${JSON.stringify(initialValues)}`}

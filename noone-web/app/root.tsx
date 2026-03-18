@@ -15,6 +15,8 @@ import {
 import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { ServerErrorBoundary } from "@/components/server-error-boundary";
 import { TailwindIndicator } from "@/components/tailwind-indicator";
+import { UnAuthorizedErrorBoundary } from "@/components/unauthorized-error-boundary";
+import { isAuthRedirectError } from "@/lib/auth-redirect-error";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -60,6 +62,10 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  if (isAuthRedirectError(error)) {
+    return <UnAuthorizedErrorBoundary description={error.message} />;
+  }
+
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       return <NotFoundErrorBoundary />;

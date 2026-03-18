@@ -8,6 +8,7 @@ import { useLoaderData } from "react-router";
 import { createAuthFetch } from "@/api/api.server";
 import { getAuditLogs, loadAuditSearchParams } from "@/api/audit-api";
 import { auditColumns } from "@/components/audit/audit-columns";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -41,18 +42,20 @@ export default function Audit() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={8}
-            filterCount={3}
-            cellWidths={["8rem", "7rem", "9rem", "8rem", "7rem", "9rem", "10rem", "6rem"]}
-            shrinkZero
-          />
-        }
-      >
-        <AuditTable auditResponse={auditResponse} />
-      </React.Suspense>
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={8}
+              filterCount={3}
+              cellWidths={["8rem", "7rem", "9rem", "8rem", "7rem", "9rem", "10rem", "6rem"]}
+              shrinkZero
+            />
+          }
+        >
+          <AuditTable auditResponse={auditResponse} />
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

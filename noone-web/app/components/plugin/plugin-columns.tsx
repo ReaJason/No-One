@@ -68,8 +68,11 @@ export const pluginColumns: ColumnDef<Plugin>[] = [
     cell: ({ row }) => <Badge variant="outline">{row.getValue("type") as string}</Badge>,
     meta: {
       label: "Type",
-      variant: "text",
-      placeholder: "Search by type...",
+      variant: "select",
+      options: [
+        { label: "Standard", value: "Standard" },
+        { label: "Extension", value: "Extension" },
+      ],
     },
     enableColumnFilter: true,
   },

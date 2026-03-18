@@ -9,6 +9,7 @@ import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { deleteShellConnection, getShellConnections } from "@/api/shell-connection-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -107,21 +108,23 @@ export default function ShellList() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={8}
-            filterCount={2}
-            cellWidths={["3rem", "20rem", "8rem", "10rem", "12rem", "10rem", "10rem", "3rem"]}
-            shrinkZero
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={8}
+              filterCount={2}
+              cellWidths={["3rem", "20rem", "8rem", "10rem", "12rem", "10rem", "10rem", "3rem"]}
+              shrinkZero
+            />
+          }
+        >
+          <ShellConnectionTable
+            shellConnectionResponse={shellConnectionResponse}
+            projectsResponse={projectsResponse}
           />
-        }
-      >
-        <ShellConnectionTable
-          shellConnectionResponse={shellConnectionResponse}
-          projectsResponse={projectsResponse}
-        />
-      </React.Suspense>
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

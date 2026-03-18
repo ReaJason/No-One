@@ -74,7 +74,7 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
         <DropdownMenuContent className="w-44" align="start">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <Link to={`/admin/users/edit-roles/${user.id}`}>
+            <Link to={`/admin/users/edit/${user.id}`}>
               <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 Edit User
@@ -91,11 +91,14 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
 
       <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
         <AlertDialogContent>
-          <deleteFetcher.Form method="post" action={`/admin/users/delete/${user.id}`}>
+          <deleteFetcher.Form method="post">
+            <input type="hidden" name="intent" value="delete" />
+            <input type="hidden" name="userId" value={String(user.id)} />
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to delete this user?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. The user account will be permanently removed.
+                This user will be archived from active admin operations and hidden from standard
+                queries.
               </AlertDialogDescription>
             </AlertDialogHeader>
             {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}

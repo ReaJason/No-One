@@ -1,7 +1,7 @@
 import type { Permission } from "@/types/admin";
 import type { ColumnDef } from "@tanstack/react-table";
 
-import { Edit, Loader, MoreHorizontal, Text, Trash2, Users } from "lucide-react";
+import { Edit, Loader, MoreHorizontal, Text, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useFetcher } from "react-router";
 
@@ -57,20 +57,21 @@ export const permissionColumns: ColumnDef<Permission>[] = [
     id: "name",
     accessorKey: "name",
     header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
-    cell: ({ row }) => {
-      const permission = row.original;
+    cell: ({ cell }) => {
       return (
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{permission.name}</Badge>
+            <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+              {cell.getValue<string>()}
+            </Badge>
           </div>
         </div>
       );
     },
     meta: {
-      label: "Permission",
+      label: "Name",
       variant: "text",
-      placeholder: "Search by name...",
+      placeholder: "Search by name or code...",
       icon: Text,
     },
     enableColumnFilter: true,
@@ -94,12 +95,6 @@ export const permissionColumns: ColumnDef<Permission>[] = [
       const permission = row.original;
       const [isOpen, setIsOpen] = useState(false);
       const fetcher = useFetcher();
-
-      const handleViewRoles = () => {
-        // TODO: Implement view roles
-        console.log("View roles for permission:", permission.id);
-      };
-
       return (
         <>
           <DropdownMenu>
@@ -123,10 +118,6 @@ export const permissionColumns: ColumnDef<Permission>[] = [
                     Edit
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleViewRoles}>
-                  <Users className="mr-2 h-4 w-4" />
-                  View Roles
-                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setIsOpen(true)} className="text-destructive">
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -137,15 +128,20 @@ export const permissionColumns: ColumnDef<Permission>[] = [
           </DropdownMenu>
           <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
             <AlertDialogContent>
-              <fetcher.Form method="post" action={`/admin/permissions/delete/${permission.id}`}>
+              <fetcher.Form method="post">
+                <input type="hidden" name="intent" value="delete" />
+                <input type="hidden" name="permissionId" value={String(permission.id)} />
                 <AlertDialogHeader>
                   <AlertDialogTitle>
                     Are you sure you want to delete this permission?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    Make sure you want to delete this permission.
+                    This permission will be soft-deleted and hidden from active permission queries.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
+                {fetcher.data?.errors?.general ? (
+                  <p className="text-sm text-destructive">{String(fetcher.data.errors.general)}</p>
+                ) : null}
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                   <AlertDialogAction>

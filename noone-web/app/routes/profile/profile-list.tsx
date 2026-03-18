@@ -8,6 +8,7 @@ import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { deleteProfile, getProfiles, loadProfileSearchParams } from "@/api/profile-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -88,18 +89,20 @@ export default function ProfileList() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={7}
-            filterCount={3}
-            cellWidths={["10rem", "15rem", "12rem", "20rem", "10rem", "8rem", "6rem"]}
-            shrinkZero
-          />
-        }
-      >
-        <ProfileTable profileResponse={profileResponse} />
-      </React.Suspense>
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={7}
+              filterCount={3}
+              cellWidths={["10rem", "15rem", "12rem", "20rem", "10rem", "8rem", "6rem"]}
+              shrinkZero
+            />
+          }
+        >
+          <ProfileTable profileResponse={profileResponse} />
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { createAuthFetch } from "@/api/api.server";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
 import ShellResult from "@/components/memshell/shell-result";
@@ -231,21 +232,23 @@ export default function MemShell() {
   return (
     <Form method="post" className="flex flex-col gap-6">
       <div className="flex w-full flex-col gap-2">
-        <Suspense fallback={<MemShellFormSkeleton />}>
-          <DeferredConfigSection
-            serverConfig={serverConfig}
-            mainConfig={mainConfig}
-            packerConfig={packerConfig}
-            errors={actionData?.errors}
-            profilesPromise={profiles}
-            onServerChange={handleServerChange}
-            onShellTypeChange={handleShellTypeChange}
-            server={selectedServer}
-            shellType={selectedShellType}
-            isSubmitting={isSubmitting}
-            addShellParams={addShellParams}
-          />
-        </Suspense>
+        <AuthRedirectErrorBoundary>
+          <Suspense fallback={<MemShellFormSkeleton />}>
+            <DeferredConfigSection
+              serverConfig={serverConfig}
+              mainConfig={mainConfig}
+              packerConfig={packerConfig}
+              errors={actionData?.errors}
+              profilesPromise={profiles}
+              onServerChange={handleServerChange}
+              onShellTypeChange={handleShellTypeChange}
+              server={selectedServer}
+              shellType={selectedShellType}
+              isSubmitting={isSubmitting}
+              addShellParams={addShellParams}
+            />
+          </Suspense>
+        </AuthRedirectErrorBoundary>
       </div>
       <div className="flex w-full flex-col gap-2">
         <ShellResult

@@ -4,7 +4,8 @@ import { destroySession, getSession } from "@/api/sessions.server";
 
 async function performLogout(request: Request) {
   const session = await getSession(request.headers.get("Cookie"));
-  return redirect("/auth/login", {
+  const url = new URL(request.url);
+  return redirect("/auth/login?" + url.searchParams, {
     headers: {
       "Set-Cookie": await destroySession(session),
     },
@@ -23,8 +24,7 @@ export default function LogoutPage() {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">正在登出...</h1>
-        <p className="text-muted-foreground">请稍候，正在为您登出系统。</p>
+        <h1 className="text-2xl font-bold">LogOut...</h1>
       </div>
     </div>
   );

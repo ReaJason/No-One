@@ -8,6 +8,7 @@ import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { deleteProject, getProjects, loadProjectSearchParams } from "@/api/project-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -83,28 +84,30 @@ export default function ProjectList() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={9}
-            filterCount={4}
-            cellWidths={[
-              "3rem",
-              "12rem",
-              "8rem",
-              "10rem",
-              "6rem",
-              "10rem",
-              "10rem",
-              "10rem",
-              "4rem",
-            ]}
-            shrinkZero
-          />
-        }
-      >
-        <ProjectTable projectResponse={projectResponse} />
-      </React.Suspense>
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={9}
+              filterCount={4}
+              cellWidths={[
+                "3rem",
+                "12rem",
+                "8rem",
+                "10rem",
+                "6rem",
+                "10rem",
+                "10rem",
+                "10rem",
+                "4rem",
+              ]}
+              shrinkZero
+            />
+          }
+        >
+          <ProjectTable projectResponse={projectResponse} />
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

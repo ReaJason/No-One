@@ -14,7 +14,7 @@ import {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const parsed = parsePluginFormData(await request.formData());
-  if (parsed.errors) {
+  if ("errors" in parsed) {
     return {
       errors: parsed.errors,
       success: false,
@@ -24,7 +24,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const authFetch = createAuthFetch(request, context);
-    await createPlugin(parsed.payload!, authFetch);
+    await createPlugin(parsed.payload, authFetch);
     return redirect("/plugins");
   } catch (error: any) {
     return {

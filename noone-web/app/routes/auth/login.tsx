@@ -14,7 +14,7 @@ import {
   useNavigation,
 } from "react-router";
 
-import { publicApi } from "@/api/api.server";
+import { createPublicApi } from "@/api/api.server";
 import { commitSession, getSession } from "@/api/sessions.server";
 import {
   authInputClassName,
@@ -143,14 +143,20 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const response = await publicApi<LoginApiSuccess | LoginApiChallenge>("/auth/login", {
-      method: "POST",
-      body: {
-        username,
-        password,
-        ...(twoFactorCode ? { twoFactorCode } : {}),
+    const response = await createPublicApi(request)<LoginApiSuccess | LoginApiChallenge>(
+      "/auth/login",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: {
+          username,
+          password,
+          ...(twoFactorCode ? { twoFactorCode } : {}),
+        },
       },
-    });
+    );
 
     if ("code" in response && response.code === REQUIRE_2FA_CODE) {
       return {

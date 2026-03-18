@@ -14,6 +14,7 @@ import {
   type WebShellGenerateResponse,
   type WebShellLanguage,
 } from "@/api/webshell-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import CodeViewer from "@/components/memshell/code-viewer";
 import AddShellButton from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
@@ -130,9 +131,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 export default function WebShell() {
   const { profiles } = useGeneratorContext();
   return (
-    <Suspense fallback={<WebShellPageSkeleton />}>
-      <DeferredWebShellContent profilesPromise={profiles} />
-    </Suspense>
+    <AuthRedirectErrorBoundary>
+      <Suspense fallback={<WebShellPageSkeleton />}>
+        <DeferredWebShellContent profilesPromise={profiles} />
+      </Suspense>
+    </AuthRedirectErrorBoundary>
   );
 }
 

@@ -40,7 +40,6 @@ export async function getRoleById(id: number, authFetch: AuthFetch): Promise<Rol
 
 export interface CreateRoleRequest {
   name: string;
-  permissionIds: number[];
 }
 
 export async function createRole(roleData: CreateRoleRequest, authFetch: AuthFetch): Promise<Role> {
@@ -52,12 +51,23 @@ export async function createRole(roleData: CreateRoleRequest, authFetch: AuthFet
 
 export async function updateRole(
   id: number,
-  roleData: Partial<Role> | { name?: string; permissionIds?: number[] },
+  roleData: { name?: string },
   authFetch: AuthFetch,
 ): Promise<Role | null> {
   return await authFetch<Role>(`${baseUrl}/${id}`, {
     method: "PUT",
     body: roleData,
+  });
+}
+
+export async function syncRolePermissions(
+  id: number,
+  permissionIds: number[],
+  authFetch: AuthFetch,
+): Promise<Role> {
+  return await authFetch<Role>(`${baseUrl}/${id}/permissions`, {
+    method: "PUT",
+    body: permissionIds,
   });
 }
 

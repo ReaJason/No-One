@@ -29,14 +29,14 @@ public class PermissionSpecifications {
         };
     }
 
-    public static Specification<Permission> hasCategory(String category) {
+    public static Specification<Permission> hasCode(String code) {
         return (root, query, criteriaBuilder) -> {
-            if (StringUtils.isBlank(category)) {
+            if (StringUtils.isBlank(code)) {
                 return criteriaBuilder.conjunction();
             }
             return criteriaBuilder.like(
                     criteriaBuilder.lower(root.get("code")),
-                    category.toLowerCase() + ":%"
+                    "%" + code.toLowerCase() + "%"
             );
         };
     }

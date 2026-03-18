@@ -1,13 +1,22 @@
+import type { Route } from "./+types/user-editor";
 import type { Role, User as UserType } from "@/types/admin";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Edit, Plus } from "lucide-react";
-import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import {
+  isRouteErrorResponse,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { getAllRoles } from "@/api/role-api";
-import { createUser, getUserById, updateUser } from "@/api/user-api";
+import { createUser, getUserById, syncUserRoles, updateUser } from "@/api/user-api";
 import { FormPageShell } from "@/components/form-page-shell";
+import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { UserForm } from "@/components/user/user-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import {
@@ -75,6 +84,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     }
 
     await updateUser(Number(userId), parsed.updatePayload!, authFetch);
+    await syncUserRoles(Number(userId), parsed.roleIds, authFetch);
     return redirect("/admin/users");
   } catch (error: any) {
     return {
@@ -90,7 +100,7 @@ export const handle = createBreadcrumb(({ params }) => {
     return {
       id: "users-edit",
       label: "Edit User",
-      to: `/admin/users/edit-roles/${params.userId}`,
+      to: `/admin/users/edit/${params.userId}`,
     };
   }
 
@@ -100,6 +110,22 @@ export const handle = createBreadcrumb(({ params }) => {
     to: "/admin/users/create",
   };
 });
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const params = useParams();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <NotFoundErrorBoundary
+        title={"User not found"}
+        backLabel={"Back to Users"}
+        backHref={"/admin/users"}
+        resourceType={"User"}
+        resourceId={params.userId}
+      />
+    );
+  }
+  throw error;
+}
 
 export default function UserEditor() {
   const { roles, user } = useLoaderData() as LoaderData;

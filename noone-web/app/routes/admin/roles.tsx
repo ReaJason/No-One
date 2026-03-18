@@ -1,13 +1,14 @@
 import type { Role } from "@/types/admin";
 import type { PaginatedResponse } from "@/types/api";
-import type { LoaderFunctionArgs } from "react-router";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
-import { getRoles, loadRoleSearchParams } from "@/api/role-api";
+import { deleteRole, getRoles, loadRoleSearchParams } from "@/api/role-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -33,6 +34,26 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   return {
     roleResponse,
   };
+}
+
+export async function action({ request, context }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  if (formData.get("intent") !== "delete") {
+    return { errors: { general: "Unsupported action" } };
+  }
+
+  const roleId = Number(String(formData.get("roleId") ?? ""));
+  if (!Number.isFinite(roleId)) {
+    return { errors: { general: "Invalid role ID" } };
+  }
+
+  try {
+    const authFetch = createAuthFetch(request, context);
+    await deleteRole(roleId, authFetch);
+    return { success: true };
+  } catch (error: any) {
+    return { errors: { general: error?.message || "Failed to delete role" } };
+  }
 }
 
 export default function Roles() {
@@ -63,18 +84,20 @@ export default function Roles() {
         </div>
       </div>
 
-      <React.Suspense
-        fallback={
-          <DataTableSkeleton
-            columnCount={5}
-            filterCount={2}
-            cellWidths={["10rem", "30rem", "10rem", "10rem", "6rem"]}
-            shrinkZero
-          />
-        }
-      >
-        <RoleTable roleResponse={roleResponse} />
-      </React.Suspense>
+      <AuthRedirectErrorBoundary>
+        <React.Suspense
+          fallback={
+            <DataTableSkeleton
+              columnCount={5}
+              filterCount={2}
+              cellWidths={["10rem", "30rem", "10rem", "10rem", "6rem"]}
+              shrinkZero
+            />
+          }
+        >
+          <RoleTable roleResponse={roleResponse} />
+        </React.Suspense>
+      </AuthRedirectErrorBoundary>
     </div>
   );
 }

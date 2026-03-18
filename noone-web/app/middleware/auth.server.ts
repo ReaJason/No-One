@@ -11,7 +11,6 @@ export const authMiddleware: Route.MiddlewareFunction = async ({ request, contex
   const accessToken = session.get("accessToken");
   const refreshToken = session.get("refreshToken");
   if (!accessToken || !refreshToken) {
-    console.log("not authenticated middleware, so redirect");
     throw redirect("/auth/login");
   }
   const response = await runWithAuthRequestContext(() => next());

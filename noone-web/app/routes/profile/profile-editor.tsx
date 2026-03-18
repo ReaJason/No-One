@@ -57,7 +57,6 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
   try {
     const authFetch = createAuthFetch(request, context);
-    console.log("payload: ", parsed.payload);
     if (params.profileId) {
       await updateProfile(params.profileId, parsed.payload, authFetch);
     } else {

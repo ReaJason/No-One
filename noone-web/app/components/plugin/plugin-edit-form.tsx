@@ -96,7 +96,7 @@ export function PluginEditForm({ plugin, onCancel }: PluginEditFormProps) {
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-sm font-medium text-muted-foreground">ID</dt>
-              <dd className="mt-1 text-sm font-mono break-all">{plugin.id}</dd>
+              <dd className="mt-1 font-mono text-sm break-all">{plugin.id}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-muted-foreground">Version</dt>
@@ -233,9 +233,7 @@ export function PluginEditForm({ plugin, onCancel }: PluginEditFormProps) {
         <Card>
           <CardHeader>
             <CardTitle>Actions</CardTitle>
-            <CardDescription>
-              Declared actions exposed by this plugin (read-only).
-            </CardDescription>
+            <CardDescription>Declared actions exposed by this plugin (read-only).</CardDescription>
           </CardHeader>
           <CardContent>
             <pre className="overflow-auto rounded-md bg-muted p-4 text-sm">

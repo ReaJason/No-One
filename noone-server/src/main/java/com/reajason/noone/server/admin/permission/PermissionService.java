@@ -74,18 +74,11 @@ public class PermissionService {
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize(), sort);
 
         Specification<Permission> spec = PermissionSpecifications.hasName(request.getName())
-                .and(PermissionSpecifications.hasCategory(request.getCategory()))
+                .and(PermissionSpecifications.hasCode(request.getCode()))
                 .and(PermissionSpecifications.hasRole(request.getRoleId()))
                 .and(PermissionSpecifications.notDeleted());
 
         return permissionRepository.findAll(spec, pageable).map(permissionMapper::toResponse);
-    }
-
-    public List<String> getAllCategories() {
-        return permissionRepository.findAll(PermissionSpecifications.notDeleted()).stream()
-                .map(p -> PermissionMapper.extractCategory(p.getCode()))
-                .distinct()
-                .collect(Collectors.toList());
     }
 
     private Permission findActivePermission(Long id) {

@@ -16,6 +16,7 @@ import {
   installFromRegistry,
   loadPluginSearchParams,
 } from "@/api/plugin-api";
+import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
@@ -156,44 +157,36 @@ export default function Plugins() {
             </TabsList>
           </Tabs>
 
-          <React.Suspense
-            fallback={
-              <DataTableSkeleton
-                columnCount={8}
-                filterCount={2}
-                cellWidths={[
-                  "3rem",
-                  "12rem",
-                  "6rem",
-                  "6rem",
-                  "6rem",
-                  "6rem",
-                  "10rem",
-                  "3rem",
-                ]}
-                shrinkZero
-              />
-            }
-          >
-            <InstalledPluginTable pluginResponse={pluginResponse} />
-          </React.Suspense>
+          <AuthRedirectErrorBoundary>
+            <React.Suspense
+              fallback={
+                <DataTableSkeleton
+                  columnCount={8}
+                  filterCount={2}
+                  cellWidths={["3rem", "12rem", "6rem", "6rem", "6rem", "6rem", "10rem", "3rem"]}
+                  shrinkZero
+                />
+              }
+            >
+              <InstalledPluginTable pluginResponse={pluginResponse} />
+            </React.Suspense>
+          </AuthRedirectErrorBoundary>
         </TabsContent>
 
         <TabsContent value="store">
-          <React.Suspense
-            fallback={
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-48 animate-pulse rounded-lg border bg-muted/50"
-                  />
-                ))}
-              </div>
-            }
-          >
-            <StoreContent catalogResponse={catalogResponse} />
-          </React.Suspense>
+          <AuthRedirectErrorBoundary>
+            <React.Suspense
+              fallback={
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-48 animate-pulse rounded-lg border bg-muted/50" />
+                  ))}
+                </div>
+              }
+            >
+              <StoreContent catalogResponse={catalogResponse} />
+            </React.Suspense>
+          </AuthRedirectErrorBoundary>
         </TabsContent>
       </Tabs>
     </div>
@@ -227,17 +220,7 @@ function InstalledPluginTable({
   );
 }
 
-function StoreContent({
-  catalogResponse,
-}: {
-  catalogResponse: Promise<CatalogResponse>;
-}) {
+function StoreContent({ catalogResponse }: { catalogResponse: Promise<CatalogResponse> }) {
   const catalog = use(catalogResponse);
-  return (
-    <PluginStore
-      catalog={catalog.plugins}
-      error={catalog.error}
-      enabled={catalog.enabled}
-    />
-  );
+  return <PluginStore catalog={catalog.plugins} error={catalog.error} enabled={catalog.enabled} />;
 }

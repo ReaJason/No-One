@@ -1,13 +1,22 @@
+import type { Route } from "./+types/role-editor";
 import type { Permission, Role } from "@/types/admin";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Edit, Plus } from "lucide-react";
-import { redirect, useActionData, useLoaderData, useNavigate } from "react-router";
+import {
+  isRouteErrorResponse,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigate,
+  useParams,
+} from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { getAllPermissions } from "@/api/permission-api";
-import { createRole, getRoleById, updateRole } from "@/api/role-api";
+import { createRole, getRoleById, syncRolePermissions, updateRole } from "@/api/role-api";
 import { FormPageShell } from "@/components/form-page-shell";
+import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
 import { RoleForm } from "@/components/role/role-form";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 import {
@@ -59,8 +68,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
     const authFetch = createAuthFetch(request, context);
     if (params.roleId) {
       await updateRole(Number(params.roleId), parsed.payload, authFetch);
+      await syncRolePermissions(Number(params.roleId), parsed.permissionIds, authFetch);
     } else {
-      await createRole(parsed.payload, authFetch);
+      const created = await createRole(parsed.payload, authFetch);
+      await syncRolePermissions(created.id, parsed.permissionIds, authFetch);
     }
 
     return redirect("/admin/roles");
@@ -88,6 +99,22 @@ export const handle = createBreadcrumb(({ params }) => {
     to: "/admin/roles/create",
   };
 });
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  const params = useParams();
+  if (isRouteErrorResponse(error) && error.status === 404) {
+    return (
+      <NotFoundErrorBoundary
+        title={"Role not found"}
+        backLabel={"Back to Roles"}
+        backHref={"/admin/roles"}
+        resourceType={"Role"}
+        resourceId={params.roleId}
+      />
+    );
+  }
+  throw error;
+}
 
 export default function RoleEditor() {
   const { permissions, role } = useLoaderData() as LoaderData;

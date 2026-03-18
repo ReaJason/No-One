@@ -15,6 +15,7 @@ export default [
   ]),
   route("/auth/login", "routes/auth/login.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),
+  route("/auth/unauthorized", "routes/auth/unauthorized.tsx"),
   route("/auth/setup", "routes/auth/setup/route.tsx"),
   route("/auth/password-change", "routes/auth/password-change.tsx"),
   route("/test", "routes/test.tsx"),

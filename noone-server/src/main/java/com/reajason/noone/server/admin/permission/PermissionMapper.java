@@ -18,7 +18,6 @@ public abstract class PermissionMapper {
     @Mapping(target = "deleted", ignore = true)
     public abstract Permission toEntity(PermissionCreateRequest request);
 
-    @Mapping(target = "category", expression = "java(extractCategory(permission.getCode()))")
     public abstract PermissionResponse toResponse(Permission permission);
 
     public abstract PermissionRoleDTO toPermissionRoleDTO(Role role);
@@ -29,8 +28,4 @@ public abstract class PermissionMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     public abstract void updateEntity(@MappingTarget Permission permission, PermissionUpdateRequest request);
-
-    protected static String extractCategory(String code) {
-        return code.split(":")[0].toLowerCase();
-    }
 }

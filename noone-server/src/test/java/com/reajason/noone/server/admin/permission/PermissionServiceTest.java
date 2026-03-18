@@ -42,96 +42,206 @@ class PermissionServiceTest {
     @Captor
     private ArgumentCaptor<Pageable> pageableCaptor;
 
+    @Captor
+    private ArgumentCaptor<PermissionCreateRequest> createRequestCaptor;
+
+    @Captor
+    private ArgumentCaptor<PermissionUpdateRequest> updateRequestCaptor;
+
     @Test
     void shouldCreatePermission() {
-        PermissionCreateRequest request = new PermissionCreateRequest();
-        request.setCode("user:read");
-        request.setName("Read User");
-        Permission permission = buildPermission(1L, "user:read");
-        PermissionResponse response = buildResponse(1L, "user:read");
+        PermissionCreateRequest request = createRequest("user:create", "Create User");
+        Permission entity = buildPermission(null, "user:create", "Create User");
+        Permission saved = buildPermission(1L, "user:create", "Create User");
+        PermissionResponse expectedResponse = buildResponse(1L, "user:create", "Create User");
 
-        when(permissionRepository.existsByCodeAndDeletedFalse("user:read")).thenReturn(false);
-        when(permissionMapper.toEntity(request)).thenReturn(permission);
-        when(permissionRepository.save(permission)).thenReturn(permission);
-        when(permissionMapper.toResponse(permission)).thenReturn(response);
+        when(permissionRepository.existsByCodeAndDeletedFalse("user:create")).thenReturn(false);
+        when(permissionMapper.toEntity(any(PermissionCreateRequest.class))).thenReturn(entity);
+        when(permissionRepository.save(entity)).thenReturn(saved);
+        when(permissionMapper.toResponse(saved)).thenReturn(expectedResponse);
 
-        assertThat(permissionService.create(request)).isEqualTo(response);
+        PermissionResponse response = permissionService.create(request);
+
+        assertThat(response).isEqualTo(expectedResponse);
+        verify(permissionMapper).toEntity(createRequestCaptor.capture());
+        assertThat(createRequestCaptor.getValue()).isSameAs(request);
+        verify(permissionRepository).save(entity);
     }
 
     @Test
-    void shouldThrowWhenPermissionMissing() {
-        when(permissionRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.empty());
+    void shouldThrowWhenCreatingDuplicateCode() {
+        when(permissionRepository.existsByCodeAndDeletedFalse("user:create")).thenReturn(true);
 
-        assertThatThrownBy(() -> permissionService.getById(1L))
+        assertThatThrownBy(() -> permissionService.create(createRequest("user:create", "Create User")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("权限代码已存在：user:create");
+
+        verify(permissionRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldGetPermissionById() {
+        Permission stored = buildPermission(10L, "user:read", "Read User");
+        PermissionResponse expectedResponse = buildResponse(10L, "user:read", "Read User");
+
+        when(permissionRepository.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(stored));
+        when(permissionMapper.toResponse(stored)).thenReturn(expectedResponse);
+
+        PermissionResponse found = permissionService.getById(10L);
+
+        assertThat(found).isEqualTo(expectedResponse);
+    }
+
+    @Test
+    void shouldThrowWhenGettingNonExistentPermission() {
+        when(permissionRepository.findByIdAndDeletedFalse(99999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> permissionService.getById(99999L))
                 .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessage("权限不存在：1");
+                .hasMessage("权限不存在：99999");
     }
 
     @Test
-    void shouldUpdatePermissionWithoutManagingRoles() {
-        Permission permission = buildPermission(1L, "user:read");
+    void shouldUpdatePermissionNameAndCode() {
+        Permission stored = buildPermission(20L, "user:read", "Read User");
+        Permission saved = buildPermission(20L, "user:update", "Update User");
+        PermissionResponse expectedResponse = buildResponse(20L, "user:update", "Update User");
+
+        when(permissionRepository.findByIdAndDeletedFalse(20L)).thenReturn(Optional.of(stored));
+        when(permissionRepository.existsByCodeAndIdNotAndDeletedFalse("user:update", 20L)).thenReturn(false);
+        when(permissionRepository.save(stored)).thenReturn(saved);
+        when(permissionMapper.toResponse(saved)).thenReturn(expectedResponse);
+
         PermissionUpdateRequest request = new PermissionUpdateRequest();
-        request.setName("Read Users");
-        PermissionResponse response = buildResponse(1L, "user:read");
+        request.setCode("user:update");
+        request.setName("Update User");
 
-        when(permissionRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(permission));
-        when(permissionRepository.save(permission)).thenReturn(permission);
-        when(permissionMapper.toResponse(permission)).thenReturn(response);
+        PermissionResponse updated = permissionService.update(20L, request);
 
-        assertThat(permissionService.update(1L, request)).isEqualTo(response);
-        verify(permissionMapper).updateEntity(permission, request);
+        assertThat(updated).isEqualTo(expectedResponse);
+        verify(permissionMapper).updateEntity(eq(stored), updateRequestCaptor.capture());
+        assertThat(updateRequestCaptor.getValue()).isSameAs(request);
+        verify(permissionRepository).save(stored);
     }
 
     @Test
-    void shouldSoftDeletePermission() {
-        Permission permission = buildPermission(1L, "user:read");
-        when(permissionRepository.findByIdAndDeletedFalse(1L)).thenReturn(Optional.of(permission));
+    void shouldSkipCodeCheckWhenCodeIsBlank() {
+        Permission stored = buildPermission(21L, "user:read", "Read User");
+        Permission saved = buildPermission(21L, "user:read", "Read User Renamed");
+        PermissionResponse expectedResponse = buildResponse(21L, "user:read", "Read User Renamed");
 
-        permissionService.delete(1L);
+        when(permissionRepository.findByIdAndDeletedFalse(21L)).thenReturn(Optional.of(stored));
+        when(permissionRepository.save(stored)).thenReturn(saved);
+        when(permissionMapper.toResponse(saved)).thenReturn(expectedResponse);
 
-        assertThat(permission.getDeleted()).isTrue();
-        verify(permissionRepository).save(permission);
+        PermissionUpdateRequest request = new PermissionUpdateRequest();
+        request.setCode("   ");
+        request.setName("Read User Renamed");
+
+        PermissionResponse updated = permissionService.update(21L, request);
+
+        assertThat(updated).isEqualTo(expectedResponse);
+        verify(permissionRepository, never()).existsByCodeAndIdNotAndDeletedFalse(any(), any());
     }
 
     @Test
-    void shouldQueryPermissions() {
-        Permission permission = buildPermission(1L, "user:read");
-        PermissionResponse response = buildResponse(1L, "user:read");
+    void shouldThrowWhenUpdatingToExistingCode() {
+        when(permissionRepository.findByIdAndDeletedFalse(30L))
+                .thenReturn(Optional.of(buildPermission(30L, "user:read", "Read User")));
+        when(permissionRepository.existsByCodeAndIdNotAndDeletedFalse("user:update", 30L)).thenReturn(true);
 
+        PermissionUpdateRequest request = new PermissionUpdateRequest();
+        request.setCode("user:update");
+
+        assertThatThrownBy(() -> permissionService.update(30L, request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("权限代码已存在：user:update");
+
+        verify(permissionRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldDeletePermission() {
+        Permission stored = buildPermission(40L, "user:delete", "Delete User");
+        when(permissionRepository.findByIdAndDeletedFalse(40L)).thenReturn(Optional.of(stored));
+
+        permissionService.delete(40L);
+
+        assertThat(stored.getDeleted()).isTrue();
+        verify(permissionRepository).save(stored);
+        verify(permissionRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void shouldThrowWhenDeletingNonExistentPermission() {
+        when(permissionRepository.findByIdAndDeletedFalse(99999L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> permissionService.delete(99999L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("权限不存在：99999");
+
+        verify(permissionRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldQueryWithFiltersAndAscSort() {
+        Permission alpha = buildPermission(50L, "user:read", "Read User");
+        Permission beta = buildPermission(51L, "user:update", "Update User");
+        PermissionResponse alphaResp = buildResponse(50L, "user:read", "Read User");
+        PermissionResponse betaResp = buildResponse(51L, "user:update", "Update User");
+
+        Page<Permission> repositoryPage = new PageImpl<>(List.of(alpha, beta));
         when(permissionRepository.findAll(any(Specification.class), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(permission)));
-        when(permissionMapper.toResponse(permission)).thenReturn(response);
+                .thenReturn(repositoryPage);
+        when(permissionMapper.toResponse(alpha)).thenReturn(alphaResp);
+        when(permissionMapper.toResponse(beta)).thenReturn(betaResp);
 
-        PermissionQueryRequest request = new PermissionQueryRequest();
-        request.setPage(1);
-        request.setPageSize(5);
-        request.setSortBy("createdAt");
-        request.setSortDirection("desc");
+        PermissionQueryRequest query = new PermissionQueryRequest();
+        query.setName("user");
+        query.setCode("user");
+        query.setRoleId(9L);
+        query.setPage(1);
+        query.setPageSize(5);
+        query.setSortBy("createdAt");
+        query.setSortDirection("asc");
 
-        Page<PermissionResponse> page = permissionService.query(request);
+        Page<PermissionResponse> page = permissionService.query(query);
 
         verify(permissionRepository).findAll(any(Specification.class), pageableCaptor.capture());
-        assertThat(pageableCaptor.getValue().getPageNumber()).isEqualTo(1);
-        assertThat(page.getContent()).containsExactly(response);
+        Pageable pageable = pageableCaptor.getValue();
+        assertThat(pageable.getPageNumber()).isEqualTo(1);
+        assertThat(pageable.getPageSize()).isEqualTo(5);
+        assertThat(pageable.getSort().toList())
+                .extracting(order -> order.getProperty() + ":" + order.getDirection().name())
+                .containsExactly("createdAt:ASC", "code:ASC");
+        assertThat(page.getContent()).containsExactly(alphaResp, betaResp);
     }
 
-    private Permission buildPermission(Long id, String code) {
+    private PermissionCreateRequest createRequest(String code, String name) {
+        PermissionCreateRequest request = new PermissionCreateRequest();
+        request.setCode(code);
+        request.setName(name);
+        return request;
+    }
+
+    private Permission buildPermission(Long id, String code, String name) {
         Permission permission = new Permission();
         permission.setId(id);
         permission.setCode(code);
-        permission.setName("Permission " + code);
+        permission.setName(name);
         permission.setDeleted(Boolean.FALSE);
-        permission.setCreatedAt(LocalDateTime.of(2025, 1, 1, 0, 0));
-        permission.setUpdatedAt(LocalDateTime.of(2025, 1, 1, 1, 0));
+        permission.setCreatedAt(LocalDateTime.of(2025, 1, 1, 10, 0));
+        permission.setUpdatedAt(LocalDateTime.of(2025, 1, 1, 10, 30));
         return permission;
     }
 
-    private PermissionResponse buildResponse(Long id, String code) {
+    private PermissionResponse buildResponse(Long id, String code, String name) {
         PermissionResponse response = new PermissionResponse();
         response.setId(id);
         response.setCode(code);
-        response.setName("Permission " + code);
-        response.setCategory("user");
+        response.setName(name);
+        response.setCreatedAt(LocalDateTime.of(2025, 1, 1, 10, 0));
+        response.setUpdatedAt(LocalDateTime.of(2025, 1, 1, 10, 30));
         return response;
     }
 }
