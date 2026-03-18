@@ -27,7 +27,6 @@ public class UserSessionService {
             String refreshTokenId,
             String ipAddress,
             String userAgent,
-            String deviceInfo,
             LocalDateTime accessExpiresAt,
             LocalDateTime refreshExpiresAt) {
         UserSession session = new UserSession();
@@ -36,7 +35,6 @@ public class UserSessionService {
         session.setRefreshTokenHash(hash(refreshTokenId));
         session.setIpAddress(ipAddress);
         session.setUserAgent(userAgent);
-        session.setDeviceInfo(deviceInfo);
         session.setLastSeenAt(LocalDateTime.now());
         session.setAccessExpiresAt(accessExpiresAt);
         session.setRefreshExpiresAt(refreshExpiresAt);
@@ -60,8 +58,7 @@ public class UserSessionService {
             LocalDateTime newAccessExpiresAt,
             LocalDateTime newRefreshExpiresAt,
             String ipAddress,
-            String userAgent,
-            String deviceInfo) {
+            String userAgent) {
         UserSession session = userSessionRepository.findBySessionId(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session was not found"));
 
@@ -83,12 +80,11 @@ public class UserSessionService {
         session.setLastSeenAt(LocalDateTime.now());
         session.setIpAddress(ipAddress);
         session.setUserAgent(userAgent);
-        session.setDeviceInfo(deviceInfo);
         return userSessionRepository.save(session);
     }
 
     @Transactional
-    public void touchSession(String sessionId, String ipAddress, String userAgent, String deviceInfo) {
+    public void touchSession(String sessionId, String ipAddress, String userAgent) {
         userSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
             if (session.isRevoked()) {
                 return;
@@ -99,9 +95,6 @@ public class UserSessionService {
             }
             if (userAgent != null) {
                 session.setUserAgent(userAgent);
-            }
-            if (deviceInfo != null) {
-                session.setDeviceInfo(deviceInfo);
             }
             userSessionRepository.save(session);
         });
@@ -139,7 +132,6 @@ public class UserSessionService {
         response.setSessionId(session.getSessionId());
         response.setIpAddress(session.getIpAddress());
         response.setUserAgent(session.getUserAgent());
-        response.setDeviceInfo(session.getDeviceInfo());
         response.setCreatedAt(session.getCreatedAt());
         response.setUpdatedAt(session.getUpdatedAt());
         response.setLastSeenAt(session.getLastSeenAt());

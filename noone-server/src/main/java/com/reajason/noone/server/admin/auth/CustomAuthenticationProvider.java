@@ -4,6 +4,7 @@ import com.reajason.noone.server.admin.user.User;
 import com.reajason.noone.server.admin.user.UserIpWhitelistRepository;
 import com.reajason.noone.server.admin.user.UserRepository;
 import com.reajason.noone.server.admin.user.UserStatus;
+import com.reajason.noone.server.util.IpUtils;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -62,7 +63,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
-            String ipAddress = request.getRemoteAddr();
+            String ipAddress = IpUtils.getIpAddr(request);
             if (ipWhitelistRepository.existsByUserId(user.getId())
                     && !ipWhitelistRepository.existsByUserIdAndIpAddress(user.getId(), ipAddress)) {
                 log.warn("Login attempt from non-whitelisted IP: {} for user: {}", ipAddress, username);

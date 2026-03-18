@@ -2,6 +2,7 @@ package com.reajason.noone.server.config;
 
 import com.reajason.noone.server.admin.user.UserService;
 import com.reajason.noone.server.admin.user.UserSessionService;
+import com.reajason.noone.server.util.IpUtils;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -55,8 +56,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         SecurityContextHolder.getContext().setAuthentication(authentication);
                         userSessionService.touchSession(
                                 sessionId,
-                                request.getRemoteAddr(),
-                                request.getHeader("User-Agent"),
+                                IpUtils.getIpAddr(request),
                                 request.getHeader("User-Agent"));
                     }
                 } catch (Exception e) {

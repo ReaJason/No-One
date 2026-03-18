@@ -1,6 +1,6 @@
 package com.reajason.noone.server.plugin;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.plugin.dto.PluginQueryRequest;
 import com.reajason.noone.server.plugin.dto.PluginResponse;

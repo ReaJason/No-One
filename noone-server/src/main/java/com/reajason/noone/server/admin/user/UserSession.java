@@ -44,9 +44,6 @@ public class UserSession {
     @Column(name = "user_agent")
     private String userAgent;
 
-    @Column(name = "device_info")
-    private String deviceInfo;
-
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

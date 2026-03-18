@@ -37,18 +37,6 @@ public class UserSpecifications {
         };
     }
 
-    public static Specification<User> isEnabled(Boolean enabled) {
-        return (root, query, criteriaBuilder) -> {
-            if (enabled == null) {
-                return criteriaBuilder.conjunction();
-            }
-            return criteriaBuilder.equal(
-                    root.get("status"),
-                    enabled ? UserStatus.ENABLED : UserStatus.DISABLED
-            );
-        };
-    }
-
     public static Specification<User> status(UserStatus status) {
         return (root, query, criteriaBuilder) -> {
             if(status == null) {

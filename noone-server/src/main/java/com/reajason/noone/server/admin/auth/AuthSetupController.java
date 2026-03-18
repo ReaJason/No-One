@@ -4,6 +4,7 @@ import com.reajason.noone.server.admin.auth.dto.LoginResponse;
 import com.reajason.noone.server.admin.auth.dto.SetupCodeRequest;
 import com.reajason.noone.server.admin.user.*;
 import com.reajason.noone.server.admin.user.dto.UserResponse;
+import com.reajason.noone.server.util.IpUtils;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -18,6 +19,8 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.reajason.noone.server.util.IpUtils.getIpAddr;
 
 @Slf4j
 @RestController
@@ -83,9 +86,8 @@ public class AuthSetupController {
                 .userId(latestUser.getId())
                 .username(latestUser.getUsername())
                 .sessionId(response.getSessionId())
-                .ipAddress(servletRequest.getRemoteAddr())
+                .ipAddress(getIpAddr(servletRequest))
                 .userAgent(servletRequest.getHeader("User-Agent"))
-                .deviceInfo(metadata.deviceInfo())
                 .browser(metadata.browser())
                 .os(metadata.os())
                 .status(LoginLog.LoginStatus.SUCCESS)
@@ -101,14 +103,14 @@ public class AuthSetupController {
                 .collect(Collectors.joining(","));
         String accessToken = jwtUtil.generateAccessToken(user.getUsername(), authorities, sessionId, jwtUtil.newTokenId());
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername(), sessionId, refreshTokenId);
-        User updatedUser = userService.updateLastLogin(user.getUsername(), request.getRemoteAddr());
+        String ipAddr = getIpAddr(request);
+        User updatedUser = userService.updateLastLogin(user.getUsername(), ipAddr);
         userSessionService.createSession(
                 updatedUser,
                 sessionId,
                 refreshTokenId,
-                request.getRemoteAddr(),
+                ipAddr,
                 request.getHeader("User-Agent"),
-                metadata.deviceInfo(),
                 LocalDateTime.now().plus(jwtUtil.getJwtConfig().getExpiration()),
                 LocalDateTime.now().plus(jwtUtil.getJwtConfig().getRefreshExpiration()));
 

@@ -23,7 +23,6 @@ import {
   authPrimaryButtonClassName,
   AuthShell,
   AuthStatusMessage,
-  getDescribedBy,
 } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,21 +30,16 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 const REQUIRE_2FA_CODE = "REQUIRE_2FA";
-const INVALID_2FA_CODE = "INVALID_2FA_CODE";
 
 type LoginApiSuccess = {
   token?: string;
   refreshToken?: string;
   user?: User;
-  mfaRequired?: boolean;
-  nextAction?: string;
-  actionToken?: string | null;
 };
 
 type LoginApiChallenge = {
   code?: string;
   message?: string;
-  status?: string;
   mfaRequired?: boolean;
   setupToken?: string | null;
   actionToken?: string | null;
@@ -53,10 +47,7 @@ type LoginApiChallenge = {
 
 type LoginActionData = {
   error?: string;
-  code?: string;
-  mfaRequired?: boolean;
-  success?: boolean;
-  formData?: { username: string; password: string };
+  formData?: { username: string };
 };
 
 function isLoginApiSuccess(
@@ -73,27 +64,6 @@ function isLoginApiSuccess(
   );
 }
 
-function getLoginMessage(
-  code?: string,
-  message?: string,
-): { tone: "error" | "info"; text: string } | null {
-  if (!message) {
-    return null;
-  }
-
-  if (code === REQUIRE_2FA_CODE) {
-    return {
-      tone: "info",
-      text: message,
-    };
-  }
-
-  return {
-    tone: "error",
-    text: message,
-  };
-}
-
 function normalizeReturnTo(returnTo: string | null): string {
   if (!returnTo || !returnTo.startsWith("/") || returnTo.startsWith("//")) {
     return "/";
@@ -104,14 +74,6 @@ function normalizeReturnTo(returnTo: string | null): string {
 function getFormString(formData: FormData, key: string): string | null {
   const value = formData.get(key);
   return typeof value === "string" ? value : null;
-}
-
-function isTwoFactorChallenge(actionData?: LoginActionData): boolean {
-  return (
-    actionData?.code === REQUIRE_2FA_CODE ||
-    actionData?.code === INVALID_2FA_CODE ||
-    actionData?.mfaRequired === true
-  );
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -132,13 +94,11 @@ export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const username = (getFormString(formData, "username") ?? "").trim();
   const password = getFormString(formData, "password") ?? "";
-  const twoFactorCode = getFormString(formData, "twoFactorCode");
   const returnTo = normalizeReturnTo(getFormString(formData, "returnTo"));
 
   if (!username || !password) {
     return {
       error: "Username and password are required",
-      success: false,
     };
   }
 
@@ -147,34 +107,38 @@ export async function action({ request }: ActionFunctionArgs) {
       "/auth/login",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: {
           username,
           password,
-          ...(twoFactorCode ? { twoFactorCode } : {}),
         },
       },
     );
 
     if ("code" in response && response.code === REQUIRE_2FA_CODE) {
-      return {
-        error: response.message ?? "Enter your authenticator code to continue",
-        code: response.code,
-        mfaRequired: response.mfaRequired === true,
-        success: false,
-        formData: {
-          username,
-          password,
+      if (!response.actionToken) {
+        return {
+          error: response.message ?? "Two-factor verification is required",
+          formData: { username },
+        };
+      }
+
+      const session = await getSession(request.headers.get("Cookie"));
+      session.unset("accessToken");
+      session.unset("refreshToken");
+      session.unset("user");
+      session.set("pending2faActionToken", response.actionToken);
+      session.set("pending2faReturnTo", returnTo);
+      return redirect("/auth/verify-2fa", {
+        headers: {
+          "Set-Cookie": await commitSession(session),
         },
-      };
+      });
     }
 
     if (!isLoginApiSuccess(response)) {
       return {
         error: "Login failed. Please try again.",
-        success: false,
+        formData: { username },
       };
     }
 
@@ -182,6 +146,8 @@ export async function action({ request }: ActionFunctionArgs) {
     session.set("accessToken", response.token);
     session.set("refreshToken", response.refreshToken);
     session.set("user", response.user);
+    session.unset("pending2faActionToken");
+    session.unset("pending2faReturnTo");
     return redirect(returnTo, {
       headers: {
         "Set-Cookie": await commitSession(session),
@@ -191,7 +157,6 @@ export async function action({ request }: ActionFunctionArgs) {
     const detailMessage =
       error?.details?.message ?? error?.details?.error ?? error?.message ?? "Login failed";
     const detailCode = error?.details?.code;
-    const mfaRequired = error?.details?.mfaRequired === true;
 
     if (detailCode === "REQUIRE_SETUP") {
       const setupToken = error?.details?.setupToken || "";
@@ -214,12 +179,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return {
       error: detailMessage,
-      code: detailCode,
-      mfaRequired,
-      success: false,
       formData: {
         username,
-        password,
       },
     };
   }
@@ -232,62 +193,10 @@ function LoginForm({ className, ...props }: ComponentProps<"div">) {
   const isSubmitting = navigation.state === "submitting";
   const [showPassword, setShowPassword] = useState(false);
 
-  const require2FA = isTwoFactorChallenge(actionData);
-  const loginMessage = getLoginMessage(actionData?.code, actionData?.error);
+  const loginMessage = actionData?.error
+    ? { tone: "error" as const, text: actionData.error }
+    : null;
   const loginMessageId = "login-status-message";
-  const twoFactorMessageId = "two-factor-status-message";
-  const twoFactorHelpId = "two-factor-help";
-
-  if (require2FA) {
-    return (
-      <div className={cn("flex flex-col gap-6", className)} {...props}>
-        <AuthShell eyebrow="Two-Factor Verification" title="No One">
-          <Form method="post" className="w-full">
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <input type="hidden" name="username" value={actionData?.formData?.username} />
-            <input type="hidden" name="password" value={actionData?.formData?.password} />
-
-            <div className="grid gap-5">
-              <AuthStatusMessage id={twoFactorMessageId} message={loginMessage} centered />
-
-              <div className="grid gap-3">
-                <Label htmlFor="twoFactorCode" className={authLabelClassName}>
-                  Enter verification code
-                </Label>
-                <Input
-                  id="twoFactorCode"
-                  name="twoFactorCode"
-                  type="text"
-                  required
-                  disabled={isSubmitting}
-                  aria-invalid={loginMessage?.tone === "error" || undefined}
-                  aria-describedby={getDescribedBy(twoFactorMessageId, twoFactorHelpId)}
-                  autoFocus
-                  autoComplete="one-time-code"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  className={cn(authInputClassName, "tracking-[0.16em]")}
-                />
-                <p id={twoFactorHelpId} className="text-sm leading-6 text-muted-foreground italic">
-                  Enter the code from your authenticator app. If you&apos;ve lost your device, use
-                  one of your recovery codes.
-                </p>
-              </div>
-
-              <Button
-                type="submit"
-                className={cn(authPrimaryButtonClassName, "mt-1")}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Verifying..." : "Verify code"}
-              </Button>
-            </div>
-          </Form>
-        </AuthShell>
-      </div>
-    );
-  }
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -331,7 +240,6 @@ function LoginForm({ className, ...props }: ComponentProps<"div">) {
                     aria-invalid={loginMessage?.tone === "error" || undefined}
                     aria-describedby={loginMessage ? loginMessageId : undefined}
                     autoComplete="current-password"
-                    defaultValue={actionData?.formData?.password}
                     className={cn(authInputClassName, "pr-12")}
                   />
                   <button

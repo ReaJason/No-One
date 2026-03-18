@@ -1,7 +1,5 @@
 package com.reajason.noone.server.shell.oplog;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.shell.oplog.dto.ShellOperationLogQueryRequest;
 import com.reajason.noone.server.shell.oplog.dto.ShellOperationLogResponse;
 import jakarta.annotation.Resource;
@@ -16,6 +14,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -125,8 +125,7 @@ public class ShellOperationLogService {
             meta.put("_truncated", true);
             meta.put("_originalSize", json.length());
             return meta;
-        } catch (JsonProcessingException e) {
-            log.warn("Failed to serialize result for truncation check", e);
+        } catch (JacksonException e) {
             return null;
         }
     }

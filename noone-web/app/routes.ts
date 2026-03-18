@@ -14,6 +14,7 @@ export default [
     route("operations", "routes/shell/shell-operations.tsx"),
   ]),
   route("/auth/login", "routes/auth/login.tsx"),
+  route("/auth/verify-2fa", "routes/auth/verify-2fa.tsx"),
   route("/auth/logout", "routes/auth/logout.tsx"),
   route("/auth/unauthorized", "routes/auth/unauthorized.tsx"),
   route("/auth/setup", "routes/auth/setup/route.tsx"),

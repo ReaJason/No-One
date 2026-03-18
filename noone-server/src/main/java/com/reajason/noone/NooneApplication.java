@@ -1,6 +1,6 @@
 package com.reajason.noone;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.admin.auth.TwoFactorAuthService;
 import com.reajason.noone.server.admin.permission.Permission;
 import com.reajason.noone.server.admin.permission.PermissionRepository;

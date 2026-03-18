@@ -4,6 +4,7 @@ import com.reajason.noone.server.admin.auth.dto.*;
 import com.reajason.noone.server.admin.user.*;
 import com.reajason.noone.server.admin.user.dto.UserResponse;
 import com.reajason.noone.server.config.AuthorizationService;
+import com.reajason.noone.server.util.IpUtils;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -26,6 +27,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private static final String LOGIN_2FA_CHALLENGE_TYPE = "login_2fa";
+    private static final String LOGIN_2FA_CHALLENGE_ACTION = "LOGIN_2FA_VERIFY";
+
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
@@ -36,10 +40,11 @@ public class AuthController {
     private final LoginLogRepository loginLogRepository;
     private final ClientMetadataResolver clientMetadataResolver;
     private final AuthorizationService authorizationService;
+    private final TwoFactorAuthService twoFactorAuthService;
 
     @PostMapping("/login")
     public ResponseEntity<?> login(
-            @Valid @RequestBody LoginTwoFactorRequest loginRequest,
+            @Valid @RequestBody LoginRequest loginRequest,
             HttpServletRequest request) {
         Optional<User> optionalUser = userRepository.findByUsernameAndDeletedFalse(loginRequest.getUsername());
         if (optionalUser.isEmpty()) {
@@ -56,18 +61,10 @@ public class AuthController {
             authenticationManager.authenticate(new TwoFactorAuthenticationToken(
                     loginRequest.getUsername(),
                     loginRequest.getPassword(),
-                    loginRequest.getTwoFactorCode()));
+                    null));
             User latestUser = userService.getByUsername(loginRequest.getUsername());
             if (latestUser.isMustChangePassword()) {
-                String actionToken = jwtUtil.generatePasswordChangeToken(latestUser.getUsername());
-                recordLogin(latestUser, null, request, LoginLog.LoginStatus.REQUIRE_PASSWORD_CHANGE, null);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new LoginErrorResponse(
-                        "REQUIRE_PASSWORD_CHANGE",
-                        "Password change required before access is granted",
-                        latestUser.getStatus().name(),
-                        false,
-                        null,
-                        actionToken));
+                return requirePasswordChange(latestUser, request);
             }
             LoginResponse response = issueSession(latestUser, request, "NONE", null);
             recordLogin(latestUser, response.getSessionId(), request, LoginLog.LoginStatus.SUCCESS, null);
@@ -82,19 +79,22 @@ public class AuthController {
                     e.getSetupToken(),
                     null));
         } catch (TwoFactorRequiredException e) {
+            String challengeToken = jwtUtil.generateActionToken(
+                    user.getUsername(),
+                    jwtUtil.newTokenId(),
+                    LOGIN_2FA_CHALLENGE_TYPE,
+                    LOGIN_2FA_CHALLENGE_ACTION,
+                    null,
+                    null,
+                    jwtUtil.getJwtConfig().getChallengeExpiration());
             recordLogin(user, null, request, LoginLog.LoginStatus.REQUIRE_2FA, null);
             return ResponseEntity.status(HttpStatus.ACCEPTED).body(new LoginErrorResponse(
                     "REQUIRE_2FA",
                     "Enter your authenticator code to continue",
                     user.getStatus().name(),
-                    true));
-        } catch (InvalidTwoFactorCodeException e) {
-            recordLogin(user, null, request, LoginLog.LoginStatus.REQUIRE_2FA, e.getMessage());
-            return ResponseEntity.badRequest().body(new LoginErrorResponse(
-                    "INVALID_2FA_CODE",
-                    e.getMessage(),
-                    user.getStatus().name(),
-                    true));
+                    true,
+                    null,
+                    challengeToken));
         } catch (AuthenticationException e) {
             recordLogin(
                     user,
@@ -108,6 +108,54 @@ public class AuthController {
                     user.getStatus().name(),
                     false));
         }
+    }
+
+    @PostMapping("/verify-2fa")
+    public ResponseEntity<?> verifyTwoFactor(
+            @Valid @RequestBody VerifyTwoFactorRequest verifyRequest,
+            HttpServletRequest request) {
+        if (!isValidLoginTwoFactorChallenge(verifyRequest.getActionToken())) {
+            return invalidTwoFactorChallenge();
+        }
+
+        Optional<User> optionalUser = userRepository.findByUsernameAndDeletedFalse(
+                jwtUtil.getUsernameFromToken(verifyRequest.getActionToken()));
+        if (optionalUser.isEmpty()) {
+            return invalidTwoFactorChallenge();
+        }
+
+        User user = optionalUser.get();
+        Optional<AuthPolicyDecision> authPolicyDecision = authPolicy.evaluate(user);
+        if (authPolicyDecision.isPresent()) {
+            return policyRejected(user, authPolicyDecision.get(), request);
+        }
+
+        if (!user.isMfaEnabled() || user.getMfaSecret() == null || user.getMfaSecret().isBlank()) {
+            recordLogin(user, null, request, LoginLog.LoginStatus.INVALID_CREDENTIALS, "MFA not configured");
+            return ResponseEntity.badRequest().body(new LoginErrorResponse(
+                    "INVALID_2FA_CODE",
+                    "Two-factor authentication is not configured",
+                    user.getStatus().name(),
+                    true));
+        }
+
+        if (!twoFactorAuthService.isCodeValid(user.getMfaSecret(), verifyRequest.getTwoFactorCode())) {
+            recordLogin(user, null, request, LoginLog.LoginStatus.REQUIRE_2FA, "Invalid 2FA code");
+            return ResponseEntity.badRequest().body(new LoginErrorResponse(
+                    "INVALID_2FA_CODE",
+                    "Invalid verification code",
+                    user.getStatus().name(),
+                    true));
+        }
+
+        User latestUser = userService.getByUsername(user.getUsername());
+        if (latestUser.isMustChangePassword()) {
+            return requirePasswordChange(latestUser, request);
+        }
+
+        LoginResponse response = issueSession(latestUser, request, "NONE", null);
+        recordLogin(latestUser, response.getSessionId(), request, LoginLog.LoginStatus.SUCCESS, null);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
@@ -128,23 +176,20 @@ public class AuthController {
         User user = userService.getByUsername(jwtUtil.getUsernameFromToken(refreshToken));
         try {
             String newRefreshTokenId = jwtUtil.newTokenId();
-            ClientMetadata metadata = clientMetadataResolver.resolve(request.getHeader("User-Agent"));
             userSessionService.rotateRefreshToken(
                     sessionId,
                     currentRefreshTokenId,
                     newRefreshTokenId,
                     LocalDateTime.now().plus(jwtUtil.getJwtConfig().getExpiration()),
                     LocalDateTime.now().plus(jwtUtil.getJwtConfig().getRefreshExpiration()),
-                    request.getRemoteAddr(),
-                    request.getHeader("User-Agent"),
-                    metadata.deviceInfo());
-
+                    IpUtils.getIpAddr(request),
+                    request.getHeader("User-Agent"));
             String authorities = userService.getAuthorities(user.getUsername()).stream()
                     .map(GrantedAuthority::getAuthority)
                     .collect(Collectors.joining(","));
             String accessToken = jwtUtil.generateAccessToken(user.getUsername(), authorities, sessionId, jwtUtil.newTokenId());
             String refreshTokenValue = jwtUtil.generateRefreshToken(user.getUsername(), sessionId, newRefreshTokenId);
-            userSessionService.touchSession(sessionId, request.getRemoteAddr(), request.getHeader("User-Agent"), metadata.deviceInfo());
+            userSessionService.touchSession(sessionId, IpUtils.getIpAddr(request), request.getHeader("User-Agent"));
             return ResponseEntity.ok(buildLoginResponse(accessToken, refreshTokenValue, userMapper.toResponse(user), sessionId, "NONE", null));
         } catch (IllegalArgumentException e) {
             log.warn("Refresh token rejected for session {}: {}", sessionId, e.getMessage());
@@ -224,6 +269,40 @@ public class AuthController {
                 false));
     }
 
+    private ResponseEntity<LoginErrorResponse> requirePasswordChange(User user, HttpServletRequest request) {
+        String actionToken = jwtUtil.generatePasswordChangeToken(user.getUsername());
+        recordLogin(user, null, request, LoginLog.LoginStatus.REQUIRE_PASSWORD_CHANGE, null);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new LoginErrorResponse(
+                "REQUIRE_PASSWORD_CHANGE",
+                "Password change required before access is granted",
+                user.getStatus().name(),
+                false,
+                null,
+                actionToken));
+    }
+
+    private ResponseEntity<LoginErrorResponse> invalidTwoFactorChallenge() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new LoginErrorResponse(
+                "INVALID_2FA_CHALLENGE",
+                "Two-factor challenge is invalid or expired",
+                null,
+                true));
+    }
+
+    private boolean isValidLoginTwoFactorChallenge(String actionToken) {
+        if (actionToken == null || actionToken.isBlank()) {
+            return false;
+        }
+        try {
+            return jwtUtil.validateToken(actionToken)
+                    && jwtUtil.isTokenNotExpired(actionToken)
+                    && LOGIN_2FA_CHALLENGE_TYPE.equals(jwtUtil.getTokenType(actionToken));
+        } catch (Exception e) {
+            log.warn("Invalid login 2FA challenge token: {}", e.getMessage());
+            return false;
+        }
+    }
+
     private LoginResponse issueSession(User user, HttpServletRequest request, String nextAction, String actionToken) {
         String sessionId = jwtUtil.newTokenId();
         String accessTokenId = jwtUtil.newTokenId();
@@ -234,8 +313,7 @@ public class AuthController {
         String accessToken = jwtUtil.generateAccessToken(user.getUsername(), authorities, sessionId, accessTokenId);
         String refreshToken = jwtUtil.generateRefreshToken(user.getUsername(), sessionId, refreshTokenId);
 
-        ClientMetadata metadata = clientMetadataResolver.resolve(request.getHeader("User-Agent"));
-        User latestUser = userService.updateLastLogin(user.getUsername(), request.getRemoteAddr());
+        User latestUser = userService.updateLastLogin(user.getUsername(), IpUtils.getIpAddr(request));
         if (latestUser.isMfaEnabled() && latestUser.getMfaBoundAt() == null) {
             latestUser.setMfaBoundAt(LocalDateTime.now());
             userRepository.save(latestUser);
@@ -244,9 +322,8 @@ public class AuthController {
                 latestUser,
                 sessionId,
                 refreshTokenId,
-                request.getRemoteAddr(),
+                IpUtils.getIpAddr(request),
                 request.getHeader("User-Agent"),
-                metadata.deviceInfo(),
                 LocalDateTime.now().plus(jwtUtil.getJwtConfig().getExpiration()),
                 LocalDateTime.now().plus(jwtUtil.getJwtConfig().getRefreshExpiration()));
 
@@ -283,9 +360,8 @@ public class AuthController {
                 .userId(user == null ? null : user.getId())
                 .username(user == null ? "unknown" : user.getUsername())
                 .sessionId(sessionId)
-                .ipAddress(request.getRemoteAddr())
+                .ipAddress(IpUtils.getIpAddr(request))
                 .userAgent(request.getHeader("User-Agent"))
-                .deviceInfo(metadata.deviceInfo())
                 .browser(metadata.browser())
                 .os(metadata.os())
                 .status(status)

@@ -13,6 +13,7 @@ java {
 
 dependencies {
     implementation(libs.memshell.party.generator)
+    implementation(libs.memshell.party.thirdparty.tomcat)
     implementation(libs.reactor.netty.core)
     implementation(libs.spring.webmvc)
     implementation(libs.spring.webflux)

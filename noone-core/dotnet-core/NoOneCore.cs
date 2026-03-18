@@ -101,6 +101,20 @@ namespace dotnet_core
                                 result[DATA] = loaded != null;
                                 break;
                             case ACTION_CLEAN:
+                                foreach (KeyValuePair<string, object> entry in globalCaches)
+                                {
+                                    try
+                                    {
+                                        Dictionary<string, object> shutdownCtx = new Dictionary<string, object>();
+                                        shutdownCtx["op"] = "shutdown";
+                                        entry.Value.Equals(shutdownCtx);
+                                    }
+                                    catch
+                                    {
+                                        // ignored
+                                    }
+                                }
+                                globalCaches.Clear();
                                 loadedPluginCache.Clear();
                                 loadedPluginVersionCache.Clear();
                                 break;
@@ -146,6 +160,12 @@ namespace dotnet_core
                 pluginCaches[entry.Key] = entry.Value;
             }
             result[PLUGIN_CACHES] = pluginCaches;
+            OrderedSet cacheKeys = new OrderedSet();
+            foreach (string key in globalCaches.Keys)
+            {
+                cacheKeys.Add(key);
+            }
+            result[GLOBAL_CACHES] = cacheKeys;
             return result;
         }
 
@@ -176,8 +196,8 @@ namespace dotnet_core
                 pluginObj = CreatePlugin(pluginBytes);
                 loadedPluginCache[plugin] = pluginObj;
                 loadedPluginVersionCache[plugin] = version;
+                result[CLASS_DEFINE] = true;
             }
-            result[CLASS_DEFINE] = true;
 
             return pluginObj;
         }
@@ -190,6 +210,7 @@ namespace dotnet_core
 
             Dictionary<string, object> map = ToStringObjectDictionary(GetObject(args, ARGS)) ?? new Dictionary<string, object>();
             map[PLUGIN_CACHES] = loadedPluginCache;
+            map[GLOBAL_CACHES] = globalCaches;
             pluginObj.Equals(map);
 
             object data = null;

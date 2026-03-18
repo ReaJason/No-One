@@ -35,9 +35,6 @@ public class LoginLog {
     @Column(name = "user_agent")
     private String userAgent;
 
-    @Column(name = "device_info")
-    private String deviceInfo;
-
     @Column(name = "browser")
     private String browser;
 

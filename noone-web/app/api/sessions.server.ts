@@ -3,9 +3,11 @@ import type { User } from "@/types/admin";
 import { createCookieSessionStorage } from "react-router";
 
 type SessionData = {
-  accessToken: string;
-  refreshToken: string;
-  user: User;
+  accessToken?: string;
+  refreshToken?: string;
+  user?: User;
+  pending2faActionToken?: string;
+  pending2faReturnTo?: string;
 };
 
 type SessionFlashData = {

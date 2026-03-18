@@ -218,7 +218,6 @@ public class UserService {
         response.setSessionId(log.getSessionId());
         response.setIpAddress(log.getIpAddress());
         response.setUserAgent(log.getUserAgent());
-        response.setDeviceInfo(log.getDeviceInfo());
         response.setBrowser(log.getBrowser());
         response.setOs(log.getOs());
         response.setStatus(log.getStatus().name());

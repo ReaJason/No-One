@@ -6,6 +6,8 @@
     const ARGS = "args";
 
     const REFRESH = "refresh";
+    const CLASS_DEFINE = "classDefine";
+    const CLASS_RUN = "classRun";
     const PLUGIN_CACHES = "pluginCaches";
     const GLOBAL_CACHES = "globalCaches";
 
@@ -377,6 +379,7 @@
     function getStatus() {
         const result = {};
         result[PLUGIN_CACHES] = Object.fromEntries(loadedPluginVersionCache);
+        result[GLOBAL_CACHES] = new Set(globalCaches.keys());
         return result;
     }
 
@@ -403,6 +406,7 @@
                 }
                 loadedPluginCache.set(plugin, pluginObj);
                 loadedPluginVersionCache.set(plugin, version);
+                result[CLASS_DEFINE] = true;
             } catch (error) {
                 console.error(error);
                 throw new Error(`Failed to load class: ${error.message}\n${error.stack}`);
@@ -425,6 +429,7 @@
         console.log("plugin result: ", map.result);
         const result = {};
         result[DATA] = map.result;
+        result[CLASS_RUN] = true;
         return result;
     }
 
@@ -455,9 +460,19 @@
                         result[DATA] = loaded != null;
                         break;
                     case ACTION_CLEAN:
+                        for (const [, service] of globalCaches) {
+                            try {
+                                const shutdownCtx = { op: "shutdown" };
+                                if (typeof service.equals === 'function') {
+                                    service.equals(shutdownCtx);
+                                }
+                            } catch (e) {
+                                // ignored
+                            }
+                        }
+                        globalCaches.clear();
                         loadedPluginCache.clear();
                         loadedPluginVersionCache.clear();
-                        globalCaches.clear();
                         result[DATA] = true;
                         break;
                     default:
