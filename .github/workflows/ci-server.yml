@@ -30,6 +30,7 @@ concurrency:
 
 permissions:
   contents: read
+  checks: write
 
 jobs:
   server:
@@ -55,7 +56,7 @@ jobs:
 
       - name: Publish JUnit report
         if: success() || failure()
-        uses: mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: noone-server/build/test-results/test/TEST-*.xml
 
