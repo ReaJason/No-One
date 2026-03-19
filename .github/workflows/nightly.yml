@@ -83,6 +83,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Prepare metadata
+        id: vars
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
 
@@ -112,7 +116,7 @@ jobs:
           push: true
           tags: |
             docker.io/${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image }}:nightly
-            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:nightly
+            ghcr.io/${{ steps.vars.outputs.owner }}/${{ matrix.image }}:nightly
 
   upload-deploy-bundle:
     needs: [publish-images]
