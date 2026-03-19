@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: noone
+      POSTGRES_PASSWORD: noone
+      POSTGRES_USER: noone
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U noone -d noone" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  noone-server:
+    image: reajason/noone-server:nightly
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_PASSWORD: noone
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/noone
+      SPRING_DATASOURCE_USERNAME: noone
+
+  noone-web:
+    image: reajason/noone-web:nightly
+    depends_on:
+      - noone-server
+    environment:
+      HOST: 0.0.0.0
+      INTERNAL_API_BASE_URL: http://noone-server:8888/api
+      PORT: 3000
+      SESSION_SECRET: dev-session-secret-change-me
+      SESSION_COOKIE_SECURE: false
+
+  nginx:
+    image: nginx:1.29-alpine
+    depends_on:
+      - noone-web
+      - noone-server
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
