@@ -3,6 +3,10 @@ package com.reajason.noone.server.util;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 public class IpUtils {
     public final static String REGX_0_255 = "(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]\\d|\\d)";
     public final static String REGX_IP = "((" + REGX_0_255 + "\\.){3}" + REGX_0_255 + ")";
@@ -54,6 +58,31 @@ public class IpUtils {
 
     public static boolean isIP(String ip) {
         return StringUtils.isNotBlank(ip) && ip.matches(REGX_IP);
+    }
+
+    public static String normalizeExactIp(String ip) {
+        if (StringUtils.isBlank(ip)) {
+            return null;
+        }
+        String candidate = getMultistageReverseProxyIp(ip.trim());
+        if (isIP(candidate)) {
+            return candidate;
+        }
+        if (candidate.contains("*") || candidate.contains("-") || candidate.contains("/")) {
+            return null;
+        }
+        if (!candidate.contains(":")) {
+            return null;
+        }
+        try {
+            InetAddress address = InetAddress.getByName(candidate);
+            if (address instanceof Inet6Address) {
+                return address.getHostAddress();
+            }
+            return null;
+        } catch (UnknownHostException e) {
+            return null;
+        }
     }
 
     public static boolean isIpWildCard(String ip) {

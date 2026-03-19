@@ -1,10 +1,12 @@
 package com.reajason.noone.server.admin.auth;
 
+import lombok.Getter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 
 import java.util.Collection;
 
+@Getter
 public class TwoFactorAuthenticationToken extends UsernamePasswordAuthenticationToken {
 
     private final String twoFactorCode;
@@ -20,7 +22,4 @@ public class TwoFactorAuthenticationToken extends UsernamePasswordAuthentication
         this.twoFactorCode = twoFactorCode;
     }
 
-    public String getTwoFactorCode() {
-        return twoFactorCode;
-    }
 }

@@ -49,7 +49,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 try {
                     String sessionId = jwtUtil.getSessionId(token);
                     String username = jwtUtil.getUsernameFromToken(token);
-                    if (username != null && sessionId != null && userSessionService.isSessionValid(sessionId)) {
+                    boolean validSession = sessionId != null && userSessionService.isSessionValid(sessionId);
+                    if (username != null && validSession) {
                         Set<GrantedAuthority> authorities = userService.getAuthorities(username);
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                                 username, null, authorities);

@@ -6,11 +6,7 @@ import com.reajason.noone.server.admin.user.dto.UserResponse;
 import com.reajason.noone.server.admin.user.dto.UserRoleDTO;
 import com.reajason.noone.server.admin.user.dto.UserUpdateRequest;
 import jakarta.annotation.Resource;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import org.mapstruct.*;
 
 /**
  * 用户实体与DTO映射器
@@ -25,8 +21,8 @@ public abstract class UserMapper {
     @Resource
     protected UserAuthorityResolver userAuthorityResolver;
 
-    @Mapping(target = "status", expression = "java(request.getStatus() == null ? com.reajason.noone.server.admin.user.UserStatus.ENABLED : request.getStatus())")
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "status", ignore = true)
     @Mapping(target = "roles", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

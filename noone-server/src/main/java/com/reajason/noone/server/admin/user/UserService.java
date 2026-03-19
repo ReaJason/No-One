@@ -1,9 +1,9 @@
 package com.reajason.noone.server.admin.user;
 
-import com.reajason.noone.server.api.ResourceNotFoundException;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.dto.*;
+import com.reajason.noone.server.api.ResourceNotFoundException;
 import com.reajason.noone.server.audit.AuditAction;
 import com.reajason.noone.server.audit.AuditLog;
 import com.reajason.noone.server.audit.AuditModule;
@@ -21,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -184,10 +183,30 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<LoginLogResponse> getLoginLogs(Long userId) {
-        return loginLogRepository.findTop50ByUserIdOrderByLoginTimeDesc(userId).stream()
-                .map(this::toLoginLogResponse)
-                .toList();
+    public Page<LoginLogResponse> getLoginLogs(Long userId) {
+        return getLoginLogs(userId, new LoginLogQueryRequest());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<LoginLogResponse> getLoginLogs(Long userId, LoginLogQueryRequest request) {
+        findActiveUser(userId);
+
+        LoginLogQueryRequest queryRequest = request == null ? new LoginLogQueryRequest() : request;
+        Pageable pageable = PageRequest.of(
+                queryRequest.getPage(),
+                queryRequest.getPageSize(),
+                Sort.by(
+                        Sort.Order.desc("loginTime"),
+                        Sort.Order.desc("id")));
+
+        Specification<LoginLog> spec = Specification.where(hasUserId(userId))
+                .and(hasLoginStatus(queryRequest.getStatus()))
+                .and(hasIpAddress(queryRequest.getIpAddress()))
+                .and(hasSessionId(queryRequest.getSessionId()))
+                .and(hasLoginTimeAfter(resolveLoginTimeAfter(queryRequest)))
+                .and(hasLoginTimeBefore(resolveLoginTimeBefore(queryRequest)));
+
+        return loginLogRepository.findAll(spec, pageable).map(this::toLoginLogResponse);
     }
 
     private UserStatus resolveStatusFilter(UserQueryRequest request) {
@@ -224,6 +243,63 @@ public class UserService {
         response.setFailReason(log.getFailReason());
         response.setLoginTime(log.getLoginTime());
         return response;
+    }
+
+    private LocalDateTime resolveLoginTimeAfter(LoginLogQueryRequest request) {
+        return request.getLoginTimeAfter() != null ? request.getLoginTimeAfter() : request.getCreatedAfter();
+    }
+
+    private LocalDateTime resolveLoginTimeBefore(LoginLogQueryRequest request) {
+        return request.getLoginTimeBefore() != null ? request.getLoginTimeBefore() : request.getCreatedBefore();
+    }
+
+    private Specification<LoginLog> hasUserId(Long userId) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("userId"), userId);
+    }
+
+    private Specification<LoginLog> hasLoginStatus(LoginLog.LoginStatus status) {
+        return (root, query, criteriaBuilder) -> {
+            if (status == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("status"), status);
+        };
+    }
+
+    private Specification<LoginLog> hasIpAddress(String ipAddress) {
+        return (root, query, criteriaBuilder) -> {
+            if (ipAddress == null || ipAddress.isBlank()) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("ipAddress"), ipAddress);
+        };
+    }
+
+    private Specification<LoginLog> hasSessionId(String sessionId) {
+        return (root, query, criteriaBuilder) -> {
+            if (sessionId == null || sessionId.isBlank()) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.equal(root.get("sessionId"), sessionId);
+        };
+    }
+
+    private Specification<LoginLog> hasLoginTimeAfter(LocalDateTime after) {
+        return (root, query, criteriaBuilder) -> {
+            if (after == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.greaterThanOrEqualTo(root.get("loginTime"), after);
+        };
+    }
+
+    private Specification<LoginLog> hasLoginTimeBefore(LocalDateTime before) {
+        return (root, query, criteriaBuilder) -> {
+            if (before == null) {
+                return criteriaBuilder.conjunction();
+            }
+            return criteriaBuilder.lessThanOrEqualTo(root.get("loginTime"), before);
+        };
     }
 
     private User findActiveUser(Long id) {

@@ -64,8 +64,11 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         if (attributes != null) {
             HttpServletRequest request = attributes.getRequest();
             String ipAddress = IpUtils.getIpAddr(request);
+            String normalizedIpAddress = IpUtils.normalizeExactIp(ipAddress);
             if (ipWhitelistRepository.existsByUserId(user.getId())
-                    && !ipWhitelistRepository.existsByUserIdAndIpAddress(user.getId(), ipAddress)) {
+                    && !ipWhitelistRepository.existsByUserIdAndIpAddress(
+                    user.getId(),
+                    normalizedIpAddress == null ? ipAddress : normalizedIpAddress)) {
                 log.warn("Login attempt from non-whitelisted IP: {} for user: {}", ipAddress, username);
                 throw new BadCredentialsException("Login not allowed from this IP address");
             }

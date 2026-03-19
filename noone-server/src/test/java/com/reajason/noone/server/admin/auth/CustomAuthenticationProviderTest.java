@@ -161,6 +161,23 @@ class CustomAuthenticationProviderTest {
     }
 
     @Test
+    void testIpWhitelistAllowsNormalizedIpv6Address() {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getRemoteAddr()).thenReturn("2001:db8::1");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
+        when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true);
+        when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "2001:db8:0:0:0:0:0:1")).thenReturn(true);
+        when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
+
+        Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
+
+        Authentication result = provider.authenticate(auth);
+        assertNotNull(result);
+    }
+
+    @Test
     void testTwoFactorRequiredButMissing() {
         testUser.setMfaEnabled(true);
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));

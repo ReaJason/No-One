@@ -1,16 +1,23 @@
 package com.reajason.noone.server.admin.user;
 
 import com.reajason.noone.server.admin.user.dto.*;
+import com.reajason.noone.server.api.ErrorResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -21,6 +28,7 @@ public class UserController {
 
     private final UserService userService;
     private final UserSessionService userSessionService;
+    private final UserIpWhitelistService userIpWhitelistService;
 
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('user:create')")
@@ -40,7 +48,7 @@ public class UserController {
     public ResponseEntity<UserResponse> resetPassword(
             @PathVariable Long id,
             @Valid @RequestBody ResetPasswordRequest request) {
-        UserResponse response = userService.forceResetPassword(id, request.getNewPassword());
+        UserResponse response = userService.resetPassword(id, request);
         userSessionService.revokeUserSessions(id, "ADMIN_PASSWORD_RESET");
         return ResponseEntity.ok(response);
     }
@@ -79,14 +87,18 @@ public class UserController {
 
     @GetMapping("/{id}/login-logs")
     @PreAuthorize("@authorizationService.hasSystemPermission('auth:log:read')")
-    public ResponseEntity<List<LoginLogResponse>> loginLogs(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.getLoginLogs(id));
+    public ResponseEntity<Page<LoginLogResponse>> loginLogs(
+            @PathVariable Long id,
+            LoginLogQueryRequest request) {
+        return ResponseEntity.ok(userService.getLoginLogs(id, request));
     }
 
     @GetMapping("/{id}/sessions")
     @PreAuthorize("@authorizationService.hasSystemPermission('auth:session:manage')")
-    public ResponseEntity<List<UserSessionResponse>> sessions(@PathVariable Long id) {
-        return ResponseEntity.ok(userSessionService.getUserSessions(id));
+    public ResponseEntity<Page<UserSessionResponse>> sessions(
+            @PathVariable Long id,
+            UserSessionQueryRequest request) {
+        return ResponseEntity.ok(userSessionService.getUserSessions(id, request));
     }
 
     @DeleteMapping("/{id}/sessions")
@@ -102,7 +114,61 @@ public class UserController {
     public ResponseEntity<Void> revokeSession(
             @PathVariable Long id,
             @PathVariable String sessionId) {
-        userSessionService.revokeSession(sessionId, "ADMIN_FORCE_LOGOUT");
+        userSessionService.revokeSession(id, sessionId, "ADMIN_FORCE_LOGOUT");
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}/ip-whitelist")
+    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:read')")
+    public ResponseEntity<List<UserIpWhitelistResponse>> listIpWhitelist(@PathVariable Long id) {
+        return ResponseEntity.ok(userIpWhitelistService.list(id));
+    }
+
+    @PostMapping("/{id}/ip-whitelist")
+    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
+    public ResponseEntity<UserIpWhitelistResponse> addIpWhitelistEntry(
+            @PathVariable Long id,
+            @Valid @RequestBody UserIpWhitelistCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(userIpWhitelistService.add(id, request));
+    }
+
+    @PutMapping("/{id}/ip-whitelist")
+    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
+    public ResponseEntity<List<UserIpWhitelistResponse>> replaceIpWhitelist(
+            @PathVariable Long id,
+            @RequestBody List<String> ipAddresses) {
+        return ResponseEntity.ok(userIpWhitelistService.replace(id, ipAddresses));
+    }
+
+    @DeleteMapping("/{id}/ip-whitelist/{entryId}")
+    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
+    public ResponseEntity<Void> deleteIpWhitelistEntry(
+            @PathVariable Long id,
+            @PathVariable Long entryId) {
+        userIpWhitelistService.delete(id, entryId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        String message = cause == null ? ex.getMessage() : cause.getMessage();
+        return ResponseEntity.badRequest().body(ErrorResponse.error(message));
+    }
+
+    @ExceptionHandler(BindException.class)
+    public ResponseEntity<Map<String, String>> handleBindException(BindException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getAllErrors().forEach(error -> {
+            String fieldName = error instanceof FieldError fieldError ? fieldError.getField() : error.getObjectName();
+            String errorMessage = error.getDefaultMessage() == null ? error.toString() : error.getDefaultMessage();
+            errors.put(fieldName, errorMessage);
+        });
+        return ResponseEntity.badRequest().body(errors);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(ErrorResponse.error(ex.getMessage()));
     }
 }

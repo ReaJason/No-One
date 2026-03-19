@@ -8,7 +8,10 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_ip_whitelists")
+@Table(
+        name = "user_ip_whitelists",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "ip_address"})
+)
 @Getter
 @Setter
 @EntityListeners(AuditingEntityListener.class)

@@ -1,6 +1,6 @@
 package com.reajason.noone.server.admin.user.dto;
 
-import com.reajason.noone.server.admin.user.UserStatus;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -23,6 +23,10 @@ public class UserCreateRequest {
     @Size(max = 100)
     private String email;
 
-    private UserStatus status;
     private Set<Long> roleIds;
+
+    @JsonAnySetter
+    public void rejectUnknownProperty(String name, Object value) {
+        throw new IllegalArgumentException("不支持的字段：" + name);
+    }
 }

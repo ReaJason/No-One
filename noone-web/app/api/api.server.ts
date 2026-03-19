@@ -189,18 +189,6 @@ export function createAuthFetch(
   };
 }
 
-// ─── 不需要认证的公开请求 ─────────────────────────────────────────────────────
-
-export const publicApi = ofetch.create({
-  baseURL: BASE_URL,
-  async onRequestError({ error }: any) {
-    sanitizeRequestError(error);
-  },
-  async onResponseError({ request, response }: any) {
-    throw createApiClientErrorFromResponse(response);
-  },
-});
-
 export function createPublicApi(request: Request) {
   return ofetch.create({
     baseURL: BASE_URL,

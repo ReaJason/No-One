@@ -1,16 +1,17 @@
 package com.reajason.noone;
 
-import tools.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.admin.auth.TwoFactorAuthService;
 import com.reajason.noone.server.admin.permission.Permission;
 import com.reajason.noone.server.admin.permission.PermissionRepository;
-import com.reajason.noone.server.plugin.PluginService;
-import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.admin.role.Role;
 import com.reajason.noone.server.admin.role.RoleRepository;
 import com.reajason.noone.server.admin.user.User;
 import com.reajason.noone.server.admin.user.UserRepository;
 import com.reajason.noone.server.admin.user.UserStatus;
+import com.reajason.noone.server.config.JwtConfig;
+import com.reajason.noone.server.plugin.PluginService;
+import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
+import com.reajason.noone.server.plugin.registry.PluginRegistryProperties;
 import com.reajason.noone.server.profile.Profile;
 import com.reajason.noone.server.profile.ProfileRepository;
 import com.reajason.noone.server.profile.config.*;
@@ -31,8 +32,7 @@ import org.springframework.data.web.config.EnableSpringDataWebSupport;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import com.reajason.noone.server.config.JwtConfig;
-import com.reajason.noone.server.plugin.registry.PluginRegistryProperties;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -115,7 +115,8 @@ public class NooneApplication {
                     "permission:create", "permission:read", "permission:update", "permission:delete", "permission:list",
                     "profile:create", "profile:read", "profile:update", "profile:delete", "profile:list",
                     "plugin:create", "plugin:list",
-                    "auth:log:read", "auth:session:manage"));
+                    "auth:log:read", "auth:session:manage",
+                    "user:whitelist:read", "user:whitelist:manage"));
             seedRole("System Auditor", selectPermissions(permissionsByCode,
                     "auth:log:read",
                     "user:read", "user:list",
@@ -184,6 +185,9 @@ public class NooneApplication {
 
                     createPermission("auth:log:read", "ReadAuth"),
                     createPermission("auth:session:manage", "ManageAuth"),
+
+                    createPermission("user:whitelist:read", "ReadUserWhitelist"),
+                    createPermission("user:whitelist:manage", "ManageUserWhitelist"),
 
                     createPermission("project:create", "CreateProject"),
                     createPermission("project:list", "ReadProject"),

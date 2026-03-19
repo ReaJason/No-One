@@ -216,6 +216,7 @@ function LoginForm({ className, ...props }: ComponentProps<"div">) {
                   id="username"
                   name="username"
                   type="text"
+                  autoFocus
                   required
                   disabled={isSubmitting}
                   aria-invalid={loginMessage?.tone === "error" || undefined}

@@ -81,6 +81,26 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
               </DropdownMenuItem>
             </Link>
             <DropdownMenuSeparator />
+            <DropdownMenuLabel>Security</DropdownMenuLabel>
+            <Link to={`/admin/users/${user.id}/login-logs`}>
+              <DropdownMenuItem>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                Login Logs
+              </DropdownMenuItem>
+            </Link>
+            <Link to={`/admin/users/${user.id}/sessions`}>
+              <DropdownMenuItem>
+                <Settings className="mr-2 h-4 w-4" />
+                Sessions
+              </DropdownMenuItem>
+            </Link>
+            <Link to={`/admin/users/${user.id}/ip-whitelist`}>
+              <DropdownMenuItem>
+                <Shield className="mr-2 h-4 w-4" />
+                IP Whitelist
+              </DropdownMenuItem>
+            </Link>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete

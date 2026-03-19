@@ -1,8 +1,15 @@
 package com.reajason.noone.server.admin.user;
 
+import com.reajason.noone.server.admin.user.dto.UserSessionQueryRequest;
 import com.reajason.noone.server.admin.user.dto.UserSessionResponse;
+import com.reajason.noone.server.api.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,7 +18,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -19,6 +25,7 @@ import java.util.List;
 public class UserSessionService {
 
     private final UserSessionRepository userSessionRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public UserSession createSession(
@@ -46,11 +53,11 @@ public class UserSessionService {
     public boolean isSessionValid(String sessionId) {
         return userSessionRepository.findBySessionId(sessionId)
                 .filter(session -> !session.isRevoked())
-                .filter(session -> session.getRefreshExpiresAt().isAfter(LocalDateTime.now()))
+                .filter(session -> session.getAccessExpiresAt().isAfter(LocalDateTime.now()))
                 .isPresent();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = IllegalArgumentException.class)
     public UserSession rotateRefreshToken(
             String sessionId,
             String currentRefreshTokenId,
@@ -59,14 +66,14 @@ public class UserSessionService {
             LocalDateTime newRefreshExpiresAt,
             String ipAddress,
             String userAgent) {
-        UserSession session = userSessionRepository.findBySessionId(sessionId)
+        UserSession session = userSessionRepository.findBySessionIdForUpdate(sessionId)
                 .orElseThrow(() -> new IllegalArgumentException("Session was not found"));
 
         if (session.isRevoked()) {
             throw new IllegalArgumentException("Session has already been revoked");
         }
         if (session.getRefreshExpiresAt().isBefore(LocalDateTime.now())) {
-            revokeSession(sessionId, "REFRESH_EXPIRED");
+            revokeSession(session, "REFRESH_EXPIRED");
             throw new IllegalArgumentException("Session refresh token has expired");
         }
 //        if (!session.getRefreshTokenHash().equals(hash(currentRefreshTokenId))) {
@@ -103,27 +110,51 @@ public class UserSessionService {
     @Transactional
     public void revokeSession(String sessionId, String reason) {
         userSessionRepository.findBySessionId(sessionId).ifPresent(session -> {
-            if (session.isRevoked()) {
-                return;
-            }
-            session.setRevoked(true);
-            session.setRevokedAt(LocalDateTime.now());
-            session.setRevokeReason(reason);
-            userSessionRepository.save(session);
+            revokeSession(session, reason);
         });
     }
 
     @Transactional
     public void revokeUserSessions(Long userId, String reason) {
+        findActiveUser(userId);
         userSessionRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .forEach(session -> revokeSession(session.getSessionId(), reason));
+                .forEach(session -> revokeSession(session, reason));
     }
 
     @Transactional(readOnly = true)
-    public List<UserSessionResponse> getUserSessions(Long userId) {
-        return userSessionRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<UserSessionResponse> getUserSessions(Long userId, UserSessionQueryRequest request) {
+        findActiveUser(userId);
+
+        Pageable pageable = PageRequest.of(
+                request.getPage(),
+                request.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Specification<UserSession> spec = Specification.where((root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("user").get("id"), userId));
+
+        if (request.getRevoked() != null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("revoked"), request.getRevoked()));
+        }
+        if (request.getCreatedAfter() != null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), request.getCreatedAfter()));
+        }
+        if (request.getCreatedBefore() != null) {
+            spec = spec.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), request.getCreatedBefore()));
+        }
+
+        return userSessionRepository.findAll(spec, pageable).map(this::toResponse);
+    }
+
+    @Transactional
+    public void revokeSession(Long userId, String sessionId, String reason) {
+        findActiveUser(userId);
+        UserSession session = userSessionRepository.findByUserIdAndSessionId(userId, sessionId)
+                .orElseThrow(() -> new ResourceNotFoundException("用户会话不存在：" + sessionId));
+        revokeSession(session, reason);
     }
 
     private UserSessionResponse toResponse(UserSession session) {
@@ -141,6 +172,21 @@ public class UserSessionService {
         response.setRevokedAt(session.getRevokedAt());
         response.setRevokeReason(session.getRevokeReason());
         return response;
+    }
+
+    private User findActiveUser(Long userId) {
+        return userRepository.findByIdAndDeletedFalse(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("用户不存在：" + userId));
+    }
+
+    private void revokeSession(UserSession session, String reason) {
+        if (session.isRevoked()) {
+            return;
+        }
+        session.setRevoked(true);
+        session.setRevokedAt(LocalDateTime.now());
+        session.setRevokeReason(reason);
+        userSessionRepository.save(session);
     }
 
     private String hash(String value) {

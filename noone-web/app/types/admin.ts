@@ -17,6 +17,15 @@ export interface Role {
 
 export type UserStatus = "ENABLED" | "DISABLED" | "LOCKED" | "UNACTIVATED";
 
+export type LoginLogStatus =
+  | "SUCCESS"
+  | "INVALID_CREDENTIALS"
+  | "REQUIRE_2FA"
+  | "REQUIRE_SETUP"
+  | "REQUIRE_PASSWORD_CHANGE"
+  | "LOCKED"
+  | "DISABLED";
+
 export interface User {
   id: number;
   username: string;
@@ -43,10 +52,9 @@ export interface LoginLog {
   sessionId?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
-  deviceInfo?: string | null;
   browser?: string | null;
   os?: string | null;
-  status: string;
+  status: LoginLogStatus;
   failReason?: string | null;
   loginTime: string;
 }
@@ -65,4 +73,11 @@ export interface UserSession {
   revoked: boolean;
   revokedAt?: string | null;
   revokeReason?: string | null;
+}
+
+export interface UserIpWhitelistEntry {
+  id: number;
+  userId: number;
+  ipAddress: string;
+  createdAt: string;
 }
