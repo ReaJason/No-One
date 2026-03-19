@@ -83,6 +83,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Java
+        if: matrix.image == 'noone-server'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        if: matrix.image == 'noone-server'
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Build server boot jar
+        if: matrix.image == 'noone-server'
+        run: ./gradlew --no-daemon :noone-server:bootJar -x test
+
       - name: Prepare metadata
         id: vars
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
