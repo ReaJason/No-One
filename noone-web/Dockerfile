@@ -1,14 +1,14 @@
-FROM oven/bun:1.3.10-alpine AS development-dependencies
+FROM oven/bun:1.3-alpine AS development-dependencies
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-FROM oven/bun:1.3.10-alpine AS production-dependencies
+FROM oven/bun:1.3-alpine AS production-dependencies
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-FROM oven/bun:1.3.10-alpine AS build
+FROM oven/bun:1.3-alpine AS build
 WORKDIR /app
 COPY . .
 COPY --from=development-dependencies /app/node_modules ./node_modules

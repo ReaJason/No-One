@@ -495,9 +495,9 @@ function ShellForm({
 
                 <Field data-invalid={Boolean(errors?.shellType)}>
                   <FieldLabel htmlFor="shellType">Shell Type</FieldLabel>
+                  <input type="hidden" name="shellType" value={shellType} />
                   <Input
                     id="shellType"
-                    name="shellType"
                     type="text"
                     list="shell-type-options"
                     value={shellType}

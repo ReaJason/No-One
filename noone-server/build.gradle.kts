@@ -30,10 +30,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation(project(":noone-core:java-core"))
+    implementation(project(":noone-core:java-core")){
+        exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
+    }
     implementation(libs.bundles.jjwt)
     implementation(libs.memshell.party.generator){
         exclude(group = "commons-logging", module = "commons-logging")
+        exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
     }
     implementation(libs.memshell.party.common)
     implementation(libs.memshell.party.packer){
