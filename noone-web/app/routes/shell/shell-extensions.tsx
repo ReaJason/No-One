@@ -1,14 +1,14 @@
+import type { PluginTabState } from "@/components/shell/plugin-tab-panel";
 import type { Plugin } from "@/types/plugin";
 
 import { Puzzle, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { lazy, startTransition, Suspense, use, useCallback, useState } from "react";
 import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
-import PluginCatalog from "@/components/shell/plugin-catalog";
-import PluginTabPanel, { type PluginTabState } from "@/components/shell/plugin-tab-panel";
+import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   dispatchShellPluginFromRoute,
@@ -21,10 +21,31 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+const PluginCatalog = lazy(() => import("@/components/shell/plugin-catalog"));
+const PluginTabPanel = lazy(() => import("@/components/shell/plugin-tab-panel"));
+
+type ShellExtensionsRouteData = {
+  extensionPlugins: Plugin[];
+};
+type ShellExtensionsLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
+
+export function loader({ context, params, request }: LoaderFunctionArgs) {
+  return {
+    routeData: loadShellExtensionsRouteData({ context, params, request }),
+  };
+}
+
+async function loadShellExtensionsRouteData({
+  context,
+  params,
+  request,
+}: ShellExtensionsLoaderArgs): Promise<ShellExtensionsRouteData> {
   const shellId = params.shellId as string;
   const authFetch = createAuthFetch(request, context);
   const shell = await getShellConnectionById(shellId, authFetch);
+  if (!shell) {
+    throw new Response("Shell connection not found", { status: 404 });
+  }
   const result = await pluginApi.getPlugins(
     { type: "Extension", language: shell.language },
     authFetch,
@@ -68,45 +89,60 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 }
 
 export default function ShellExtensionsRoute() {
+  const { routeData } = useLoaderData() as {
+    routeData: Promise<ShellExtensionsRouteData>;
+  };
+  return (
+    <Suspense fallback={<ShellSectionSkeleton variant="extensions" showStatusCard={false} />}>
+      <ShellExtensionsContent routeData={routeData} />
+    </Suspense>
+  );
+}
+
+function ShellExtensionsContent({ routeData }: { routeData: Promise<ShellExtensionsRouteData> }) {
   const { shell } = useShellManagerContext();
-  const { extensionPlugins } = useLoaderData<typeof loader>();
+  const { extensionPlugins } = use(routeData);
 
   const [extensionSubTab, setExtensionSubTab] = useState("catalog");
   const [openPlugins, setOpenPlugins] = useState<Plugin[]>([]);
   const [pluginStates, setPluginStates] = useState<Record<string, PluginTabState>>({});
 
   const openPlugin = useCallback((plugin: Plugin) => {
-    setOpenPlugins((prev) => {
-      if (prev.some((p) => p.id === plugin.id)) {
-        setExtensionSubTab(`plugin-${plugin.id}`);
-        return prev;
-      }
-      return [...prev, plugin];
+    startTransition(() => {
+      setOpenPlugins((prev) => {
+        if (prev.some((p) => p.id === plugin.id)) {
+          setExtensionSubTab(`plugin-${plugin.id}`);
+          return prev;
+        }
+        return [...prev, plugin];
+      });
+      setPluginStates((prev) => {
+        if (prev[plugin.id]) return prev;
+        const actionKeys = plugin.actions ? Object.keys(plugin.actions) : [];
+        return {
+          ...prev,
+          [plugin.id]: {
+            selectedAction: actionKeys.length > 0 ? actionKeys[0] : "",
+            args: {},
+            result: null,
+            loading: false,
+          },
+        };
+      });
+      setExtensionSubTab(`plugin-${plugin.id}`);
     });
-    setPluginStates((prev) => {
-      if (prev[plugin.id]) return prev;
-      const actionKeys = plugin.actions ? Object.keys(plugin.actions) : [];
-      return {
-        ...prev,
-        [plugin.id]: {
-          selectedAction: actionKeys.length > 0 ? actionKeys[0] : "",
-          args: {},
-          result: null,
-          loading: false,
-        },
-      };
-    });
-    setExtensionSubTab(`plugin-${plugin.id}`);
   }, []);
 
   const closePlugin = useCallback((pluginId: string) => {
-    setOpenPlugins((prev) => prev.filter((p) => p.id !== pluginId));
-    setPluginStates((prev) => {
-      const next = { ...prev };
-      delete next[pluginId];
-      return next;
+    startTransition(() => {
+      setOpenPlugins((prev) => prev.filter((p) => p.id !== pluginId));
+      setPluginStates((prev) => {
+        const next = { ...prev };
+        delete next[pluginId];
+        return next;
+      });
+      setExtensionSubTab((prev) => (prev === `plugin-${pluginId}` ? "catalog" : prev));
     });
-    setExtensionSubTab((prev) => (prev === `plugin-${pluginId}` ? "catalog" : prev));
   }, []);
 
   const updatePluginState = useCallback((pluginId: string, update: Partial<PluginTabState>) => {
@@ -153,11 +189,21 @@ export default function ShellExtensionsRoute() {
           </TabsList>
 
           <TabsContent value="catalog" className="mt-4 flex min-h-0 flex-1 flex-col overflow-auto">
-            <PluginCatalog
-              extensionPlugins={extensionPlugins}
-              openPluginIds={openPlugins.map((p) => p.id)}
-              onOpenPlugin={openPlugin}
-            />
+            <Suspense
+              fallback={
+                <ShellSectionSkeleton
+                  label="Loading extension catalog"
+                  variant="extensions"
+                  showStatusCard={false}
+                />
+              }
+            >
+              <PluginCatalog
+                extensionPlugins={extensionPlugins}
+                openPluginIds={openPlugins.map((p) => p.id)}
+                onOpenPlugin={openPlugin}
+              />
+            </Suspense>
           </TabsContent>
 
           {openPlugins.map((plugin) => (
@@ -167,14 +213,24 @@ export default function ShellExtensionsRoute() {
               className="mt-4 flex min-h-0 flex-1 flex-col overflow-auto"
             >
               {pluginStates[plugin.id] && (
-                <PluginTabPanel
-                  plugin={plugin}
-                  actionPath={`/shells/${shell.id}/extensions`}
-                  taskStatusPath={`/shells/${shell.id}/extensions/status`}
-                  pluginStatusPath={`/shells/${shell.id}/extensions/plugin-status`}
-                  state={pluginStates[plugin.id]}
-                  onStateChange={(update) => updatePluginState(plugin.id, update)}
-                />
+                <Suspense
+                  fallback={
+                    <ShellSectionSkeleton
+                      label="Loading extension panel"
+                      variant="extensions"
+                      showStatusCard={false}
+                    />
+                  }
+                >
+                  <PluginTabPanel
+                    plugin={plugin}
+                    actionPath={`/shells/${shell.id}/extensions`}
+                    taskStatusPath={`/shells/${shell.id}/extensions/status`}
+                    pluginStatusPath={`/shells/${shell.id}/extensions/plugin-status`}
+                    state={pluginStates[plugin.id]}
+                    onStateChange={(update) => updatePluginState(plugin.id, update)}
+                  />
+                </Suspense>
               )}
             </TabsContent>
           ))}

@@ -1,11 +1,12 @@
 import type { ShellOperationLog } from "@/types/shell-operation-log";
 
 import { CheckCircle, ChevronLeft, ChevronRight, Filter, XCircle } from "lucide-react";
-import { useState } from "react";
+import { startTransition, Suspense, use, useState } from "react";
 import { type LoaderFunctionArgs, useLoaderData, useSearchParams } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import * as opLogApi from "@/api/shell-operation-log-api";
+import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +52,24 @@ function summarizeArgs(log: ShellOperationLog): string | null {
   return null;
 }
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+type ShellOperationsRouteData = {
+  logs: ShellOperationLog[];
+  totalPages: number;
+  total: number;
+};
+type ShellOperationsLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
+
+export function loader({ context, params, request }: LoaderFunctionArgs) {
+  return {
+    routeData: loadShellOperationsRouteData({ context, params, request }),
+  };
+}
+
+async function loadShellOperationsRouteData({
+  context,
+  params,
+  request,
+}: ShellOperationsLoaderArgs): Promise<ShellOperationsRouteData> {
   const shellId = params.shellId as string;
   const url = new URL(request.url);
   const page = Number(url.searchParams.get("page")) || 1;
@@ -72,7 +90,18 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 }
 
 export default function ShellOperationsRoute() {
-  const { logs, totalPages, total } = useLoaderData<typeof loader>();
+  const { routeData } = useLoaderData() as {
+    routeData: Promise<ShellOperationsRouteData>;
+  };
+  return (
+    <Suspense fallback={<ShellSectionSkeleton variant="list" showStatusCard={false} />}>
+      <ShellOperationsContent routeData={routeData} />
+    </Suspense>
+  );
+}
+
+function ShellOperationsContent({ routeData }: { routeData: Promise<ShellOperationsRouteData> }) {
+  const { logs, totalPages, total } = use(routeData);
   const [searchParams, setSearchParams] = useSearchParams();
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -87,13 +116,17 @@ export default function ShellOperationsRoute() {
       next.set("pluginId", value);
     }
     next.set("page", "1");
-    setSearchParams(next, { replace: true });
+    startTransition(() => {
+      setSearchParams(next, { replace: true });
+    });
   };
 
   const handlePageChange = (newPage: number) => {
     const next = new URLSearchParams(searchParams);
     next.set("page", String(newPage));
-    setSearchParams(next, { replace: true });
+    startTransition(() => {
+      setSearchParams(next, { replace: true });
+    });
   };
 
   return (
@@ -117,7 +150,10 @@ export default function ShellOperationsRoute() {
         </div>
 
         {/* Log list */}
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div
+          className="min-h-0 flex-1 overflow-auto"
+          style={{ contentVisibility: "auto", containIntrinsicSize: "960px" }}
+        >
           {logs.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
               No operation logs found

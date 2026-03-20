@@ -1,9 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
+import { lazy, Suspense, use } from "react";
 import { useLoaderData, useRevalidator } from "react-router";
 
-import CommandExecute from "@/components/shell/command-execute";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
+import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import {
   dispatchShellPluginFromRoute,
   getShellPluginStatusFromRoute,
@@ -16,7 +17,24 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+const CommandExecute = lazy(() => import("@/components/shell/command-execute"));
+
+type ShellCommandRouteData = {
+  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
+};
+type ShellCommandLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
+
+export function loader({ context, params, request }: LoaderFunctionArgs) {
+  return {
+    routeData: loadShellCommandRouteData({ context, params, request }),
+  };
+}
+
+async function loadShellCommandRouteData({
+  context,
+  params,
+  request,
+}: ShellCommandLoaderArgs): Promise<ShellCommandRouteData> {
   const shellId = parseShellIdParam(params.shellId);
   const pluginStatus = await getShellPluginStatusFromRoute(
     request,
@@ -56,8 +74,19 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 }
 
 export default function ShellCommandRoute() {
+  const { routeData } = useLoaderData() as {
+    routeData: Promise<ShellCommandRouteData>;
+  };
+  return (
+    <Suspense fallback={<ShellSectionSkeleton variant="command" />}>
+      <ShellCommandContent routeData={routeData} />
+    </Suspense>
+  );
+}
+
+function ShellCommandContent({ routeData }: { routeData: Promise<ShellCommandRouteData> }) {
   const { shell } = useShellManagerContext();
-  const { pluginStatus } = useLoaderData<typeof loader>();
+  const { pluginStatus } = use(routeData);
   const revalidator = useRevalidator();
   const os = shell.basicInfo?.os;
   const process = shell.basicInfo?.process;
@@ -71,13 +100,23 @@ export default function ShellCommandRoute() {
         actionPath={`/shells/${shell.id}/command`}
         onUpdated={() => revalidator.revalidate()}
       />
-      <CommandExecute
-        shellId={shell.id}
-        osName={os.name}
-        cwdHint={process.cwd}
-        actionPath={`/shells/${shell.id}/command`}
-        onExecuted={() => revalidator.revalidate()}
-      />
+      <Suspense
+        fallback={
+          <ShellSectionSkeleton
+            label="Loading command console"
+            variant="command"
+            showStatusCard={false}
+          />
+        }
+      >
+        <CommandExecute
+          shellId={shell.id}
+          osName={os.name}
+          cwdHint={process.cwd}
+          actionPath={`/shells/${shell.id}/command`}
+          onExecuted={() => revalidator.revalidate()}
+        />
+      </Suspense>
     </div>
   );
 }

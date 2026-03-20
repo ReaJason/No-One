@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, use, useState } from "react";
 import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -11,7 +11,7 @@ import { createAuthFetch } from "@/api/api.server";
 import * as shellApi from "@/api/shell-api";
 import * as opLogApi from "@/api/shell-operation-log-api";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
-import SystemDashboard from "@/components/shell/system-info";
+import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import {
   getShellPluginStatusFromRoute,
   parseShellIdParam,
@@ -23,23 +23,44 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+const SystemDashboard = lazy(() => import("@/components/shell/system-info"));
+
+type ShellInfoRouteData = {
+  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
+  systemInfo: unknown;
+  error: string | null;
+};
+type ShellInfoLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
+
+export function loader({ context, params, request }: LoaderFunctionArgs) {
+  return {
+    routeData: loadShellInfoRouteData({ context, params, request }),
+  };
+}
+
+async function loadShellInfoRouteData({
+  context,
+  params,
+  request,
+}: ShellInfoLoaderArgs): Promise<ShellInfoRouteData> {
   const shellId = parseShellIdParam(params.shellId);
   const url = new URL(request.url);
   const forceRefresh = url.searchParams.has("forceRefresh");
   const authFetch = createAuthFetch(request, context);
-  let pluginStatus = await getShellPluginStatusFromRoute(request, context, shellId, "system-info");
+  const pluginStatusPromise = getShellPluginStatusFromRoute(
+    request,
+    context,
+    shellId,
+    "system-info",
+  );
+  const cachedResultPromise = forceRefresh
+    ? Promise.resolve(null)
+    : opLogApi.getLatestShellOperation(shellId, "system-info", authFetch).catch(() => null);
+  let [pluginStatus, cached] = await Promise.all([pluginStatusPromise, cachedResultPromise]);
 
   try {
-    if (!forceRefresh) {
-      try {
-        const cached = await opLogApi.getLatestShellOperation(shellId, "system-info", authFetch);
-        if (cached?.result) {
-          return { pluginStatus, systemInfo: cached.result, error: null };
-        }
-      } catch {
-        // Fall through to fresh request
-      }
+    if (cached?.result) {
+      return { pluginStatus, systemInfo: cached.result, error: null };
     }
 
     const data = await shellApi.dispatchPlugin(
@@ -81,7 +102,18 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 }
 
 export default function ShellInfoRoute() {
-  const { pluginStatus, systemInfo, error } = useLoaderData<typeof loader>();
+  const { routeData } = useLoaderData() as {
+    routeData: Promise<ShellInfoRouteData>;
+  };
+  return (
+    <Suspense fallback={<ShellSectionSkeleton variant="dashboard" />}>
+      <ShellInfoContent routeData={routeData} />
+    </Suspense>
+  );
+}
+
+function ShellInfoContent({ routeData }: { routeData: Promise<ShellInfoRouteData> }) {
+  const { pluginStatus, systemInfo, error } = use(routeData);
   const navigate = useNavigate();
   const revalidator = useRevalidator();
   const { shell } = useShellManagerContext();
@@ -111,11 +143,21 @@ export default function ShellInfoRoute() {
       )}
       {hasSystemInfo && (
         <div className="min-h-0 flex-1 space-y-4 overflow-auto">
-          <SystemDashboard
-            data={(systemInfo as any)?.data}
-            onRefresh={handleRefresh}
-            refreshing={refreshing}
-          />
+          <Suspense
+            fallback={
+              <ShellSectionSkeleton
+                label="Loading system dashboard"
+                variant="dashboard"
+                showStatusCard={false}
+              />
+            }
+          >
+            <SystemDashboard
+              data={(systemInfo as any)?.data}
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+            />
+          </Suspense>
         </div>
       )}
     </div>

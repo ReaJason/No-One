@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { lazy, Suspense, use, useMemo } from "react";
 import {
   type ActionFunctionArgs,
   type LoaderFunctionArgs,
@@ -9,8 +9,8 @@ import {
 import { createAuthFetch } from "@/api/api.server";
 import { dispatchPlugin } from "@/api/shell-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
-import FileManager from "@/components/shell/file-manager";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
+import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import { deriveFileManagerInitialState } from "@/lib/file-manager-initial-state";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
 import {
@@ -24,12 +24,36 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+const FileManager = lazy(() => import("@/components/shell/file-manager"));
+
+type ShellFilesRouteData = {
+  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
+  initialState: ReturnType<typeof deriveFileManagerInitialState>;
+  initialDirectory: Record<string, unknown>;
+};
+type ShellFilesLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
+
+export function loader({ context, params, request }: LoaderFunctionArgs) {
+  return {
+    routeData: loadShellFilesRouteData({ context, params, request }),
+  };
+}
+
+async function loadShellFilesRouteData({
+  context,
+  params,
+  request,
+}: ShellFilesLoaderArgs): Promise<ShellFilesRouteData> {
   const shellId = parseShellIdParam(params.shellId);
   const authFetch = createAuthFetch(request, context);
-  const shell = await getShellConnectionById(shellId, authFetch);
+  const [shell, initialPluginStatus] = await Promise.all([
+    getShellConnectionById(shellId, authFetch),
+    getShellPluginStatusFromRoute(request, context, shellId, "file-manager"),
+  ]);
+  if (!shell) {
+    throw new Response("Shell connection not found", { status: 404 });
+  }
   const initialState = deriveFileManagerInitialState(shell.basicInfo);
-  let pluginStatus = await getShellPluginStatusFromRoute(request, context, shellId, "file-manager");
   const initialDirectory = ensureShellDispatchPayload(
     await dispatchPlugin(
       {
@@ -40,9 +64,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
       authFetch,
     ),
   );
-  if (!pluginStatus.loaded) {
-    pluginStatus = await getShellPluginStatusFromRoute(request, context, shellId, "file-manager");
-  }
+  const pluginStatus = initialPluginStatus.loaded
+    ? initialPluginStatus
+    : await getShellPluginStatusFromRoute(request, context, shellId, "file-manager");
 
   return {
     pluginStatus,
@@ -70,8 +94,19 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 }
 
 export default function ShellFilesRoute() {
+  const { routeData } = useLoaderData() as {
+    routeData: Promise<ShellFilesRouteData>;
+  };
+  return (
+    <Suspense fallback={<ShellSectionSkeleton variant="file-manager" />}>
+      <ShellFilesContent routeData={routeData} />
+    </Suspense>
+  );
+}
+
+function ShellFilesContent({ routeData }: { routeData: Promise<ShellFilesRouteData> }) {
   const { shell } = useShellManagerContext();
-  const { initialState, initialDirectory, pluginStatus } = useLoaderData<typeof loader>();
+  const { initialState, initialDirectory, pluginStatus } = use(routeData);
   const revalidator = useRevalidator();
   const actionPath = useMemo(() => `/shells/${shell.id}/files/data`, [shell.id]);
 
@@ -85,11 +120,21 @@ export default function ShellFilesRoute() {
         onUpdated={() => revalidator.revalidate()}
       />
       {initialDirectory && (
-        <FileManager
-          initialState={initialState}
-          initialDirectory={initialDirectory}
-          dataPath={actionPath}
-        />
+        <Suspense
+          fallback={
+            <ShellSectionSkeleton
+              label="Loading file manager"
+              variant="file-manager"
+              showStatusCard={false}
+            />
+          }
+        >
+          <FileManager
+            initialState={initialState}
+            initialDirectory={initialDirectory}
+            dataPath={actionPath}
+          />
+        </Suspense>
       )}
     </div>
   );

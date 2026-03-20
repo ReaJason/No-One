@@ -3,20 +3,19 @@ import type { ComponentType } from "react";
 
 import { Separator } from "@radix-ui/react-separator";
 import { ArrowLeft, ClipboardList, Files, Info, Loader, Puzzle, Terminal } from "lucide-react";
-import {
-  Link,
-  type LoaderFunctionArgs,
-  NavLink,
-  Outlet,
-  useLoaderData,
-  useLocation,
-} from "react-router";
+import { Suspense, use, useMemo } from "react";
+import { type LoaderFunctionArgs, NavLink, Outlet, useLoaderData, useLocation } from "react-router";
 import { Toaster } from "sonner";
 
 import { createAuthFetch } from "@/api/api.server";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
+import {
+  ShellManagerSkeleton,
+  ShellSectionSkeleton,
+  type ShellSectionSkeletonVariant,
+} from "@/components/shell/shell-route-loading";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,12 +38,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
     throw new Response("Invalid shell ID", { status: 400 });
   }
   const authFetch = createAuthFetch(request, context);
-  const shell = await getShellConnectionById(shellId, authFetch);
-  if (!shell) {
-    throw new Response("Shell connection not found", { status: 404 });
-  }
-  return { shell } as {
-    shell: ShellConnection;
+  return {
+    shell: getShellConnectionById(shellId, authFetch).then((shell) => {
+      if (!shell) {
+        throw new Response("Shell connection not found", { status: 404 });
+      }
+      return shell;
+    }),
+  } as {
+    shell: Promise<ShellConnection>;
   };
 }
 
@@ -69,6 +71,22 @@ function getStatusBadgeClassName(status: ShellConnection["status"]) {
     default:
       return "bg-zinc-500 text-white";
   }
+}
+
+function getShellSectionVariant(pathname: string): ShellSectionSkeletonVariant {
+  if (pathname.endsWith("/files")) {
+    return "file-manager";
+  }
+  if (pathname.endsWith("/command")) {
+    return "command";
+  }
+  if (pathname.endsWith("/extensions")) {
+    return "extensions";
+  }
+  if (pathname.endsWith("/operations")) {
+    return "list";
+  }
+  return "dashboard";
 }
 
 function ShellManagerSidebar({ shell }: { shell: ShellConnection }) {
@@ -109,7 +127,7 @@ function ShellManagerSidebar({ shell }: { shell: ShellConnection }) {
                             <span>{item.title}</span>
                           </div>
                         ) : (
-                          <NavLink to={url} viewTransition>
+                          <NavLink to={url} viewTransition discover="render" prefetch="intent">
                             {({ isPending }) => (
                               <>
                                 {isPending ? <Loader className="animate-spin" /> : <item.icon />}
@@ -131,12 +149,15 @@ function ShellManagerSidebar({ shell }: { shell: ShellConnection }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Back to Shells">
-                  <ArrowLeft />
-                  <Link to="/shells" viewTransition>
-                    Back to Shells
-                  </Link>
-                </SidebarMenuButton>
+                <SidebarMenuButton
+                  tooltip="Back to Shells"
+                  render={
+                    <NavLink to="/shells" viewTransition discover="render" prefetch="intent">
+                      <ArrowLeft />
+                      <span>Back to Shells</span>
+                    </NavLink>
+                  }
+                />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -148,11 +169,25 @@ function ShellManagerSidebar({ shell }: { shell: ShellConnection }) {
 
 export default function ShellManagerPage() {
   const { shell } = useLoaderData() as {
-    shell: ShellConnection;
+    shell: Promise<ShellConnection>;
   };
 
   return (
     <SidebarProvider>
+      <Suspense fallback={<ShellManagerSkeleton />}>
+        <ShellManagerLayout shellPromise={shell} />
+      </Suspense>
+    </SidebarProvider>
+  );
+}
+
+function ShellManagerLayout({ shellPromise }: { shellPromise: Promise<ShellConnection> }) {
+  const shell = use(shellPromise);
+  const location = useLocation();
+  const outletContext = useMemo(() => ({ shell }), [shell]);
+
+  return (
+    <>
       <ShellManagerSidebar shell={shell} />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2">
@@ -174,24 +209,40 @@ export default function ShellManagerPage() {
           </div>
           <nav className="flex flex-1 items-center justify-end gap-2 pr-4">
             <ModeToggle />
-            <Button variant="ghost" size="icon" className="size-8">
-              <Link
-                aria-label="GitHub repo"
-                to="https://github.com/ReaJason/No-one"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Icons.gitHub className="size-4" aria-hidden="true" />
-              </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              render={
+                <a
+                  aria-label="GitHub repo"
+                  href="https://github.com/ReaJason/No-one"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                />
+              }
+            >
+              <Icons.gitHub className="size-4" aria-hidden="true" />
             </Button>
           </nav>
         </header>
 
         <main className="min-h-0 flex-1 overflow-hidden">
-          <Outlet context={{ shell }} />
+          <Suspense
+            key={location.pathname}
+            fallback={
+              <ShellSectionSkeleton
+                label="Loading shell section"
+                variant={getShellSectionVariant(location.pathname)}
+                showStatusCard={false}
+              />
+            }
+          >
+            <Outlet context={outletContext} />
+          </Suspense>
         </main>
         <Toaster />
       </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 }
