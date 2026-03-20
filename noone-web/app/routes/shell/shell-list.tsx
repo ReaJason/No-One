@@ -8,7 +8,7 @@ import React, { use, useMemo } from "react";
 import { Link, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
-import { deleteShellConnection, getShellConnections } from "@/api/shell-connection-api";
+import { deleteShellConnection, getShellConnections, pingShell } from "@/api/shell-connection-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -50,9 +50,8 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
-  const intent = formData.get("intent");
-
-  if (intent !== "delete") {
+  const intent = String(formData.get("intent") ?? "");
+  if (intent !== "delete" && intent !== "ping") {
     return { errors: { general: "Unsupported action" } };
   }
 
@@ -64,12 +63,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
   try {
     const authFetch = createAuthFetch(request, context);
+    if (intent === "ping") {
+      const ping = await pingShell(shellId, authFetch);
+      return { success: true, ping };
+    }
+
     await deleteShellConnection(shellId, authFetch);
     return { success: true };
   } catch (error: any) {
     return {
       errors: {
-        general: error?.message || "Failed to delete shell connection",
+        general:
+          error?.message ||
+          (intent === "ping" ? "Ping failed" : "Failed to delete shell connection"),
       },
     };
   }

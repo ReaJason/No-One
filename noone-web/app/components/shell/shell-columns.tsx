@@ -1,3 +1,4 @@
+import type { PingShellResponse } from "@/api/shell-connection-api";
 import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -8,6 +9,7 @@ import {
   MoreHorizontal,
   Terminal,
   Trash2,
+  Zap,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -28,7 +30,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Spinner } from "@/components/ui/spinner";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 const statusLabels: Record<ShellStatus, string> = {
   CONNECTED: "Connected",
@@ -45,6 +49,65 @@ const statusColors: Record<ShellStatus, string> = {
 interface GetShellColumnsOptions {
   projectMap: Map<number, string>;
   projectOptions: Array<{ label: string; value: string }>;
+}
+
+function PingButton({ shellId }: { shellId: number }) {
+  const fetcher = useFetcher<{
+    success?: boolean;
+    ping?: PingShellResponse;
+    errors?: Record<string, string>;
+  }>();
+  const isPinging = fetcher.state !== "idle";
+  const lastStateRef = useRef(fetcher.state);
+  const result = fetcher.data?.ping;
+
+  useEffect(() => {
+    if (lastStateRef.current !== "submitting" || fetcher.state !== "idle") {
+      lastStateRef.current = fetcher.state;
+      return;
+    }
+
+    if (fetcher.data?.errors?.general) {
+      toast.error(fetcher.data.errors.general);
+    } else if (fetcher.data?.ping?.connected) {
+      toast.success(
+        fetcher.data.ping.recovered ? "Ping succeeded after core recovery" : "Ping succeeded",
+      );
+    } else {
+      toast.error(fetcher.data?.ping?.error ?? "Ping failed");
+    }
+    lastStateRef.current = fetcher.state;
+  }, [fetcher.data, fetcher.state]);
+
+  const handlePing = () => {
+    const formData = new FormData();
+    formData.set("intent", "ping");
+    formData.set("shellId", String(shellId));
+    fetcher.submit(formData, { method: "post", action: "/shells" });
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        onClick={handlePing}
+        disabled={isPinging}
+        title="Quick ping (status first, auto-recover core if needed)"
+      >
+        {isPinging ? <Spinner className="size-3" /> : <Zap className="size-3" />}
+      </Button>
+      {result && (
+        <span className={cn("text-xs", result.connected ? "text-emerald-500" : "text-red-500")}>
+          {result.connected
+            ? result.recovered
+              ? `recovered ${result.latencyMs}ms`
+              : `${result.latencyMs}ms`
+            : "fail"}
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ShellActionsCell({ shell }: { shell: ShellConnection }) {
@@ -261,6 +324,7 @@ export function getShellColumns({
           <div className="flex items-center gap-2">
             {icon}
             <Badge className={statusColors[status]}>{statusLabels[status]}</Badge>
+            <PingButton shellId={Number(row.original.id)} />
           </div>
         );
       },

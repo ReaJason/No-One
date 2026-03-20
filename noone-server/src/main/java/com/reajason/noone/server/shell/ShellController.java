@@ -70,6 +70,18 @@ public class ShellController {
                 "status", connected ? "CONNECTED" : "ERROR"));
     }
 
+    @PostMapping("/{id}/init-core")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:test')")
+    public ResponseEntity<Map<String, Object>> initCore(@PathVariable Long id) {
+        return ResponseEntity.ok(shellService.initCore(id));
+    }
+
+    @PostMapping("/{id}/ping")
+    @PreAuthorize("@authorizationService.hasSystemPermission('shell:test')")
+    public ResponseEntity<Map<String, Object>> ping(@PathVariable Long id) {
+        return ResponseEntity.ok(shellService.ping(id));
+    }
+
     @PostMapping("/test-config")
     public ResponseEntity<Map<String, Object>> testConfig(
             @Valid @RequestBody ShellTestConfigRequest request) {

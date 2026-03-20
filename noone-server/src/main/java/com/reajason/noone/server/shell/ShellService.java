@@ -195,6 +195,115 @@ public class ShellService {
         }
     }
 
+    public Map<String, Object> initCore(Long id) {
+        Shell shell = shellRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+
+        boolean isStaging = Boolean.TRUE.equals(shell.getStaging());
+        if (!isStaging) {
+            return Map.of("success", true, "staging", false, "skipped", true, "durationMs", 0L);
+        }
+
+        long start = System.currentTimeMillis();
+        try {
+            ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+            boolean result = connection.init();
+            long durationMs = System.currentTimeMillis() - start;
+
+            if (!result) {
+                shellOperationLogService.record(id, ShellOperationType.TEST, null, "init-core",
+                        null, Map.of("success", false), false, "Core injection returned false", durationMs);
+            }
+
+            return Map.of("success", result, "staging", true, "skipped", false, "durationMs", durationMs);
+        } catch (Exception e) {
+            long durationMs = System.currentTimeMillis() - start;
+            log.error("Core injection failed for shell: {}", id, e);
+            shellOperationLogService.record(id, ShellOperationType.TEST, null, "init-core",
+                    null, null, false, safeMessage(e), durationMs);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("staging", true);
+            response.put("skipped", false);
+            response.put("durationMs", durationMs);
+            response.put("error", safeMessage(e));
+            return response;
+        }
+    }
+
+    public Map<String, Object> ping(Long id) {
+        Shell shell = shellRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+
+        long start = System.currentTimeMillis();
+        boolean recoveryAttempted = false;
+        boolean recovered = false;
+        try {
+            ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+            boolean connected;
+            try {
+                connected = connection.checkStatus();
+            } catch (ShellCommunicationException firstProbeError) {
+                if (!shouldAttemptPingRecovery(shell, firstProbeError)) {
+                    throw firstProbeError;
+                }
+                recoveryAttempted = true;
+                log.info("Ping status probe failed for shell {}, attempting core reinjection", id, firstProbeError);
+
+                boolean initResult = connection.init();
+                if (!initResult) {
+                    throw new ShellRequestException("Core reinjection returned false", false);
+                }
+
+                connected = connection.checkStatus();
+                recovered = true;
+            }
+
+            if (connected) {
+                shell.setStatus(ShellStatus.CONNECTED);
+                shell.setLastOnlineAt(LocalDateTime.now());
+            } else {
+                shell.setStatus(ShellStatus.ERROR);
+            }
+            shellRepository.save(shell);
+
+            long durationMs = System.currentTimeMillis() - start;
+            Map<String, Object> payload = Map.of(
+                    "connected", connected,
+                    "recoveryAttempted", recoveryAttempted,
+                    "recovered", recovered
+            );
+            shellOperationLogService.record(id, ShellOperationType.TEST, null, "ping",
+                    null, payload, connected, null, durationMs);
+
+            return Map.of(
+                    "connected", connected,
+                    "status", connected ? "CONNECTED" : "ERROR",
+                    "latencyMs", durationMs,
+                    "recoveryAttempted", recoveryAttempted,
+                    "recovered", recovered
+            );
+        } catch (Exception e) {
+            shell.setStatus(ShellStatus.ERROR);
+            shellRepository.save(shell);
+            log.error("Ping failed for shell: {}", id, e);
+
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(id, ShellOperationType.TEST, null, "ping",
+                    null, null, false, safeMessage(e), durationMs);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("connected", false);
+            response.put("status", "ERROR");
+            response.put("error", safeMessage(e));
+            response.put("latencyMs", durationMs);
+            response.put("recoveryAttempted", recoveryAttempted);
+            response.put("recovered", recovered);
+            return response;
+        }
+    }
+
     /**
      * Test shell configuration without saving to database.
      * Used by create/edit pages to validate connection before saving.
@@ -456,6 +565,10 @@ public class ShellService {
     private boolean isDuplicateJavaClassLoad(ResponseBusinessException exception) {
         String message = safeMessage(exception).toLowerCase();
         return message.contains("duplicate") || message.contains("linkageerror") || message.contains("attempted duplicate class definition");
+    }
+
+    private boolean shouldAttemptPingRecovery(Shell shell, ShellCommunicationException exception) {
+        return Boolean.TRUE.equals(shell.getStaging()) && !(exception instanceof ResponseBusinessException);
     }
 
     private void recordDispatch(Long shellId, String pluginId, String action, Map<String, Object> args,

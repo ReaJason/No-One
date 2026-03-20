@@ -126,6 +126,10 @@ public abstract class ShellConnection {
 
     public boolean test() {
         init();
+        return checkStatus();
+    }
+
+    public boolean checkStatus() {
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put(Constants.ACTION, Constants.ACTION_STATUS);
         Map<String, Object> response = sendRequest(requestMap);

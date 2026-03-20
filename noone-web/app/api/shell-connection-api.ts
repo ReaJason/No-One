@@ -160,6 +160,23 @@ export interface TestShellConnectionResponse {
   errorMessage?: string;
 }
 
+export interface InitCoreResponse {
+  success: boolean;
+  staging: boolean;
+  skipped: boolean;
+  durationMs: number;
+  error?: string;
+}
+
+export interface PingShellResponse {
+  connected: boolean;
+  status: "CONNECTED" | "ERROR";
+  latencyMs: number;
+  recoveryAttempted: boolean;
+  recovered: boolean;
+  error?: string;
+}
+
 export async function testShellConfig(
   payload: TestShellConfigRequest,
   authFetch: AuthFetch,
@@ -191,6 +208,24 @@ export async function testShellConnection(
     throw new Error(resolveErrorMessage(response, "Connection test failed"));
   }
   return response;
+}
+
+export async function initShellCore(
+  id: number | string,
+  authFetch: AuthFetch,
+): Promise<InitCoreResponse> {
+  return await authFetch<InitCoreResponse>(`${baseUrl}/${id}/init-core`, {
+    method: "POST",
+  });
+}
+
+export async function pingShell(
+  id: number | string,
+  authFetch: AuthFetch,
+): Promise<PingShellResponse> {
+  return await authFetch<PingShellResponse>(`${baseUrl}/${id}/ping`, {
+    method: "POST",
+  });
 }
 
 function mapPaginatedResponse<T>(response: ServerPaginatedResponse<T>): PaginatedResponse<T> {

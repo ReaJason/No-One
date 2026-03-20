@@ -1,4 +1,6 @@
+import type { InitCoreResponse, PingShellResponse } from "@/api/shell-connection-api";
 import type { ShellConnection } from "@/types/shell-connection";
+import type { ShellOperationLog } from "@/types/shell-operation-log";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import {
@@ -8,6 +10,7 @@ import {
   PlugZap,
   Server,
   ShieldAlert,
+  SkipForward,
   Wifi,
   XCircle,
 } from "lucide-react";
@@ -15,7 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
-import { getShellConnectionById, testShellConnection } from "@/api/shell-connection-api";
+import { getShellConnectionById, initShellCore, pingShell } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,8 +34,8 @@ import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 
-type StepKey = "resolveShell" | "testConnection" | "handoff";
-type StepStatus = "pending" | "running" | "success" | "error";
+type StepKey = "resolve" | "initCore" | "statusCheck" | "fetchLogs" | "handoff";
+type StepStatus = "pending" | "running" | "success" | "skipped" | "error";
 
 interface ConnectStep {
   id: StepKey;
@@ -47,18 +50,38 @@ interface ConnectLog {
   message: string;
 }
 
-const HANDOFF_DELAY_MS = 600;
+interface ShellConnectActionData {
+  success?: boolean;
+  error?: string;
+  intent?: "init-core" | "check-status" | "fetch-logs" | null | string;
+  logs?: ShellOperationLog[];
+}
+
+type InitCoreActionData = ShellConnectActionData & InitCoreResponse;
+type CheckStatusActionData = ShellConnectActionData & PingShellResponse;
+
+const HANDOFF_DELAY_MS = 400;
 
 const CONNECT_STEPS: ConnectStep[] = [
   {
-    id: "resolveShell",
+    id: "resolve",
     title: "Resolve shell metadata",
     description: "Load shell profile, language and URL context",
   },
   {
-    id: "testConnection",
-    title: "Test shell connection",
-    description: "Execute /shells/{id}/test and verify reachability",
+    id: "initCore",
+    title: "Initialize core",
+    description: "Inject core module into target (staging mode only)",
+  },
+  {
+    id: "statusCheck",
+    title: "Check server status",
+    description: "Probe status first, then auto-recover core once if communication fails",
+  },
+  {
+    id: "fetchLogs",
+    title: "Fetch operation logs",
+    description: "Retrieve latest operation details for diagnostics",
   },
   {
     id: "handoff",
@@ -68,25 +91,13 @@ const CONNECT_STEPS: ConnectStep[] = [
 ];
 
 function createInitialStepStatus(): Record<StepKey, StepStatus> {
-  return {
-    resolveShell: "pending",
-    testConnection: "pending",
-    handoff: "pending",
-  };
+  return Object.fromEntries(
+    CONNECT_STEPS.map((step) => [step.id, "pending" as StepStatus]),
+  ) as Record<StepKey, StepStatus>;
 }
 
 function formatLogTimestamp(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString();
-}
-
-function resolveErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message.trim();
-  }
-  if (typeof error === "string" && error.trim()) {
-    return error.trim();
-  }
-  return fallback;
 }
 
 function statusBadgeClassName(status: StepStatus): string {
@@ -97,6 +108,8 @@ function statusBadgeClassName(status: StepStatus): string {
       return "bg-sky-600 text-white";
     case "error":
       return "bg-red-600 text-white";
+    case "skipped":
+      return "bg-zinc-400 text-white";
     default:
       return "bg-zinc-500 text-white";
   }
@@ -131,92 +144,69 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 export async function action({ context, params, request }: ActionFunctionArgs) {
   const shellId = Number(params.shellId);
   if (!Number.isInteger(shellId) || shellId <= 0) {
-    return { success: false, error: "Invalid shell ID", flowId: null };
+    return { success: false, error: "Invalid shell ID", intent: null };
   }
 
   const formData = await request.formData();
-  const flowId = String(formData.get("flowId") ?? "");
-  if (formData.get("intent") !== "test-connection") {
-    return { success: false, error: "Unsupported action", flowId };
-  }
-
+  const intent = String(formData.get("intent") ?? "");
   const authFetch = createAuthFetch(request, context);
 
-  try {
-    const result = await testShellConnection(shellId, authFetch);
-    if (result.connected) {
-      return { success: true, flowId };
+  if (intent === "init-core") {
+    try {
+      const result = await initShellCore(shellId, authFetch);
+      return { intent, ...result };
+    } catch (error: any) {
+      return { success: false, intent, error: error?.message ?? "Core init failed" };
     }
-  } catch (error: any) {
-    const latestFailure = await getLatestFailureReason(shellId, authFetch);
-    return {
-      success: false,
-      error: latestFailure ?? error?.message ?? "Connection test failed",
-      flowId,
-    };
   }
 
-  const latestFailure = await getLatestFailureReason(shellId, authFetch);
-  return {
-    success: false,
-    error: latestFailure ?? "Connection test failed",
-    flowId,
-  };
-}
-
-async function getLatestFailureReason(
-  shellId: number,
-  authFetch: ReturnType<typeof createAuthFetch>,
-): Promise<string | null> {
-  try {
-    const response = await getShellOperationLogs(
-      shellId,
-      {
-        operation: "TEST",
-        success: false,
-        page: 1,
-        pageSize: 1,
-      },
-      authFetch,
-    );
-    const latest = response.content[0];
-    if (latest?.errorMessage && latest.errorMessage.trim()) {
-      return latest.errorMessage.trim();
+  if (intent === "check-status") {
+    try {
+      const result = await pingShell(shellId, authFetch);
+      return { success: result.connected, intent, ...result };
+    } catch (error: any) {
+      return { success: false, intent, error: error?.message ?? "Status check failed" };
     }
-  } catch {
-    return null;
   }
 
-  return null;
+  if (intent === "fetch-logs") {
+    try {
+      const response = await getShellOperationLogs(
+        shellId,
+        { operation: "TEST", page: 1, pageSize: 5 },
+        authFetch,
+      );
+      return { success: true, intent, logs: response.content };
+    } catch {
+      return { success: true, intent, logs: [] };
+    }
+  }
+
+  return { success: false, error: "Unsupported action", intent };
 }
 
 export default function ShellConnectPage() {
   const { shell } = useLoaderData() as { shell: ShellConnection };
-  const testFetcher = useFetcher<{ success?: boolean; error?: string; flowId?: string | null }>();
+  const fetcher = useFetcher<ShellConnectActionData>();
   const navigate = useNavigate();
 
-  const [steps, setSteps] = useState<Record<StepKey, StepStatus>>(() => createInitialStepStatus());
+  const [steps, setSteps] = useState<Record<StepKey, StepStatus>>(createInitialStepStatus);
   const [logs, setLogs] = useState<ConnectLog[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<StepKey | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
 
   const logIdRef = useRef(1);
   const logPanelRef = useRef<HTMLDivElement | null>(null);
   const handoffTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startedFlowIdRef = useRef<string | null>(null);
-  const shellId = useMemo(() => Number(shell.id), [shell.id]);
-  const currentFlowId = String(attempt);
+  const fetcherRef = useRef(fetcher);
+  const statusCheckPassedRef = useRef(false);
 
-  const progressValue = useMemo(() => {
-    const total = CONNECT_STEPS.length;
-    const completed = CONNECT_STEPS.filter((step) => steps[step.id] === "success").length;
-    const runningIndex = CONNECT_STEPS.findIndex((step) => steps[step.id] === "running");
-    if (runningIndex >= 0) {
-      return Math.max(10, Math.round(((runningIndex + 0.5) / total) * 100));
-    }
-    return Math.round((completed / total) * 100);
-  }, [steps]);
+  fetcherRef.current = fetcher;
+
+  const shellId = Number(shell.id);
+  const currentFlowId = String(attempt);
 
   const appendLog = useCallback((level: ConnectLog["level"], message: string) => {
     setLogs((prev) => [
@@ -233,6 +223,30 @@ export default function ShellConnectPage() {
   const setStepStatus = useCallback((step: StepKey, status: StepStatus) => {
     setSteps((prev) => ({ ...prev, [step]: status }));
   }, []);
+
+  const submitStep = useCallback((intent: string) => {
+    const formData = new FormData();
+    formData.set("intent", intent);
+    fetcherRef.current.submit(formData, { method: "post" });
+  }, []);
+
+  const progressValue = useMemo(() => {
+    const total = CONNECT_STEPS.length;
+    const completed = CONNECT_STEPS.filter(
+      (step) => steps[step.id] === "success" || steps[step.id] === "skipped",
+    ).length;
+    const runningIndex = CONNECT_STEPS.findIndex((step) => steps[step.id] === "running");
+    if (runningIndex >= 0) {
+      return Math.max(10, Math.round(((runningIndex + 0.5) / total) * 100));
+    }
+    return Math.round((completed / total) * 100);
+  }, [steps]);
+
+  useEffect(() => {
+    if (logPanelRef.current) {
+      logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
+    }
+  }, [logs]);
 
   useEffect(() => {
     return () => {
@@ -256,72 +270,139 @@ export default function ShellConnectPage() {
     setSteps(createInitialStepStatus());
     setLogs([]);
     setError(null);
-    setIsRunning(true);
     logIdRef.current = 1;
+    statusCheckPassedRef.current = false;
 
     appendLog("info", `Starting connection flow for shell #${shellId}`);
-    setStepStatus("resolveShell", "running");
+    setStepStatus("resolve", "running");
     appendLog("info", "Resolving shell metadata...");
-    setStepStatus("resolveShell", "success");
-    appendLog("success", `Loaded ${shell.url} (${shell.language})`);
-    setStepStatus("testConnection", "running");
-    appendLog("info", "Running connection test...");
+    setStepStatus("resolve", "success");
+    appendLog("success", `Resolved: ${shell.url} (${shell.language})`);
 
-    const formData = new FormData();
-    formData.set("intent", "test-connection");
-    formData.set("flowId", currentFlowId);
-    testFetcher.submit(formData, { method: "post" });
-  }, [appendLog, currentFlowId, setStepStatus, shell.language, shell.url, shellId, testFetcher]);
-
-  useEffect(() => {
-    if (!logPanelRef.current) return;
-    logPanelRef.current.scrollTop = logPanelRef.current.scrollHeight;
-  }, [logs]);
-
-  useEffect(() => {
-    if (
-      testFetcher.state !== "idle" ||
-      !testFetcher.data ||
-      !isRunning ||
-      testFetcher.data.flowId !== currentFlowId
-    ) {
-      return;
-    }
-
-    if (testFetcher.data.success) {
-      setStepStatus("testConnection", "success");
-      appendLog("success", "Connection test passed");
-      setStepStatus("handoff", "running");
-      appendLog("info", "Preparing shell manager handoff...");
-      handoffTimeoutRef.current = setTimeout(() => {
-        setStepStatus("handoff", "success");
-        appendLog("success", "Handoff complete, entering manager");
-        setIsRunning(false);
-        navigate(`/shells/${shellId}/info`);
-      }, HANDOFF_DELAY_MS);
-      return;
-    }
-
-    const failureMessage = resolveErrorMessage(
-      testFetcher.data.error,
-      "Connection workflow failed.",
-    );
-    setError(failureMessage);
-    setStepStatus("testConnection", "error");
-    appendLog("error", failureMessage);
-    setIsRunning(false);
+    setCurrentStep("initCore");
+    setStepStatus("initCore", "running");
+    appendLog("info", shell.staging ? "Injecting core module..." : "Core injection not needed");
+    submitStep("init-core");
   }, [
     appendLog,
     currentFlowId,
-    isRunning,
+    setStepStatus,
+    shell.language,
+    shell.staging,
+    shell.url,
+    shellId,
+    submitStep,
+  ]);
+
+  useEffect(() => {
+    if (fetcher.state !== "idle" || !fetcher.data) {
+      return;
+    }
+
+    const data = fetcher.data;
+    const intent = data.intent;
+
+    if (intent === "init-core" && currentStep === "initCore") {
+      const initData = data as InitCoreActionData;
+      if (initData.skipped) {
+        setStepStatus("initCore", "skipped");
+        appendLog("info", "Skipped - non-staging shell");
+      } else if (initData.success) {
+        setStepStatus("initCore", "success");
+        appendLog("success", `Core injected (${initData.durationMs}ms)`);
+      } else {
+        const failureMessage = initData.error ?? "Core injection failed";
+        setStepStatus("initCore", "error");
+        setError(failureMessage);
+        appendLog("error", failureMessage);
+        setCurrentStep(null);
+        return;
+      }
+
+      setCurrentStep("statusCheck");
+      setStepStatus("statusCheck", "running");
+      appendLog("info", "Checking server status...");
+      submitStep("check-status");
+      return;
+    }
+
+    if (intent === "check-status" && currentStep === "statusCheck") {
+      const statusData = data as CheckStatusActionData;
+      if (statusData.success) {
+        statusCheckPassedRef.current = true;
+        setStepStatus("statusCheck", "success");
+        if (statusData.recovered) {
+          appendLog("info", "Initial status probe failed; core reinjection succeeded");
+        }
+        appendLog(
+          "success",
+          statusData.recovered
+            ? `Connected after recovery (${statusData.latencyMs}ms)`
+            : `Connected (${statusData.latencyMs}ms)`,
+        );
+      } else {
+        statusCheckPassedRef.current = false;
+        setStepStatus("statusCheck", "error");
+        const failureMessage =
+          statusData.error ??
+          (statusData.recoveryAttempted
+            ? "Status check failed after core recovery attempt"
+            : "Status check failed");
+        setError(failureMessage);
+        appendLog("error", failureMessage);
+      }
+
+      setCurrentStep("fetchLogs");
+      setStepStatus("fetchLogs", "running");
+      appendLog("info", "Fetching operation logs...");
+      submitStep("fetch-logs");
+      return;
+    }
+
+    if (intent === "fetch-logs" && currentStep === "fetchLogs") {
+      const opLogs = data.logs ?? [];
+      if (opLogs.length > 0) {
+        setStepStatus("fetchLogs", "success");
+        appendLog("info", `Retrieved ${opLogs.length} recent operation log(s)`);
+        for (const log of opLogs.slice(0, 3)) {
+          const level: ConnectLog["level"] = log.success ? "success" : "error";
+          const message = log.success
+            ? `[${log.operation}] ${log.action ?? log.pluginId ?? "test"} - ${log.durationMs}ms`
+            : `[${log.operation}] ${log.errorMessage ?? "failed"} - ${log.durationMs}ms`;
+          appendLog(level, message);
+        }
+      } else {
+        setStepStatus("fetchLogs", "skipped");
+        appendLog("info", "No recent operation logs");
+      }
+
+      if (statusCheckPassedRef.current) {
+        setCurrentStep("handoff");
+        setStepStatus("handoff", "running");
+        appendLog("info", "Preparing shell manager handoff...");
+        handoffTimeoutRef.current = setTimeout(() => {
+          setStepStatus("handoff", "success");
+          appendLog("success", "Handoff complete - entering manager");
+          setCurrentStep(null);
+          navigate(`/shells/${shellId}/info`);
+        }, HANDOFF_DELAY_MS);
+      } else {
+        setCurrentStep(null);
+      }
+    }
+  }, [
+    appendLog,
+    currentStep,
+    fetcher.data,
+    fetcher.state,
     navigate,
     setStepStatus,
     shellId,
-    testFetcher.data,
-    testFetcher.state,
+    submitStep,
   ]);
 
-  const canRetry = !isRunning && error != null;
+  const canRetry = currentStep === null && error != null;
+  const isRunning = currentStep !== null;
 
   return (
     <div className="container mx-auto max-w-4xl p-6">
@@ -369,11 +450,14 @@ export default function ShellConnectPage() {
                   <Spinner className="size-4" />
                 ) : status === "success" ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                ) : status === "skipped" ? (
+                  <SkipForward className="h-4 w-4 text-muted-foreground" />
                 ) : status === "error" ? (
                   <XCircle className="h-4 w-4 text-red-500" />
                 ) : (
                   <CircleDashed className="h-4 w-4 text-muted-foreground" />
                 );
+
               return (
                 <div
                   key={step.id}
@@ -381,6 +465,7 @@ export default function ShellConnectPage() {
                     "rounded-md border px-3 py-2 transition-colors",
                     status === "running" && "border-sky-500/40 bg-sky-500/5",
                     status === "success" && "border-emerald-500/40 bg-emerald-500/5",
+                    status === "skipped" && "border-muted bg-muted/5",
                     status === "error" && "border-red-500/40 bg-red-500/5",
                   )}
                 >
