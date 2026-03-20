@@ -105,7 +105,6 @@ export function ProfileForm({
 
   const protocolType = watch("protocolType") ?? initialValues.protocolType ?? "HTTP";
   const identifierLocationOptions = IDENTIFIER_LOCATION_OPTIONS_BY_PROTOCOL[protocolType];
-
   const fieldError = (name: keyof ProfileFormValues) =>
     formErrors[name]?.message ?? serverErrors?.[name];
 
@@ -488,44 +487,6 @@ export function ProfileForm({
             <CardTitle>WebSocket Config</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor="subprotocol">Subprotocol</FieldLabel>
-                <Controller
-                  name="subprotocol"
-                  control={control}
-                  render={({ field }) => (
-                    <Input
-                      {...field}
-                      id="subprotocol"
-                      placeholder="e.g., graphql-ws"
-                      value={field.value ?? ""}
-                    />
-                  )}
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Message Format</FieldLabel>
-                <Controller
-                  name="messageFormat"
-                  control={control}
-                  render={({ field }) => (
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select format" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectItem value="TEXT">Text</SelectItem>
-                          <SelectItem value="BINARY">Binary</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </Field>
-            </FieldGroup>
-
             <Field data-invalid={Boolean(fieldError("handshakeHeaders"))}>
               <FieldLabel htmlFor="handshakeHeaders">Handshake Headers (JSON)</FieldLabel>
               <Controller

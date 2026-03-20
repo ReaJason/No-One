@@ -17,6 +17,9 @@ spring:
     url: jdbc:postgresql://localhost:5432/noone
     username: noone
     password: noone
+  threads:
+    virtual:
+      enabled: true
 jwt:
   secret: "u3SJYZOHd06qmX+AsSHKy9Mab8f3ciIWCQiqVvhsqlYZ9+HRmKp7akyzibfn1OdVMqCE2zjz1iHeWyj1Kg5zrg"
 noone:

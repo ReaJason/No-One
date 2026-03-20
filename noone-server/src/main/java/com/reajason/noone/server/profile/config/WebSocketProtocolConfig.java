@@ -29,7 +29,5 @@ public class WebSocketProtocolConfig extends ProtocolConfig {
     private String messageTemplate;
 
     private String responseTemplate;
-
-    private MessageFormat messageFormat = MessageFormat.TEXT;
 }
 

@@ -87,14 +87,18 @@ public class ShellConnectionPool {
         Client coreClient = null;
         if (profile.getProtocolType() == ProtocolType.HTTP) {
             coreClient = new HttpClient(shell.getUrl(), config);
+        } else if (profile.getProtocolType() == ProtocolType.WEBSOCKET) {
+            coreClient = new WebSocketClient(shell.getUrl(), config);
         }
 
         ShellLanguage language = effectiveLanguage(shell);
         Client loaderClient = null;
         if (shell.getStaging()) {
             ClientConfig loaderConfig = buildClientConfig(shell, loaderProfile);
-            if (profile.getProtocolType() == ProtocolType.HTTP) {
+            if (loaderProfile.getProtocolType() == ProtocolType.HTTP) {
                 loaderClient = new HttpClient(shell.getUrl(), loaderConfig);
+            } else if (loaderProfile.getProtocolType() == ProtocolType.WEBSOCKET) {
+                loaderClient = new WebSocketClient(shell.getUrl(), loaderConfig);
             }
         }
 
@@ -177,6 +181,9 @@ public class ShellConnectionPool {
             if (wsConfig.getHandshakeHeaders() != null) {
                 requestHeaders.putAll(wsConfig.getHandshakeHeaders());
             }
+            builder.requestTemplate(wsConfig.getMessageTemplate());
+            builder.responseTemplate(wsConfig.getResponseTemplate());
+            builder.responseBodyType(HttpResponseBodyType.BINARY);
         }
     }
 

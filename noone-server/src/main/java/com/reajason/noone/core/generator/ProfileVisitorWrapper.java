@@ -11,10 +11,7 @@ import com.reajason.noone.core.generator.protocol.reactor.ReactorGetPayloadFromR
 import com.reajason.noone.core.generator.protocol.servlet.ServletGetPayloadFromRequestWrapper;
 import com.reajason.noone.core.generator.transform.TransformWrapper;
 import com.reajason.noone.server.profile.Profile;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.HttpRequestBodyType;
-import com.reajason.noone.server.profile.config.IdentifierConfig;
-import com.reajason.noone.server.profile.config.ProtocolConfig;
+import com.reajason.noone.server.profile.config.*;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.implementation.FixedValue;
 
@@ -29,7 +26,9 @@ public class ProfileVisitorWrapper {
 
         ProtocolConfig protocolConfig = profile.getProtocolConfig();
         if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
-            builder = applyHttpProtocolConfig(builder, httpConfig, shellType, shellClassName);
+            builder = applyHttpProtocolConfig(builder, httpConfig, shellClassName, shellType);
+        } else if (protocolConfig instanceof WebSocketProtocolConfig wsConfig) {
+            builder = applyWsProtocolConfig(builder, wsConfig, shellClassName);
         }
 
         builder = TransformWrapper.extend(builder, profile);
@@ -59,8 +58,8 @@ public class ProfileVisitorWrapper {
     private static DynamicType.Builder<?> applyHttpProtocolConfig(
             DynamicType.Builder<?> builder,
             HttpProtocolConfig httpConfig,
-            String shellType,
-            String shellClassName
+            String shellClassName,
+            String shellType
     ) {
         HttpRequestBodyType requestBodyType = httpConfig.getRequestBodyType();
         String requestTemplate = httpConfig.getRequestTemplate();
@@ -79,6 +78,18 @@ public class ProfileVisitorWrapper {
         builder = WrapResWrapper.extend(builder, shellType,
                 httpConfig.getResponseStatusCode(), httpConfig.getResponseHeaders());
 
+        return builder;
+    }
+
+    private static DynamicType.Builder<?> applyWsProtocolConfig(
+            DynamicType.Builder<?> builder,
+            WebSocketProtocolConfig wsProtocolConfig,
+            String shellClassName
+    ) {
+        String messageTemplate = wsProtocolConfig.getMessageTemplate();
+        String responseTemplate = wsProtocolConfig.getResponseTemplate();
+        builder = NettyGetPayloadFromContentWrapper.extend(builder, HttpRequestBodyType.BINARY, messageTemplate);
+        builder = WrapResDataWrapper.extend(builder, shellClassName, HttpResponseBodyType.BINARY, responseTemplate);
         return builder;
     }
 

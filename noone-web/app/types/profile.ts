@@ -179,7 +179,6 @@ export const HTTP_IDENTIFIER_LOCATION_OPTIONS = [
 
 export const WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS = [
   { label: "Handshake Header", value: "HANDSHAKE_HEADER" },
-  { label: "Message Frame", value: "MESSAGE_FRAME" },
 ];
 
 export const REQUEST_BODY_TYPE_OPTIONS = [
