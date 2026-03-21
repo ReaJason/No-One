@@ -1,6 +1,7 @@
 package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.ShellConnection;
+import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.exception.RequestSendException;
 import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
 import com.reajason.noone.server.plugin.JavaPluginPayloadService;
@@ -98,6 +99,7 @@ class ShellServicePingTest {
         when(connection.checkStatus())
                 .thenThrow(new RequestSendException("status probe failed", 1, new RuntimeException("io")))
                 .thenReturn(true);
+        when(connection.getLoaderClient()).thenReturn(mock(Client.class));
         when(connection.init()).thenReturn(true);
 
         Map<String, Object> result = shellService.ping(shellId);

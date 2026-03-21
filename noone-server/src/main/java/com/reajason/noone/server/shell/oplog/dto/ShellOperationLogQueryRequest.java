@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class ShellOperationLogQueryRequest {
+    private Long shellId;
     private String pluginId;
     private String operation;
     private Boolean success;

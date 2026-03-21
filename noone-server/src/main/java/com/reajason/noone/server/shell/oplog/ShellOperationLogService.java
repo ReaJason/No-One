@@ -90,6 +90,29 @@ public class ShellOperationLogService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ShellOperationLogResponse> queryAll(ShellOperationLogQueryRequest request) {
+        String username = getCurrentUsername();
+
+        Sort sort = Sort.by(
+                "desc".equalsIgnoreCase(request.getSortOrder()) ? Sort.Direction.DESC : Sort.Direction.ASC,
+                request.getSortBy());
+        Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize(), sort);
+
+        ShellOperationType operationType = null;
+        if (request.getOperation() != null && !request.getOperation().isBlank()) {
+            operationType = ShellOperationType.valueOf(request.getOperation().toUpperCase());
+        }
+
+        Specification<ShellOperationLog> spec = ShellOperationLogSpecifications.hasShellId(request.getShellId())
+                .and(ShellOperationLogSpecifications.hasUsername(username))
+                .and(ShellOperationLogSpecifications.hasPluginId(request.getPluginId()))
+                .and(ShellOperationLogSpecifications.hasOperation(operationType))
+                .and(ShellOperationLogSpecifications.isSuccess(request.getSuccess()));
+
+        return repository.findAll(spec, pageable).map(mapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<ShellOperationLogResponse> getLatestSuccessful(Long shellId, String pluginId) {
         String username = getCurrentUsername();
         return repository.findFirstByShellIdAndUsernameAndPluginIdAndSuccessTrueOrderByCreatedAtDesc(

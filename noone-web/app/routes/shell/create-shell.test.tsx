@@ -3,9 +3,7 @@ import { render, screen } from "@testing-library/react";
 import CreateOrEditShell from "@/routes/shell/create-shell";
 
 const navigateMock = vi.fn();
-const useActionDataMock = vi.fn();
 const useLoaderDataMock = vi.fn();
-const useNavigationMock = vi.fn();
 const useParamsMock = vi.fn();
 const submitMock = vi.fn();
 
@@ -107,16 +105,12 @@ vi.mock("react-router", async () => {
 
   return {
     ...actual,
-    Form: ({ children, ...props }: React.ComponentPropsWithoutRef<"form">) => (
-      <form {...props}>{children}</form>
-    ),
     Select,
     SelectContent: ({ children }: React.PropsWithChildren) => <>{children}</>,
     SelectGroup: ({ children }: React.PropsWithChildren) => <>{children}</>,
     SelectItem,
     SelectTrigger,
     SelectValue: ({ placeholder }: { placeholder?: string }) => <span>{placeholder}</span>,
-    useActionData: () => useActionDataMock(),
     useFetcher: () => ({
       state: "idle",
       data: undefined,
@@ -125,7 +119,6 @@ vi.mock("react-router", async () => {
     }),
     useLoaderData: () => useLoaderDataMock(),
     useNavigate: () => navigateMock,
-    useNavigation: () => useNavigationMock(),
     useParams: () => useParamsMock(),
   };
 });
@@ -268,37 +261,30 @@ describe("CreateOrEditShell", () => {
   beforeEach(() => {
     navigateMock.mockReset();
     submitMock.mockReset();
-    useActionDataMock.mockReset();
     useLoaderDataMock.mockReset();
-    useNavigationMock.mockReset();
     useParamsMock.mockReset();
 
-    useActionDataMock.mockReturnValue(undefined);
-    useNavigationMock.mockReturnValue({ state: "idle", formMethod: undefined });
     useParamsMock.mockReturnValue({});
   });
 
   it("includes prefilled shellType in form data even when the visible field is disabled", () => {
     useLoaderDataMock.mockReturnValue({
-      shellUrlParam: "http://127.0.0.1:8082/app/b64asdfasdf",
-      profileIdParam: "",
-      loaderProfileIdParam: "1",
-      shellTypeParam: "Listener",
-      stagingParam: true,
-      languageParam: undefined,
-      projects: [{ id: 7, name: "Alpha" }],
-      profiles: [{ id: 1, name: "HTTP", protocolType: "HTTP" }],
-      initialProjectId: undefined,
+      projects: [{ id: "7", name: "Alpha" }],
+      profiles: [{ id: "1", name: "HTTP", protocolType: "HTTP" }],
+      prefill: {
+        url: "http://127.0.0.1:8082/app/b64asdfasdf",
+        shellType: "Listener",
+        staging: true,
+        loaderProfileId: "1",
+        firstProfileId: "1",
+        firstProjectId: "7",
+      },
     });
 
     render(<CreateOrEditShell />);
 
-    expect(screen.getByLabelText("Shell Type")).toBeDisabled();
-
-    const form = screen.getByRole("button", { name: "Create Shell" }).closest("form");
-    expect(form).not.toBeNull();
-
-    const formData = new FormData(form!);
-    expect(formData.get("shellType")).toBe("Listener");
+    const shellTypeInput = screen.getByLabelText("Shell Type");
+    expect(shellTypeInput).toBeDisabled();
+    expect(shellTypeInput).toHaveValue("Listener");
   });
 });

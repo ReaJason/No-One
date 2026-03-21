@@ -2,7 +2,7 @@ export interface ShellOperationLog {
   id: number;
   shellId: number;
   username: string;
-  operation: "TEST" | "DISPATCH";
+  operation: "TEST" | "DISPATCH" | "LOAD_PLUGIN" | "LOAD_CORE";
   pluginId: string | null;
   action: string | null;
   args: Record<string, unknown> | null;

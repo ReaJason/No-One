@@ -4,6 +4,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import {
   AlertCircle,
+  ClipboardList,
   Edit,
   Loader,
   MoreHorizontal,
@@ -151,6 +152,10 @@ function ShellActionsCell({ shell }: { shell: ShellConnection }) {
     window.open(`/shells/${shell.id}/connect`, "_blank");
   };
 
+  const handleViewOperations = () => {
+    navigate(`/shell-operations?shellId=${shell.id}`);
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -171,6 +176,10 @@ function ShellActionsCell({ shell }: { shell: ShellConnection }) {
           <DropdownMenuItem onClick={handleConnectShell}>
             <Terminal className="mr-2 h-4 w-4" />
             Connect
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleViewOperations}>
+            <ClipboardList className="mr-2 h-4 w-4" />
+            Operations
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -219,6 +228,15 @@ export function getShellColumns({
       size: 40,
     },
     {
+      id: "name",
+      accessorKey: "name",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Name" />,
+      cell: ({ cell }) => cell.getValue(),
+      enableColumnFilter: false,
+      enableSorting: false,
+      size: 150,
+    },
+    {
       id: "url",
       accessorKey: "url",
       header: ({ column }) => <DataTableColumnHeader column={column} label="URL" />,
@@ -236,6 +254,7 @@ export function getShellColumns({
         placeholder: "Search by URL...",
       },
       enableColumnFilter: true,
+      enableSorting: false,
       size: 300,
     },
     {
@@ -289,27 +308,21 @@ export function getShellColumns({
       size: 200,
     },
     {
-      id: "projectId",
-      accessorKey: "projectId",
-      header: ({ column }) => <DataTableColumnHeader column={column} label="Project" />,
+      id: "os",
+      accessorKey: "os",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="OS" />,
       cell: ({ row }) => {
-        const projectId = row.getValue("projectId") as number | null | undefined;
-        if (typeof projectId !== "number") {
-          return <span className="text-sm text-muted-foreground">No project</span>;
+        const os = row.getValue("os");
+        if (os) {
+          return `${os} ${row.original.arch ?? ""}`.trim();
         }
-        const projectName = projectMap.get(projectId);
-        return (
-          <Badge variant="outline" className="py-1">
-            {projectName ?? `#${projectId}`}
-          </Badge>
-        );
+        return "Unknown";
       },
       meta: {
-        label: "Project",
-        variant: "select",
-        options: projectOptions,
+        label: "OS",
       },
-      enableColumnFilter: true,
+      enableSorting: false,
+      enableColumnFilter: false,
     },
     {
       id: "status",
@@ -347,21 +360,27 @@ export function getShellColumns({
       size: 200,
     },
     {
-      id: "os",
-      accessorKey: "os",
-      header: ({ column }) => <DataTableColumnHeader column={column} label="OS" />,
+      id: "projectId",
+      accessorKey: "projectId",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="Project" />,
       cell: ({ row }) => {
-        const os = row.getValue("os");
-        if (os) {
-          return `${os} ${row.original.arch ?? ""}`.trim();
+        const projectId = row.getValue("projectId") as number | null | undefined;
+        if (typeof projectId !== "number") {
+          return <span className="text-sm text-muted-foreground">No project</span>;
         }
-        return "Unknown";
+        const projectName = projectMap.get(projectId);
+        return (
+          <Badge variant="outline" className="py-1">
+            {projectName ?? `#${projectId}`}
+          </Badge>
+        );
       },
       meta: {
-        label: "OS",
+        label: "Project",
+        variant: "select",
+        options: projectOptions,
       },
-      enableSorting: false,
-      enableColumnFilter: false,
+      enableColumnFilter: true,
     },
     {
       id: "lastOnlineAt",

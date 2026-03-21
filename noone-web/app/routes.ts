@@ -45,6 +45,7 @@ export default [
     ]),
     route("/settings", "routes/settings.tsx"),
     route("/audit", "routes/audit.tsx"),
+    route("/shell-operations", "routes/shell-operations.tsx"),
     ...prefix("admin", [
       ...prefix("users", [
         index("routes/admin/users.tsx"),

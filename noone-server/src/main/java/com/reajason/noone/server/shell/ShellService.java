@@ -170,6 +170,7 @@ public class ShellService {
         long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+            initCoreIfNeeded(connection, id);
             boolean connected = connection.test();
 
             if (connected) {
@@ -210,20 +211,12 @@ public class ShellService {
         long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            boolean result = connection.init();
+            initCoreIfNeeded(connection, id);
             long durationMs = System.currentTimeMillis() - start;
-
-            if (!result) {
-                shellOperationLogService.record(id, ShellOperationType.TEST, null, "init-core",
-                        null, Map.of("success", false), false, "Core injection returned false", durationMs);
-            }
-
-            return Map.of("success", result, "staging", true, "skipped", false, "durationMs", durationMs);
+            return Map.of("success", true, "staging", true, "skipped", false, "durationMs", durationMs);
         } catch (Exception e) {
             long durationMs = System.currentTimeMillis() - start;
             log.error("Core injection failed for shell: {}", id, e);
-            shellOperationLogService.record(id, ShellOperationType.TEST, null, "init-core",
-                    null, null, false, safeMessage(e), durationMs);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
@@ -254,10 +247,7 @@ public class ShellService {
                 recoveryAttempted = true;
                 log.info("Ping status probe failed for shell {}, attempting core reinjection", id, firstProbeError);
 
-                boolean initResult = connection.init();
-                if (!initResult) {
-                    throw new ShellRequestException("Core reinjection returned false", false);
-                }
+                initCoreIfNeeded(connection, id);
 
                 connected = connection.checkStatus();
                 recovered = true;
@@ -330,6 +320,7 @@ public class ShellService {
         tempShell.setRetryDelayMs(request.getRetryDelayMs());
         try {
             ShellConnection connection = shellConnectionPool.createUncached(tempShell);
+            connection.init();
             return new HashMap<>() {{
                 put("connected", connection.test());
             }};
@@ -365,7 +356,7 @@ public class ShellService {
         long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            ensurePluginCacheSnapshot(connection);
+            ensurePluginCacheSnapshot(connection, shellId);
 
             String runMode = resolveRunMode(plugin);
             boolean isTaskAction = action != null && action.startsWith("_task_");
@@ -383,7 +374,7 @@ public class ShellService {
                 return executeViaTaskManager(connection, shellLanguage, plugin, pluginId, "schedule", args, shellId, start);
             }
 
-            ensurePluginLoaded(connection, plugin, shellLanguage);
+            ensurePluginLoaded(connection, plugin, shellLanguage, shellId);
             Map<String, Object> result = connection.runPlugin(pluginId, args);
             Map<String, Object> response = handleShellConnectionResult(result);
             if (isSuccess(response.get(Constants.CODE))) {
@@ -448,7 +439,7 @@ public class ShellService {
         Plugin plugin = findPlugin(pluginId, shellLanguage)
                 .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + pluginId));
         ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-        loadPlugin(connection, plugin, shellLanguage, true);
+        loadPlugin(connection, plugin, shellLanguage, true, shellId);
         return toPluginStatus(plugin, connection);
     }
 
@@ -471,10 +462,10 @@ public class ShellService {
                                                       Plugin plugin, String pluginId, String taskOp,
                                                       Map<String, Object> originalArgs,
                                                       Long shellId, long start) {
-        ensureInfrastructurePluginLoaded(connection, TASK_MANAGER_PLUGIN_ID, shellLanguage);
+        ensureInfrastructurePluginLoaded(connection, TASK_MANAGER_PLUGIN_ID, shellLanguage, shellId);
         boolean requiresTargetPlugin = "submit".equals(taskOp) || "schedule".equals(taskOp);
         if (requiresTargetPlugin) {
-            ensurePluginLoaded(connection, plugin, shellLanguage);
+            ensurePluginLoaded(connection, plugin, shellLanguage, shellId);
         }
 
         Map<String, Object> taskManagerArgs = new HashMap<>();
@@ -511,29 +502,30 @@ public class ShellService {
         return response;
     }
 
-    private void ensurePluginLoaded(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage) {
+    private void ensurePluginLoaded(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, Long shellId) {
         if (plugin != null && connection.needLoadPlugin(plugin.getPluginId())) {
-            loadPlugin(connection, plugin, shellLanguage, false);
+            loadPlugin(connection, plugin, shellLanguage, false, shellId);
         }
     }
 
-    private void ensureInfrastructurePluginLoaded(ShellConnection connection, String pluginId, ShellLanguage shellLanguage) {
+    private void ensureInfrastructurePluginLoaded(ShellConnection connection, String pluginId, ShellLanguage shellLanguage, Long shellId) {
         Optional<Plugin> pluginOptional = findPlugin(pluginId, shellLanguage);
         if (pluginOptional.isEmpty()) {
             return;
         }
         Plugin plugin = pluginOptional.get();
         if (connection.needLoadPlugin(pluginId)) {
-            loadPlugin(connection, plugin, shellLanguage, false);
+            loadPlugin(connection, plugin, shellLanguage, false, shellId);
             return;
         }
         if (connection.isPluginOutdated(pluginId, plugin.getVersion())) {
-            loadPlugin(connection, plugin, shellLanguage, true);
+            loadPlugin(connection, plugin, shellLanguage, true, shellId);
         }
     }
 
-    private void ensurePluginCacheSnapshot(ShellConnection connection) {
+    private void ensurePluginCacheSnapshot(ShellConnection connection, Long shellId) {
         if (!connection.isPluginCacheInitialized()) {
+            initCoreIfNeeded(connection, shellId);
             connection.test();
         }
     }
@@ -587,7 +579,24 @@ public class ShellService {
         return 0;
     }
 
-    private void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh) {
+    private void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh, Long shellId) {
+        String action = forceRefresh ? "refresh" : "load";
+        long start = System.currentTimeMillis();
+        Map<String, Object> args = Map.of("pluginId", plugin.getPluginId(), "version", plugin.getVersion(), "forceRefresh", forceRefresh);
+        try {
+            doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.LOAD_PLUGIN, plugin.getPluginId(), action,
+                    args, Map.of("success", true), true, null, durationMs);
+        } catch (Exception e) {
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.LOAD_PLUGIN, plugin.getPluginId(), action,
+                    args, null, false, safeMessage(e), durationMs);
+            throw e;
+        }
+    }
+
+    private void doLoadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh) {
         byte[] payloadBytes = pluginPayloadBytes(shellLanguage, plugin);
         if (shellLanguage != ShellLanguage.JAVA) {
             if (forceRefresh) {
@@ -632,6 +641,24 @@ public class ShellService {
 
     private boolean shouldAttemptPingRecovery(Shell shell, ShellCommunicationException exception) {
         return Boolean.TRUE.equals(shell.getStaging()) && !(exception instanceof ResponseBusinessException);
+    }
+
+    private void initCoreIfNeeded(ShellConnection connection, Long shellId) {
+        if (connection.getLoaderClient() == null) {
+            return;
+        }
+        long start = System.currentTimeMillis();
+        try {
+            boolean result = connection.init();
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.LOAD_CORE, null, "init-core",
+                    null, Map.of("success", result), result, result ? null : "Core injection returned false", durationMs);
+        } catch (Exception e) {
+            long durationMs = System.currentTimeMillis() - start;
+            shellOperationLogService.record(shellId, ShellOperationType.LOAD_CORE, null, "init-core",
+                    null, null, false, safeMessage(e), durationMs);
+            throw e;
+        }
     }
 
     private void recordDispatch(Long shellId, String pluginId, String action, Map<String, Object> args,

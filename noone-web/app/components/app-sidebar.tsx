@@ -1,5 +1,6 @@
 import {
   Cable,
+  ClipboardList,
   Folder,
   Home,
   Key,
@@ -145,6 +146,12 @@ export function AppSidebar() {
       url: "/plugins",
       icon: PlugZap2,
       visible: canAccessSystemMenu("plugin:list"),
+    },
+    {
+      title: "Operations",
+      url: "/shell-operations",
+      icon: ClipboardList,
+      visible: canAccessSystemMenu("shell:operation:read"),
     },
     {
       title: "Audit",

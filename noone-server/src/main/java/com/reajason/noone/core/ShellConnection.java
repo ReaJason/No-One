@@ -127,7 +127,6 @@ public abstract class ShellConnection {
     }
 
     public boolean test() {
-        init();
         return checkStatus();
     }
 
