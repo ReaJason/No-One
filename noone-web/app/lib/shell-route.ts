@@ -15,12 +15,14 @@ export type ShellRouteResult<T> = ShellRouteSuccess<T> | ShellRouteFailure;
 export function buildShellRouteFormData(
   intent: string,
   payload: unknown,
-  requestId: string,
+  requestId?: string,
 ): FormData {
   const formData = new FormData();
   formData.set("intent", intent);
   formData.set("payload", JSON.stringify(payload));
-  formData.set("requestId", requestId);
+  if (requestId) {
+    formData.set("requestId", requestId);
+  }
   return formData;
 }
 

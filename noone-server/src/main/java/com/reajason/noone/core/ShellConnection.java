@@ -137,10 +137,7 @@ public abstract class ShellConnection {
             pluginCache.initialize(toPluginCacheMap(response.get(Constants.PLUGIN_CACHES)));
             return true;
         }
-        if (code == Constants.FAILURE) {
-            throw new ResponseBusinessException("Shell status request failed: " + errorMessage(response));
-        }
-        throw new ResponseDecodeException("Unexpected status response code: " + code);
+        throw new ResponseBusinessException("Shell status request failed: " + errorMessage(response));
     }
 
     public void loadPlugin(String pluginName, byte[] pluginCodeBytes) {
@@ -173,10 +170,7 @@ public abstract class ShellConnection {
             pluginCache.put(pluginName, version);
             return;
         }
-        if (code == Constants.FAILURE) {
-            throw new ResponseBusinessException("Load plugin failed: " + errorMessage(response));
-        }
-        throw new ResponseDecodeException("Unexpected load response code: " + code);
+        throw new ResponseBusinessException("Load plugin failed: " + errorMessage(response));
     }
 
     private int requireResponseCode(Map<String, Object> response, String action) {

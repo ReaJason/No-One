@@ -71,7 +71,7 @@
     "@types/react-copy-to-clipboard": "^5.0.7",
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "jsdom": "^29.0.0",
+    "jsdom": "^29.0.1",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
     "tailwindcss": "^4.2.2",

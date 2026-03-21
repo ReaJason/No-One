@@ -19,9 +19,9 @@ public class ShellCoreInitHelper {
 
     private final ApplicationEventPublisher eventPublisher;
 
-    public boolean initCoreIfNeeded(ShellConnection connection, Long shellId) {
+    public void initCoreIfNeeded(ShellConnection connection, Long shellId) {
         if (connection.getLoaderClient() == null) {
-            return true;
+            return;
         }
         long start = System.currentTimeMillis();
         String username = getCurrentUsername();
@@ -32,7 +32,6 @@ public class ShellCoreInitHelper {
                     shellId, username, ShellOperationType.LOAD_CORE,
                     null, "init-core", null, Map.of("success", result),
                     result, result ? null : "Core injection returned false", durationMs));
-            return result;
         } catch (Exception e) {
             long durationMs = System.currentTimeMillis() - start;
             eventPublisher.publishEvent(new ShellOperationLogEvent(

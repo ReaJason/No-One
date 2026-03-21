@@ -279,12 +279,6 @@ public class ShellService {
             return new HashMap<>() {{
                 put("connected", connection.test());
             }};
-        } catch (ShellRequestException e) {
-            log.error("Failed to test shell connection", e);
-            return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);
-        } catch (ShellResponseException e) {
-            log.error("Failed to test shell connection", e);
-            return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);
         } catch (Exception e) {
             log.error("Failed to test shell connection", e);
             return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);

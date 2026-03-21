@@ -156,7 +156,6 @@ public class ShellPluginService {
         doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);
     }
 
-    @SuppressWarnings("unchecked")
     private Map<String, Object> executeViaTaskManager(ShellConnection connection, ShellLanguage shellLanguage,
                                                       Plugin plugin, String pluginId, String taskOp,
                                                       Map<String, Object> originalArgs,

@@ -736,6 +736,7 @@ export default function FileManager({
   const [nameFilter, setNameFilter] = useState("");
   const [listVersion, setListVersion] = useState(0);
   const [operationState, setOperationState] = useState<OperationState | null>(null);
+  const [submittingAction, setSubmittingAction] = useState(false);
 
   const pendingNavigationRef = useRef<(() => void) | null>(null);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -1736,6 +1737,7 @@ export default function FileManager({
       ? (entryByPath.get(pendingAction.targetPath) ?? null)
       : null;
 
+    setSubmittingAction(true);
     try {
       if (pendingAction.type === "rename") {
         if (!actionTarget) {
@@ -1963,6 +1965,8 @@ export default function FileManager({
     } catch (error) {
       const message = error instanceof Error ? error.message : "Operation failed";
       toast.error(message);
+    } finally {
+      setSubmittingAction(false);
     }
   }, [
     currentPath,
@@ -2592,10 +2596,17 @@ export default function FileManager({
           ) : null}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPendingAction(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setPendingAction(null)}
+              disabled={submittingAction}
+            >
               Cancel
             </Button>
-            <Button onClick={() => void handleSubmitPendingAction()}>Apply</Button>
+            <Button onClick={() => void handleSubmitPendingAction()} disabled={submittingAction}>
+              {submittingAction && <Spinner className="size-3.5" />}
+              Apply
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
