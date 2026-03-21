@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CommandExecuteNormalizer {
+public class CommandExecuteNormalizer implements PluginNormalizer {
     private static final String CMD_PLACEHOLDER = "{{cmd}}";
     private static final String CWD_PLACEHOLDER = "{{cwd}}";
 

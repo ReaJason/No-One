@@ -66,6 +66,31 @@ public class ShellOperationLogService {
         }
     }
 
+    @Transactional
+    public void record(ShellOperationLogEvent event) {
+        try {
+            ShellOperationLog opLog = new ShellOperationLog();
+            opLog.setShellId(event.shellId());
+            opLog.setUsername(event.username());
+            opLog.setOperation(event.operation());
+            opLog.setPluginId(event.pluginId());
+            opLog.setAction(event.action());
+            opLog.setArgs(event.args());
+            opLog.setSuccess(event.success());
+            opLog.setErrorMessage(truncate(event.errorMessage(), 2000));
+            opLog.setDurationMs(event.durationMs());
+
+            if (shouldStoreResult(event.pluginId(), event.action())) {
+                opLog.setResult(truncateResult(event.result()));
+            }
+
+            repository.save(opLog);
+        } catch (Exception e) {
+            log.warn("Failed to record shell operation log from event: shellId={}, operation={}",
+                    event.shellId(), event.operation(), e);
+        }
+    }
+
     @Transactional(readOnly = true)
     public Page<ShellOperationLogResponse> query(Long shellId, ShellOperationLogQueryRequest request) {
         String username = getCurrentUsername();

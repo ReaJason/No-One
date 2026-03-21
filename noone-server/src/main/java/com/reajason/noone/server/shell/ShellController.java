@@ -4,7 +4,6 @@ import com.reajason.noone.server.shell.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -86,33 +85,5 @@ public class ShellController {
     public ResponseEntity<Map<String, Object>> testConfig(
             @Valid @RequestBody ShellTestConfigRequest request) {
         return ResponseEntity.ok(shellService.testConfig(request));
-    }
-
-    @PostMapping("/{id}/dispatch")
-    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
-    public ResponseEntity<Map<String, Object>> dispatch(@PathVariable Long id, @RequestBody ShellPluginDispatchRequest pluginDispatchRequest) {
-        Map<String, Object> args = pluginDispatchRequest.getArgs();
-        if (StringUtils.isNotBlank(pluginDispatchRequest.getAction())) {
-            args.put("action", pluginDispatchRequest.getAction());
-        }
-        return ResponseEntity.ok(shellService.dispatchPlugin(id, pluginDispatchRequest.getPluginId(), args));
-    }
-
-    @GetMapping("/{id}/plugins/statuses")
-    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
-    public ResponseEntity<Map<String, ShellPluginStatusResponse>> getAllPluginStatuses(@PathVariable Long id) {
-        return ResponseEntity.ok(shellService.getAllPluginStatuses(id));
-    }
-
-    @GetMapping("/{id}/plugins/{pluginId}/status")
-    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
-    public ResponseEntity<ShellPluginStatusResponse> getPluginStatus(@PathVariable Long id, @PathVariable String pluginId) {
-        return ResponseEntity.ok(shellService.getPluginStatus(id, pluginId));
-    }
-
-    @PostMapping("/{id}/plugins/{pluginId}/update")
-    @PreAuthorize("@authorizationService.hasSystemPermission('shell:dispatch')")
-    public ResponseEntity<ShellPluginStatusResponse> updatePlugin(@PathVariable Long id, @PathVariable String pluginId) {
-        return ResponseEntity.ok(shellService.updatePlugin(id, pluginId));
     }
 }

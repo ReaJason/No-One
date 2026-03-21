@@ -7,15 +7,15 @@ import com.reajason.noone.core.exception.ResponseDecodeException;
 import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
 import com.reajason.noone.server.plugin.JavaPluginPayloadService;
 import com.reajason.noone.server.plugin.Plugin;
+import com.reajason.noone.server.plugin.PluginRepository;
 import com.reajason.noone.server.shell.dto.ShellPluginStatusResponse;
-import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -28,35 +28,40 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
-class ShellServiceDispatchPluginTest {
+class ShellPluginServiceTest {
 
-    private ShellService shellService;
+    private ShellPluginService shellPluginService;
     private ShellRepository shellRepository;
     private ShellConnectionPool shellConnectionPool;
     private ShellStatusUpdater shellStatusUpdater;
-    private ShellMapper shellMapper;
-    private ShellOperationLogService shellOperationLogService;
     private JavaPluginPayloadService javaPluginPayloadService;
     private BuiltinPluginRegistryService builtinPluginRegistryService;
+    private PluginRepository pluginRepository;
+    private ShellLookupHelper shellLookupHelper;
+    private ShellCoreInitHelper shellCoreInitHelper;
 
     @BeforeEach
     void setUp() {
-        shellService = new ShellService();
+        shellPluginService = new ShellPluginService();
         shellRepository = mock(ShellRepository.class);
         shellConnectionPool = mock(ShellConnectionPool.class);
         shellStatusUpdater = mock(ShellStatusUpdater.class);
-        shellMapper = mock(ShellMapper.class);
-        shellOperationLogService = mock(ShellOperationLogService.class);
         javaPluginPayloadService = mock(JavaPluginPayloadService.class);
         builtinPluginRegistryService = mock(BuiltinPluginRegistryService.class);
+        pluginRepository = mock(PluginRepository.class);
+        shellLookupHelper = mock(ShellLookupHelper.class);
+        shellCoreInitHelper = mock(ShellCoreInitHelper.class);
 
-        ReflectionTestUtils.setField(shellService, "shellRepository", shellRepository);
-        ReflectionTestUtils.setField(shellService, "shellConnectionPool", shellConnectionPool);
-        ReflectionTestUtils.setField(shellService, "shellStatusUpdater", shellStatusUpdater);
-        ReflectionTestUtils.setField(shellService, "shellMapper", shellMapper);
-        ReflectionTestUtils.setField(shellService, "shellOperationLogService", shellOperationLogService);
-        ReflectionTestUtils.setField(shellService, "javaPluginPayloadService", javaPluginPayloadService);
-        ReflectionTestUtils.setField(shellService, "builtinPluginRegistryService", builtinPluginRegistryService);
+        ReflectionTestUtils.setField(shellPluginService, "shellRepository", shellRepository);
+        ReflectionTestUtils.setField(shellPluginService, "shellConnectionPool", shellConnectionPool);
+        ReflectionTestUtils.setField(shellPluginService, "shellStatusUpdater", shellStatusUpdater);
+        ReflectionTestUtils.setField(shellPluginService, "javaPluginPayloadService", javaPluginPayloadService);
+        ReflectionTestUtils.setField(shellPluginService, "builtinPluginRegistryService", builtinPluginRegistryService);
+        ReflectionTestUtils.setField(shellPluginService, "pluginRepository", pluginRepository);
+        ReflectionTestUtils.setField(shellPluginService, "shellResponseHelper", new ShellResponseHelper());
+        ReflectionTestUtils.setField(shellPluginService, "shellLookupHelper", shellLookupHelper);
+        ReflectionTestUtils.setField(shellPluginService, "shellPluginPayloadResolver", new ShellPluginPayloadResolver());
+        ReflectionTestUtils.setField(shellPluginService, "shellCoreInitHelper", shellCoreInitHelper);
     }
 
     @Test
@@ -64,13 +69,13 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 1L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.needLoadPlugin("command-execute")).thenReturn(false);
         when(connection.runPlugin(eq("command-execute"), any()))
                 .thenThrow(new RequestSendException("send failed", 2, new RuntimeException("io")));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("REQUEST", response.get("phase"));
@@ -84,13 +89,13 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 2L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.needLoadPlugin("system-info")).thenReturn(false);
         when(connection.runPlugin(eq("system-info"), any()))
                 .thenThrow(new ResponseDecodeException("decode failed"));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("RESPONSE", response.get("phase"));
@@ -104,13 +109,13 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 3L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.needLoadPlugin("command-execute")).thenReturn(false);
         when(connection.runPlugin(eq("command-execute"), any()))
                 .thenReturn(Map.of(Constants.CODE, Constants.FAILURE, Constants.ERROR, "remote plugin failure"));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "id"));
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "id"));
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("remote plugin failure", response.get(Constants.ERROR));
@@ -122,10 +127,10 @@ class ShellServiceDispatchPluginTest {
     void shouldReturnInternalFailureWithoutChangingStatusWhenUnexpectedExceptionOccurs() {
         Long shellId = 5L;
         Shell shell = shell(shellId);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenThrow(new IllegalStateException("pool failed"));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("INTERNAL", response.get("phase"));
@@ -139,7 +144,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 6L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("system-info")).thenReturn(true);
@@ -152,7 +157,7 @@ class ShellServiceDispatchPluginTest {
         when(connection.runPlugin(eq("system-info"), any()))
                 .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of()));
 
-        shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         verify(connection).loadPlugin(
                 eq("system-info"),
@@ -168,7 +173,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 7L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("missing-plugin")).thenReturn(true);
@@ -176,7 +181,7 @@ class ShellServiceDispatchPluginTest {
         when(connection.runPlugin(eq("missing-plugin"), any()))
                 .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of()));
 
-        shellService.dispatchPlugin(shellId, "missing-plugin", Map.of());
+        shellPluginService.dispatchPlugin(shellId, "missing-plugin", Map.of());
 
         verify(connection, never()).loadPlugin(anyString(), any(byte[].class));
         verify(connection).runPlugin(eq("missing-plugin"), any());
@@ -188,13 +193,13 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 8L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.needLoadPlugin("command-execute")).thenReturn(false);
         when(connection.runPlugin(eq("command-execute"), any()))
                 .thenReturn(Map.of(Constants.ERROR, "business error"));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "id"));
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "id"));
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("business error", response.get(Constants.ERROR));
@@ -207,7 +212,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 9L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("system-info")).thenReturn(true);
@@ -221,7 +226,7 @@ class ShellServiceDispatchPluginTest {
                 .when(connection)
                 .loadPlugin(eq("system-info"), eq("0.0.1"), any(byte[].class));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("REQUEST", response.get("phase"));
@@ -234,7 +239,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 10L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("system-info")).thenReturn(true);
@@ -248,7 +253,7 @@ class ShellServiceDispatchPluginTest {
                 .when(connection)
                 .loadPlugin(eq("system-info"), eq("0.0.1"), any(byte[].class));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("RESPONSE", response.get("phase"));
@@ -262,14 +267,14 @@ class ShellServiceDispatchPluginTest {
         Shell shell = shell(shellId);
         shell.setLanguage(ShellLanguage.DOTNET);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("system-info")).thenReturn(true);
         when(builtinPluginRegistryService.findOrRegister("system-info", "dotnet"))
                 .thenReturn(Optional.of(plugin("system-info", "using System; class FakePlugin {}")));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "system-info", Map.of());
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "system-info", Map.of());
 
         assertEquals(Constants.FAILURE, response.get(Constants.CODE));
         assertEquals("INTERNAL", response.get("phase"));
@@ -285,7 +290,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 12L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("command-execute")).thenReturn(false);
@@ -294,7 +299,7 @@ class ShellServiceDispatchPluginTest {
         when(connection.runPlugin(eq("command-execute"), any()))
                 .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of("stdout", "whoami")));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "command-execute", Map.of("cmd", "whoami"));
 
         assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
         verify(connection).runPlugin(eq("command-execute"), any());
@@ -305,7 +310,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 13L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.test()).thenReturn(true);
         when(connection.getLoadedPluginVersion("file-manager")).thenReturn("0.0.1");
@@ -313,7 +318,7 @@ class ShellServiceDispatchPluginTest {
         when(builtinPluginRegistryService.findOrRegister("file-manager", "java"))
                 .thenReturn(Optional.of(plugin("file-manager", "plugin-bytes")));
 
-        ShellPluginStatusResponse response = shellService.getPluginStatus(shellId, "file-manager");
+        ShellPluginStatusResponse response = shellPluginService.getPluginStatus(shellId, "file-manager");
 
         assertEquals("file-manager", response.getPluginId());
         assertEquals("0.0.1", response.getServerVersion());
@@ -329,7 +334,7 @@ class ShellServiceDispatchPluginTest {
         shell.setLanguage(ShellLanguage.NODEJS);
         ShellConnection connection = mock(ShellConnection.class);
         AtomicReference<String> shellVersion = new AtomicReference<>("0.0.0");
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.test()).thenReturn(true);
         when(connection.getLoadedPluginVersion("file-manager")).thenAnswer(invocation -> shellVersion.get());
@@ -341,7 +346,7 @@ class ShellServiceDispatchPluginTest {
         when(builtinPluginRegistryService.findOrRegister("file-manager", "nodejs"))
                 .thenReturn(Optional.of(plugin("file-manager", "module.exports = {};", "nodejs")));
 
-        ShellPluginStatusResponse response = shellService.updatePlugin(shellId, "file-manager");
+        ShellPluginStatusResponse response = shellPluginService.updatePlugin(shellId, "file-manager");
 
         assertEquals("0.0.1", response.getShellVersion());
         assertEquals(false, response.isNeedsUpdate());
@@ -353,7 +358,7 @@ class ShellServiceDispatchPluginTest {
         Long shellId = 15L;
         Shell shell = shell(shellId);
         ShellConnection connection = mock(ShellConnection.class);
-        when(shellRepository.findById(shellId)).thenReturn(Optional.of(shell));
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
         when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
         when(connection.isPluginCacheInitialized()).thenReturn(true);
         when(connection.needLoadPlugin("file-manager")).thenReturn(true);
@@ -366,7 +371,7 @@ class ShellServiceDispatchPluginTest {
         when(connection.runPlugin(eq("file-manager"), any()))
                 .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of("files", List.of())));
 
-        Map<String, Object> response = shellService.dispatchPlugin(shellId, "file-manager", Map.of("op", "list", "path", "."));
+        Map<String, Object> response = shellPluginService.dispatchPlugin(shellId, "file-manager", Map.of("op", "list", "path", "."));
 
         assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
         verify(connection).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));

@@ -1,18 +1,12 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.Constants;
 import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.exception.*;
 import com.reajason.noone.server.audit.AuditAction;
 import com.reajason.noone.server.audit.AuditLog;
 import com.reajason.noone.server.audit.AuditModule;
-import com.reajason.noone.server.config.AuthorizationService;
-import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
-import com.reajason.noone.server.plugin.JavaPluginPayloadService;
-import com.reajason.noone.server.plugin.Plugin;
-import com.reajason.noone.server.plugin.PluginRepository;
 import com.reajason.noone.server.shell.dto.*;
-import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
+import com.reajason.noone.server.shell.oplog.ShellOpLog;
 import com.reajason.noone.server.shell.oplog.ShellOperationType;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +18,6 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -46,21 +39,14 @@ public class ShellService {
     private ShellConnectionPool shellConnectionPool;
 
     @Resource
-    private ShellStatusUpdater shellStatusUpdater;
-
-    @Resource
     private ShellMapper shellMapper;
 
     @Resource
-    private ShellOperationLogService shellOperationLogService;
+    private ShellResponseHelper shellResponseHelper;
     @Resource
-    private AuthorizationService authorizationService;
+    private ShellLookupHelper shellLookupHelper;
     @Resource
-    private JavaPluginPayloadService javaPluginPayloadService;
-    @Resource
-    private BuiltinPluginRegistryService builtinPluginRegistryService;
-    @Resource
-    private PluginRepository pluginRepository;
+    private ShellCoreInitHelper shellCoreInitHelper;
 
     // ==================== Shell Management Operations ====================
 
@@ -82,8 +68,7 @@ public class ShellService {
      */
     @Transactional(readOnly = true)
     public ShellResponse getById(Long id) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
         return shellMapper.toResponse(shell);
     }
 
@@ -92,8 +77,7 @@ public class ShellService {
      */
     @AuditLog(module = AuditModule.SHELL, action = AuditAction.UPDATE, targetType = "Shell", targetId = "#id")
     public ShellResponse update(Long id, ShellUpdateRequest request) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
         boolean staging = request.getStaging() != null ? request.getStaging() : Boolean.TRUE.equals(shell.getStaging());
         Long loaderProfileId = request.getLoaderProfileId() != null
                 ? request.getLoaderProfileId()
@@ -110,8 +94,7 @@ public class ShellService {
      */
     @AuditLog(module = AuditModule.SHELL, action = AuditAction.DELETE, targetType = "Shell", targetId = "#id")
     public void delete(Long id) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
         shellRepository.delete(shell);
         shellConnectionPool.evict(id);
     }
@@ -138,15 +121,6 @@ public class ShellService {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("projectId"), request.getProjectId()));
         }
 
-//        if (!authorizationService.isAdmin()) {
-//            var visibleProjectIds = authorizationService.getVisibleProjectIds();
-//            if (visibleProjectIds.isEmpty()) {
-//                spec = spec.and((root, query, cb) -> cb.disjunction());
-//            } else {
-//                spec = spec.and((root, query, cb) -> root.get("projectId").in(visibleProjectIds));
-//            }
-//        }
-
         if (request.getUrl() != null && !request.getUrl().isBlank()) {
             String urlPattern = "%" + request.getUrl().trim().toLowerCase() + "%";
             spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("url")), urlPattern));
@@ -163,14 +137,13 @@ public class ShellService {
     /**
      * Test shell connection
      */
+    @ShellOpLog(operation = ShellOperationType.TEST, shellId = "#id")
     public boolean testConnection(Long id) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
 
-        long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            initCoreIfNeeded(connection, id);
+            shellCoreInitHelper.initCoreIfNeeded(connection, id);
             boolean connected = connection.test();
 
             if (connected) {
@@ -181,27 +154,18 @@ public class ShellService {
             }
             shellRepository.save(shell);
 
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(id, ShellOperationType.TEST, null, null,
-                    null, Map.of("connected", connected), connected, null, durationMs);
-
             return connected;
         } catch (Exception e) {
             shell.setStatus(ShellStatus.ERROR);
             shellRepository.save(shell);
             log.error("Connection test failed for shell: {}", id, e);
 
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(id, ShellOperationType.TEST, null, null,
-                    null, null, false, safeMessage(e), durationMs);
-
             return false;
         }
     }
 
     public Map<String, Object> initCore(Long id) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
 
         boolean isStaging = Boolean.TRUE.equals(shell.getStaging());
         if (!isStaging) {
@@ -211,7 +175,7 @@ public class ShellService {
         long start = System.currentTimeMillis();
         try {
             ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            initCoreIfNeeded(connection, id);
+            shellCoreInitHelper.initCoreIfNeeded(connection, id);
             long durationMs = System.currentTimeMillis() - start;
             return Map.of("success", true, "staging", true, "skipped", false, "durationMs", durationMs);
         } catch (Exception e) {
@@ -223,14 +187,14 @@ public class ShellService {
             response.put("staging", true);
             response.put("skipped", false);
             response.put("durationMs", durationMs);
-            response.put("error", safeMessage(e));
+            response.put("error", shellResponseHelper.safeMessage(e));
             return response;
         }
     }
 
+    @ShellOpLog(operation = ShellOperationType.TEST, shellId = "#id", action = "'ping'")
     public Map<String, Object> ping(Long id) {
-        Shell shell = shellRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + id));
+        Shell shell = shellLookupHelper.requireById(id);
 
         long start = System.currentTimeMillis();
         boolean recoveryAttempted = false;
@@ -247,7 +211,7 @@ public class ShellService {
                 recoveryAttempted = true;
                 log.info("Ping status probe failed for shell {}, attempting core reinjection", id, firstProbeError);
 
-                initCoreIfNeeded(connection, id);
+                shellCoreInitHelper.initCoreIfNeeded(connection, id);
 
                 connected = connection.checkStatus();
                 recovered = true;
@@ -262,13 +226,6 @@ public class ShellService {
             shellRepository.save(shell);
 
             long durationMs = System.currentTimeMillis() - start;
-            Map<String, Object> payload = Map.of(
-                    "connected", connected,
-                    "recoveryAttempted", recoveryAttempted,
-                    "recovered", recovered
-            );
-            shellOperationLogService.record(id, ShellOperationType.TEST, null, "ping",
-                    null, payload, connected, null, durationMs);
 
             return Map.of(
                     "connected", connected,
@@ -283,13 +240,11 @@ public class ShellService {
             log.error("Ping failed for shell: {}", id, e);
 
             long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(id, ShellOperationType.TEST, null, "ping",
-                    null, null, false, safeMessage(e), durationMs);
 
             Map<String, Object> response = new HashMap<>();
             response.put("connected", false);
             response.put("status", "ERROR");
-            response.put("error", safeMessage(e));
+            response.put("error", shellResponseHelper.safeMessage(e));
             response.put("latencyMs", durationMs);
             response.put("recoveryAttempted", recoveryAttempted);
             response.put("recovered", recovered);
@@ -326,13 +281,13 @@ public class ShellService {
             }};
         } catch (ShellRequestException e) {
             log.error("Failed to test shell connection", e);
-            return failureResponse("Test failed: " + safeMessage(e), e);
+            return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);
         } catch (ShellResponseException e) {
             log.error("Failed to test shell connection", e);
-            return failureResponse("Test failed: " + safeMessage(e), e);
+            return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);
         } catch (Exception e) {
             log.error("Failed to test shell connection", e);
-            return failureResponse("Test failed: " + safeMessage(e), e);
+            return shellResponseHelper.failureResponse("Test failed: " + shellResponseHelper.safeMessage(e), e);
         }
     }
 
@@ -342,416 +297,8 @@ public class ShellService {
         }
     }
 
-    private static final String TASK_MANAGER_PLUGIN_ID = "task-manager";
-
-    public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
-        Shell shell = shellRepository.findById(shellId)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
-        Plugin plugin = findPlugin(pluginId, shellLanguage).orElse(null);
-        String action = args != null ? (String) args.get("action") : null;
-        if (action == null) {
-            action = args != null ? ((String) args.get("op")) : null;
-        }
-        long start = System.currentTimeMillis();
-        try {
-            ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-            ensurePluginCacheSnapshot(connection, shellId);
-
-            String runMode = resolveRunMode(plugin);
-            boolean isTaskAction = action != null && action.startsWith("_task_");
-
-            if (isTaskAction) {
-                String taskOp = action.substring(6);
-                return executeViaTaskManager(connection, shellLanguage, plugin, pluginId, taskOp, args, shellId, start);
-            }
-
-            if ("async".equals(runMode)) {
-                return executeViaTaskManager(connection, shellLanguage, plugin, pluginId, "submit", args, shellId, start);
-            }
-
-            if ("scheduled".equals(runMode)) {
-                return executeViaTaskManager(connection, shellLanguage, plugin, pluginId, "schedule", args, shellId, start);
-            }
-
-            ensurePluginLoaded(connection, plugin, shellLanguage, shellId);
-            Map<String, Object> result = connection.runPlugin(pluginId, args);
-            Map<String, Object> response = handleShellConnectionResult(result);
-            if (isSuccess(response.get(Constants.CODE))) {
-                shellStatusUpdater.markConnected(shellId);
-                if ("system-info".equals(pluginId)) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> data = (Map<String, Object>) response.get("data");
-                    shell.setBasicInfo(data);
-
-                    String rawOsName = SystemInfoNormalizer.extractString(data, "os", "name");
-                    String normalizedOs = SystemInfoNormalizer.normalizeOsName(rawOsName);
-                    shell.setOs(normalizedOs);
-
-                    String rawArch = SystemInfoNormalizer.extractString(data, "os", "arch");
-                    shell.setArch(SystemInfoNormalizer.normalizeArch(rawArch, normalizedOs));
-
-                    String runtimeType = SystemInfoNormalizer.extractString(data, "runtime", "type");
-                    String runtimeVer = SystemInfoNormalizer.extractString(data, "runtime", "version");
-                    if (runtimeType != null && runtimeVer != null) {
-                        shell.setRuntimeVersion(runtimeType + " " + runtimeVer);
-                    } else if (runtimeVer != null) {
-                        shell.setRuntimeVersion(runtimeVer);
-                    }
-
-                    shellRepository.save(shell);
-                }
-            }
-
-            recordDispatch(shellId, pluginId, action, args, response, start);
-            return response;
-        } catch (ShellRequestException e) {
-            shellStatusUpdater.markError(shellId);
-            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
-            recordDispatch(shellId, pluginId, action, args, response, start);
-            return response;
-        } catch (ShellResponseException e) {
-            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
-            recordDispatch(shellId, pluginId, action, args, response, start);
-            return response;
-        } catch (Exception e) {
-            Map<String, Object> response = failureResponse("Dispatch failed: " + safeMessage(e), e);
-            recordDispatch(shellId, pluginId, action, args, response, start);
-            return response;
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public ShellPluginStatusResponse getPluginStatus(Long shellId, String pluginId) {
-        Shell shell = shellRepository.findById(shellId)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
-        Plugin plugin = findPlugin(pluginId, shellLanguage)
-                .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + pluginId));
-        ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-        return toPluginStatus(plugin, connection);
-    }
-
-    public ShellPluginStatusResponse updatePlugin(Long shellId, String pluginId) {
-        Shell shell = shellRepository.findById(shellId)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
-        Plugin plugin = findPlugin(pluginId, shellLanguage)
-                .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + pluginId));
-        ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-        loadPlugin(connection, plugin, shellLanguage, true, shellId);
-        return toPluginStatus(plugin, connection);
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, ShellPluginStatusResponse> getAllPluginStatuses(Long shellId) {
-        Shell shell = shellRepository.findById(shellId)
-                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
-        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
-        List<Plugin> plugins = pluginRepository.findAllByLanguage(shellLanguage.getValue());
-        ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-        Map<String, ShellPluginStatusResponse> result = new LinkedHashMap<>();
-        for (Plugin plugin : plugins) {
-            result.put(plugin.getPluginId(), toPluginStatus(plugin, connection));
-        }
-        return result;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> executeViaTaskManager(ShellConnection connection, ShellLanguage shellLanguage,
-                                                      Plugin plugin, String pluginId, String taskOp,
-                                                      Map<String, Object> originalArgs,
-                                                      Long shellId, long start) {
-        ensureInfrastructurePluginLoaded(connection, TASK_MANAGER_PLUGIN_ID, shellLanguage, shellId);
-        boolean requiresTargetPlugin = "submit".equals(taskOp) || "schedule".equals(taskOp);
-        if (requiresTargetPlugin) {
-            ensurePluginLoaded(connection, plugin, shellLanguage, shellId);
-        }
-
-        Map<String, Object> taskManagerArgs = new HashMap<>();
-        taskManagerArgs.put("op", taskOp);
-
-        if ("submit".equals(taskOp) || "schedule".equals(taskOp)) {
-            taskManagerArgs.put("targetPlugin", pluginId);
-            taskManagerArgs.put("targetArgs", originalArgs);
-            if ("schedule".equals(taskOp) && originalArgs != null) {
-                Object interval = originalArgs.remove("_interval");
-                if (interval != null) {
-                    taskManagerArgs.put("delay", interval);
-                    taskManagerArgs.put("period", interval);
-                }
-                Object delay = originalArgs.remove("_delay");
-                if (delay != null) {
-                    taskManagerArgs.put("delay", delay);
-                }
-            }
-        } else {
-            if (originalArgs != null && originalArgs.containsKey("taskId")) {
-                taskManagerArgs.put("taskId", originalArgs.get("taskId"));
-            }
-        }
-
-        Map<String, Object> result = connection.runPlugin(TASK_MANAGER_PLUGIN_ID, taskManagerArgs);
-        Map<String, Object> response = handleShellConnectionResult(result);
-
-        if (isSuccess(response.get(Constants.CODE))) {
-            shellStatusUpdater.markConnected(shellId);
-        }
-
-        recordDispatch(shellId, pluginId, "_task_" + taskOp, originalArgs, response, start);
-        return response;
-    }
-
-    private void ensurePluginLoaded(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, Long shellId) {
-        if (plugin != null && connection.needLoadPlugin(plugin.getPluginId())) {
-            loadPlugin(connection, plugin, shellLanguage, false, shellId);
-        }
-    }
-
-    private void ensureInfrastructurePluginLoaded(ShellConnection connection, String pluginId, ShellLanguage shellLanguage, Long shellId) {
-        Optional<Plugin> pluginOptional = findPlugin(pluginId, shellLanguage);
-        if (pluginOptional.isEmpty()) {
-            return;
-        }
-        Plugin plugin = pluginOptional.get();
-        if (connection.needLoadPlugin(pluginId)) {
-            loadPlugin(connection, plugin, shellLanguage, false, shellId);
-            return;
-        }
-        if (connection.isPluginOutdated(pluginId, plugin.getVersion())) {
-            loadPlugin(connection, plugin, shellLanguage, true, shellId);
-        }
-    }
-
-    private void ensurePluginCacheSnapshot(ShellConnection connection, Long shellId) {
-        if (!connection.isPluginCacheInitialized()) {
-            initCoreIfNeeded(connection, shellId);
-            connection.test();
-        }
-    }
-
-    private Optional<Plugin> findPlugin(String pluginId, ShellLanguage shellLanguage) {
-        return builtinPluginRegistryService.findOrRegister(pluginId, shellLanguage.getValue());
-    }
-
-    private String resolveRunMode(Plugin plugin) {
-        if (plugin != null) {
-            String runMode = plugin.getRunMode();
-            if (runMode != null && !runMode.isBlank()) {
-                return runMode;
-            }
-        }
-        return "sync";
-    }
-
-    private ShellPluginStatusResponse toPluginStatus(Plugin plugin, ShellConnection connection) {
-        String shellVersion = connection.getLoadedPluginVersion(plugin.getPluginId());
-        boolean loaded = shellVersion != null || !connection.needLoadPlugin(plugin.getPluginId());
-        boolean needsUpdate = shellVersion != null && compareVersions(plugin.getVersion(), shellVersion) > 0;
-        return ShellPluginStatusResponse.builder()
-                .pluginId(plugin.getPluginId())
-                .serverVersion(plugin.getVersion())
-                .shellVersion(shellVersion)
-                .loaded(loaded)
-                .needsUpdate(needsUpdate)
-                .build();
-    }
-
-    private static int compareVersions(String left, String right) {
-        String[] leftParts = left.split("[^A-Za-z0-9]+");
-        String[] rightParts = right.split("[^A-Za-z0-9]+");
-        int length = Math.max(leftParts.length, rightParts.length);
-        for (int i = 0; i < length; i++) {
-            String leftPart = i < leftParts.length ? leftParts[i] : "0";
-            String rightPart = i < rightParts.length ? rightParts[i] : "0";
-            boolean leftNumeric = leftPart.chars().allMatch(Character::isDigit);
-            boolean rightNumeric = rightPart.chars().allMatch(Character::isDigit);
-            int cmp;
-            if (leftNumeric && rightNumeric) {
-                cmp = Integer.compare(Integer.parseInt(leftPart), Integer.parseInt(rightPart));
-            } else if (leftNumeric != rightNumeric) {
-                cmp = leftNumeric ? 1 : -1;
-            } else {
-                cmp = leftPart.compareToIgnoreCase(rightPart);
-            }
-            if (cmp != 0) return cmp;
-        }
-        return 0;
-    }
-
-    private void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh, Long shellId) {
-        String action = forceRefresh ? "refresh" : "load";
-        long start = System.currentTimeMillis();
-        Map<String, Object> args = Map.of("pluginId", plugin.getPluginId(), "version", plugin.getVersion(), "forceRefresh", forceRefresh);
-        try {
-            doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(shellId, ShellOperationType.LOAD_PLUGIN, plugin.getPluginId(), action,
-                    args, Map.of("success", true), true, null, durationMs);
-        } catch (Exception e) {
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(shellId, ShellOperationType.LOAD_PLUGIN, plugin.getPluginId(), action,
-                    args, null, false, safeMessage(e), durationMs);
-            throw e;
-        }
-    }
-
-    private void doLoadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh) {
-        byte[] payloadBytes = pluginPayloadBytes(shellLanguage, plugin);
-        if (shellLanguage != ShellLanguage.JAVA) {
-            if (forceRefresh) {
-                connection.refreshPlugin(plugin.getPluginId(), plugin.getVersion(), payloadBytes);
-            } else {
-                connection.loadPlugin(plugin.getPluginId(), plugin.getVersion(), payloadBytes);
-            }
-            return;
-        }
-
-        List<Exception> failures = new ArrayList<>();
-        for (JavaPluginPayloadService.JavaPluginCandidate candidate : javaPluginPayloadService.buildCandidates(plugin, payloadBytes)) {
-            try {
-                if (forceRefresh) {
-                    connection.refreshPlugin(plugin.getPluginId(), plugin.getVersion(), candidate.payloadBytes());
-                } else {
-                    connection.loadPlugin(plugin.getPluginId(), plugin.getVersion(), candidate.payloadBytes());
-                }
-                return;
-            } catch (ResponseBusinessException e) {
-                failures.add(e);
-                if (isDuplicateJavaClassLoad(e)) {
-                    log.debug("Retrying Java plugin {} with another candidate class name {}", plugin.getPluginId(), candidate.className());
-                    continue;
-                }
-                throw e;
-            }
-        }
-
-        IllegalStateException failure = new IllegalStateException(
-                "No available candidate class names for Java plugin: " + plugin.getPluginId());
-        for (Exception exception : failures) {
-            failure.addSuppressed(exception);
-        }
-        throw failure;
-    }
-
-    private boolean isDuplicateJavaClassLoad(ResponseBusinessException exception) {
-        String message = safeMessage(exception).toLowerCase();
-        return message.contains("duplicate") || message.contains("linkageerror") || message.contains("attempted duplicate class definition");
-    }
-
     private boolean shouldAttemptPingRecovery(Shell shell, ShellCommunicationException exception) {
         return Boolean.TRUE.equals(shell.getStaging()) && !(exception instanceof ResponseBusinessException);
     }
 
-    private void initCoreIfNeeded(ShellConnection connection, Long shellId) {
-        if (connection.getLoaderClient() == null) {
-            return;
-        }
-        long start = System.currentTimeMillis();
-        try {
-            boolean result = connection.init();
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(shellId, ShellOperationType.LOAD_CORE, null, "init-core",
-                    null, Map.of("success", result), result, result ? null : "Core injection returned false", durationMs);
-        } catch (Exception e) {
-            long durationMs = System.currentTimeMillis() - start;
-            shellOperationLogService.record(shellId, ShellOperationType.LOAD_CORE, null, "init-core",
-                    null, null, false, safeMessage(e), durationMs);
-            throw e;
-        }
-    }
-
-    private void recordDispatch(Long shellId, String pluginId, String action, Map<String, Object> args,
-                                Map<String, Object> response, long start) {
-        long durationMs = System.currentTimeMillis() - start;
-        boolean success = response != null && isSuccess(response.get(Constants.CODE));
-        String errorMsg = success || response == null ? null : String.valueOf(response.getOrDefault(Constants.ERROR, ""));
-        shellOperationLogService.record(shellId, ShellOperationType.DISPATCH, pluginId, action,
-                args, response, success, errorMsg, durationMs);
-    }
-
-    // ==================== Helper Methods ====================
-    /**
-     * Handle ShellConnection result and check for errors
-     */
-    private Map<String, Object> handleShellConnectionResult(Map<String, Object> result) {
-        if (result == null) {
-            throw new ResponseDecodeException("ShellConnection returned null result");
-        }
-
-        // Ensure a failure code exists when error details are present.
-        if (result.containsKey(Constants.ERROR) && !result.containsKey(Constants.CODE)) {
-            Map<String, Object> copy = new HashMap<>(result);
-            copy.put(Constants.CODE, Constants.FAILURE);
-            return copy;
-        }
-
-        return result;
-    }
-
-    private boolean isSuccess(Object codeObj) {
-        if (!(codeObj instanceof Number code)) {
-            return false;
-        }
-        return code.intValue() == Constants.SUCCESS;
-    }
-
-    private Map<String, Object> failureResponse(String message, Throwable e) {
-        Map<String, Object> response = new HashMap<>();
-        response.put(Constants.CODE, Constants.FAILURE);
-        response.put(Constants.ERROR, message != null ? message : "Unknown error");
-        if (e != null) {
-            response.put("errorType", e.getClass().getName());
-            response.put("errorMessage", safeMessage(e));
-            if (e instanceof ShellCommunicationException shellCommunicationException) {
-                response.put("phase", shellCommunicationException.getPhase().name());
-                response.put("retriable", shellCommunicationException.isRetriable());
-            } else {
-                response.put("phase", CommunicationPhase.INTERNAL.name());
-                response.put("retriable", false);
-            }
-        }
-        return response;
-    }
-
-    private String safeMessage(Throwable t) {
-        if (t == null) {
-            return "Unknown error";
-        }
-        String msg = t.getMessage();
-        if (msg == null || msg.isBlank()) {
-            return t.getClass().getSimpleName();
-        }
-        return msg;
-    }
-
-    private byte[] pluginPayloadBytes(ShellLanguage shellLanguage, Plugin plugin) {
-        if (plugin.getPayload() == null || plugin.getPayload().isBlank()) {
-            throw new IllegalArgumentException("Plugin payload is empty: " + plugin.getPluginId());
-        }
-
-        return switch (shellLanguage) {
-            case JAVA -> decodeBase64Payload(plugin, shellLanguage);
-            case DOTNET -> validateDotNetAssemblyBytes(plugin, decodeBase64Payload(plugin, shellLanguage));
-            case NODEJS -> plugin.getPayload().getBytes(StandardCharsets.UTF_8);
-        };
-    }
-
-    private byte[] decodeBase64Payload(Plugin plugin, ShellLanguage shellLanguage) {
-        try {
-            return Base64.getDecoder().decode(plugin.getPayload());
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(
-                    "Invalid base64 payload for plugin [" + plugin.getPluginId() + "] language [" + shellLanguage.getValue() + "]",
-                    e
-            );
-        }
-    }
-
-    private byte[] validateDotNetAssemblyBytes(Plugin plugin, byte[] payloadBytes) {
-        if (payloadBytes.length < 2 || payloadBytes[0] != 'M' || payloadBytes[1] != 'Z') {
-            throw new IllegalArgumentException("DOTNET plugin payload is not a valid assembly: " + plugin.getPluginId());
-        }
-        return payloadBytes;
-    }
 }

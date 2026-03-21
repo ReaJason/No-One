@@ -6,7 +6,7 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.Base64;
 
-public class FileManagerNormalizer {
+public class FileManagerNormalizer implements PluginNormalizer {
 
     public Map<String, Object> normalizeArgs(Map<String, Object> args) {
         try {

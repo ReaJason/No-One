@@ -5,6 +5,7 @@ import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.exception.*;
 import com.reajason.noone.core.normalizer.CommandExecuteNormalizer;
 import com.reajason.noone.core.normalizer.FileManagerNormalizer;
+import com.reajason.noone.core.normalizer.PluginNormalizerRegistry;
 import com.reajason.noone.server.profile.Profile;
 import lombok.Data;
 
@@ -12,26 +13,23 @@ import java.util.*;
 
 @Data
 public abstract class ShellConnection {
-    private static final String COMMAND_EXECUTE_PLUGIN = "command-execute";
-    private static final String FILE_MANAGER_PLUGIN = "file-manager";
-
-    private static final CommandExecuteNormalizer commandExecuteNormalizer = new CommandExecuteNormalizer();
-    private static final FileManagerNormalizer fileManagerNormalizer = new FileManagerNormalizer();
-
     protected Client coreClient;
     protected Client loaderClient;
     protected String shellType;
     protected Profile coreProfile;
     private boolean coreInit = false;
 
-    protected Map<String, String> serverPluginCaches = new LinkedHashMap<>();
-    protected boolean pluginCacheInitialized;
+    private final PluginCache pluginCache = new PluginCache();
+    protected PluginNormalizerRegistry normalizerRegistry;
 
     public ShellConnection(ConnectionConfig connectionConfig) {
         this.coreClient = connectionConfig.getCoreClient();
         this.loaderClient = connectionConfig.getLoaderClient();
         this.shellType = connectionConfig.getShellType();
         this.coreProfile = connectionConfig.getCoreProfile();
+        this.normalizerRegistry = new PluginNormalizerRegistry();
+        this.normalizerRegistry.register("command-execute", new CommandExecuteNormalizer());
+        this.normalizerRegistry.register("file-manager", new FileManagerNormalizer());
     }
 
     /**
@@ -136,8 +134,7 @@ public abstract class ShellConnection {
         Map<String, Object> response = sendRequest(requestMap);
         int code = requireResponseCode(response, Constants.ACTION_STATUS);
         if (code == Constants.SUCCESS) {
-            serverPluginCaches = toPluginCacheMap(response.get(Constants.PLUGIN_CACHES));
-            pluginCacheInitialized = true;
+            pluginCache.initialize(toPluginCacheMap(response.get(Constants.PLUGIN_CACHES)));
             return true;
         }
         if (code == Constants.FAILURE) {
@@ -159,7 +156,7 @@ public abstract class ShellConnection {
     }
 
     private void loadPluginInternal(String pluginName, String version, byte[] pluginCodeBytes, boolean refresh) {
-        if (!refresh && !needLoadPlugin(pluginName)) {
+        if (!refresh && !pluginCache.needLoad(pluginName)) {
             return;
         }
         Map<String, Object> requestMap = new HashMap<>();
@@ -173,8 +170,7 @@ public abstract class ShellConnection {
         Map<String, Object> response = sendRequest(requestMap);
         int code = requireResponseCode(response, Constants.ACTION_LOAD);
         if (code == Constants.SUCCESS) {
-            serverPluginCaches.put(pluginName, version);
-            pluginCacheInitialized = true;
+            pluginCache.put(pluginName, version);
             return;
         }
         if (code == Constants.FAILURE) {
@@ -207,7 +203,8 @@ public abstract class ShellConnection {
                 if (entry.getKey() == null) {
                     continue;
                 }
-                caches.put(String.valueOf(entry.getKey()), stringifyPluginVersion(entry.getValue()));
+                String version = entry.getValue() == null ? null : String.valueOf(entry.getValue()).trim();
+                caches.put(String.valueOf(entry.getKey()), (version == null || version.isEmpty()) ? null : version);
             }
             return caches;
         }
@@ -223,43 +220,28 @@ public abstract class ShellConnection {
     }
 
     public boolean needLoadPlugin(String pluginId) {
-        return !serverPluginCaches.containsKey(pluginId);
+        return pluginCache.needLoad(pluginId);
     }
 
     public boolean isPluginOutdated(String pluginId, String serverVersion) {
-        String shellVersion = getLoadedPluginVersion(pluginId);
-        if (shellVersion == null) {
-            return false;
-        }
-        return serverVersion != null && !serverVersion.equals(shellVersion);
+        return pluginCache.isOutdated(pluginId, serverVersion);
     }
 
     public String getLoadedPluginVersion(String pluginId) {
-        if (!serverPluginCaches.containsKey(pluginId)) {
-            return null;
-        }
-        return serverPluginCaches.get(pluginId);
+        return pluginCache.getVersion(pluginId);
     }
 
-    private String stringifyPluginVersion(Object value) {
-        if (value == null) {
-            return null;
-        }
-        String version = String.valueOf(value).trim();
-        return version.isEmpty() ? null : version;
+    public boolean isPluginCacheInitialized() {
+        return pluginCache.isInitialized();
     }
 
     public abstract void fillLoadPluginRequestMaps(String pluginName, byte[] pluginCodeBytes, Map<String, Object> requestMap);
 
     public Map<String, Object> runPlugin(String pluginName, Map<String, Object> args) {
         Map<String, Object> pluginArgs = args;
-        if (COMMAND_EXECUTE_PLUGIN.equals(pluginName)) {
-            pluginArgs = commandExecuteNormalizer.normalizeArgs(args);
-            if (isLocalFailure(pluginArgs)) {
-                return pluginArgs;
-            }
-        } else if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
-            pluginArgs = fileManagerNormalizer.normalizeArgs(args);
+        var normalizer = normalizerRegistry.find(pluginName);
+        if (normalizer.isPresent()) {
+            pluginArgs = normalizer.get().normalizeArgs(args);
             if (isLocalFailure(pluginArgs)) {
                 return pluginArgs;
             }
@@ -272,10 +254,7 @@ public abstract class ShellConnection {
             requestMap.put(Constants.ARGS, pluginArgs);
         }
         Map<String, Object> response = sendRequest(requestMap);
-        if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
-            return fileManagerNormalizer.normalizeResponse(response);
-        }
-        return response;
+        return normalizer.map(n -> n.normalizeResponse(response)).orElse(response);
     }
 
     private boolean isLocalFailure(Map<String, Object> response) {
