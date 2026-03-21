@@ -155,6 +155,11 @@ class WebSocketClientTest {
                             ).bytes();
                             webSocket.send(ByteString.of(encoded));
                         }
+
+                        @Override
+                        public void onClosing(WebSocket webSocket, int code, String reason) {
+                            webSocket.close(code, reason);
+                        }
                     })
                     .build());
             server.start();
@@ -200,6 +205,11 @@ class WebSocketClientTest {
                             );
                             webSocket.send(ByteString.of(encoded));
                         }
+
+                        @Override
+                        public void onClosing(WebSocket webSocket, int code, String reason) {
+                            webSocket.close(code, reason);
+                        }
                     })
                     .build());
             server.start();
@@ -232,6 +242,11 @@ class WebSocketClientTest {
                         public void onMessage(WebSocket webSocket, ByteString bytes) {
                             webSocket.send(bytes);
                             webSocket.close(1000, "done");
+                        }
+
+                        @Override
+                        public void onClosing(WebSocket webSocket, int code, String reason) {
+                            webSocket.close(code, reason);
                         }
                     })
                     .build());
@@ -339,6 +354,11 @@ class WebSocketClientTest {
         @Override
         public void onMessage(WebSocket webSocket, ByteString bytes) {
             webSocket.send(bytes);
+        }
+
+        @Override
+        public void onClosing(WebSocket webSocket, int code, String reason) {
+            webSocket.close(code, reason);
         }
     }
 }

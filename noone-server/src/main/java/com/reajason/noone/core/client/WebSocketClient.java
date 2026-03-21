@@ -161,10 +161,10 @@ public class WebSocketClient implements Client {
     @Override
     public void disconnect() {
         connected = false;
-        if (webSocket != null) {
-            try { webSocket.close(1000, "disconnect"); } catch (Exception ignored) {}
-            try { webSocket.cancel(); } catch (Exception ignored) {}
-            webSocket = null;
+        WebSocket ws = webSocket;
+        webSocket = null;
+        if (ws != null) {
+            try { ws.close(1000, "disconnect"); } catch (Exception ignored) {}
         }
     }
 
