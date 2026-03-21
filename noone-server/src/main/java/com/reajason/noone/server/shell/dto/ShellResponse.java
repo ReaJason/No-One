@@ -20,6 +20,7 @@ public class ShellResponse {
     private Boolean staging;
     private ShellLanguage language;
     private String shellType;
+    private String interfaceName;
     private String status;
     private Long projectId;
     private LocalDateTime createdAt;
@@ -42,4 +43,8 @@ public class ShellResponse {
 
     // Normalized system info
     private Map<String, Object> basicInfo;
+
+    private String os;
+    private String arch;
+    private String runtimeVersion;
 }

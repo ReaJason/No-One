@@ -173,6 +173,7 @@ export const profileColumns: ColumnDef<Profile>[] = [
       options: [
         { label: "HTTP", value: "HTTP" },
         { label: "WEBSOCKET", value: "WEBSOCKET" },
+        { label: "DUBBO", value: "DUBBO" },
       ],
     },
     enableColumnFilter: true,

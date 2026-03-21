@@ -67,7 +67,7 @@ import {
 import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
 import { buildShellRouteFormData, createShellRouteRequestId } from "@/lib/shell-route";
-import { cn } from "@/lib/utils";
+import { base64ToBytes, bytesToBase64, cn } from "@/lib/utils";
 
 type LocationKind = "cwd" | "home" | "disk";
 type EntryType = "file" | "directory";
@@ -646,29 +646,6 @@ function parseFileNode(raw: unknown, osFamily: OsFamily): FileNode | null {
   };
 }
 
-function numbersToBytes(raw: unknown): Uint8Array {
-  if (!Array.isArray(raw)) {
-    return new Uint8Array();
-  }
-  const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) {
-    const value = raw[i];
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-      throw new Error(`Invalid bytes payload at index ${i}`);
-    }
-    const normalized = Math.trunc(value);
-    if (normalized < 0 || normalized > 255) {
-      throw new Error(`Invalid byte value at index ${i}: ${value}`);
-    }
-    bytes[i] = normalized;
-  }
-  return bytes;
-}
-
-function bytesToNumbers(bytes: Uint8Array): number[] {
-  return Array.from(bytes, (b) => b);
-}
-
 function concatBytes(chunks: Uint8Array[]): Uint8Array {
   const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
   const merged = new Uint8Array(total);
@@ -1116,7 +1093,7 @@ export default function FileManager({
       }
       const result = await dispatchFileManager(args, options);
       return {
-        bytes: numbersToBytes(result.bytes),
+        bytes: base64ToBytes(result.bytes as string),
         fileSize: typeof result.fileSize === "number" ? result.fileSize : 0,
       };
     },
@@ -1127,7 +1104,7 @@ export default function FileManager({
     async (path: string, offset: number, length: number, options: PluginRequestOptions = {}) => {
       const result = await dispatchFileManager({ op: "read-chunk", path, offset, length }, options);
       return {
-        bytes: numbersToBytes(result.bytes),
+        bytes: base64ToBytes(result.bytes as string),
         nextOffset: typeof result.nextOffset === "number" ? result.nextOffset : offset,
         eof: Boolean(result.eof),
         fileSize: typeof result.fileSize === "number" ? result.fileSize : 0,
@@ -1142,7 +1119,7 @@ export default function FileManager({
         {
           op: "write-all",
           path,
-          bytes: bytesToNumbers(bytes),
+          bytes: bytesToBase64(bytes),
           createParent: true,
         },
         options,
@@ -1164,7 +1141,7 @@ export default function FileManager({
           op: "write-chunk",
           path,
           offset,
-          bytes: bytesToNumbers(bytes),
+          bytes: bytesToBase64(bytes),
           truncate,
           createParent: true,
         },

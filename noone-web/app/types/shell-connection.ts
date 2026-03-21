@@ -28,6 +28,7 @@ export interface ShellConnection {
   staging?: boolean;
   language: ShellLanguage;
   shellType?: ShellType | null;
+  interfaceName?: string | null;
   status: ShellStatus;
   projectId?: number | null;
   createdAt: string;
@@ -49,6 +50,10 @@ export interface ShellConnection {
   retryDelayMs?: number;
 
   basicInfo?: any;
+
+  os?: string;
+  arch?: string;
+  runtimeVersion?: string;
 }
 
 export interface ShellConnectionSearchParams {

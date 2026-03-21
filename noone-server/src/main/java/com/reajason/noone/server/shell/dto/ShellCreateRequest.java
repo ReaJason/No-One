@@ -25,6 +25,8 @@ public class ShellCreateRequest {
 
     private String shellType;
 
+    private String interfaceName;
+
     private ShellLanguage language;
 
     private String group;

@@ -18,6 +18,7 @@ public class ShellUpdateRequest {
     private String url;
     private Boolean staging;
     private String shellType;
+    private String interfaceName;
     private String status;
     private String group;
     private Long projectId;

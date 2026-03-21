@@ -3,18 +3,20 @@ package com.reajason.noone.core;
 import com.reajason.noone.Constants;
 import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.exception.*;
+import com.reajason.noone.core.normalizer.CommandExecuteNormalizer;
+import com.reajason.noone.core.normalizer.FileManagerNormalizer;
 import com.reajason.noone.server.profile.Profile;
 import lombok.Data;
 
-import java.lang.reflect.Array;
 import java.util.*;
 
 @Data
 public abstract class ShellConnection {
     private static final String COMMAND_EXECUTE_PLUGIN = "command-execute";
     private static final String FILE_MANAGER_PLUGIN = "file-manager";
-    private static final String CMD_PLACEHOLDER = "{{cmd}}";
-    private static final String CWD_PLACEHOLDER = "{{cwd}}";
+
+    private static final CommandExecuteNormalizer commandExecuteNormalizer = new CommandExecuteNormalizer();
+    private static final FileManagerNormalizer fileManagerNormalizer = new FileManagerNormalizer();
 
     protected Client coreClient;
     protected Client loaderClient;
@@ -253,12 +255,12 @@ public abstract class ShellConnection {
     public Map<String, Object> runPlugin(String pluginName, Map<String, Object> args) {
         Map<String, Object> pluginArgs = args;
         if (COMMAND_EXECUTE_PLUGIN.equals(pluginName)) {
-            pluginArgs = normalizeCommandExecuteArgs(args);
+            pluginArgs = commandExecuteNormalizer.normalizeArgs(args);
             if (isLocalFailure(pluginArgs)) {
                 return pluginArgs;
             }
         } else if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
-            pluginArgs = normalizeFileManagerArgs(args);
+            pluginArgs = fileManagerNormalizer.normalizeArgs(args);
             if (isLocalFailure(pluginArgs)) {
                 return pluginArgs;
             }
@@ -272,180 +274,9 @@ public abstract class ShellConnection {
         }
         Map<String, Object> response = sendRequest(requestMap);
         if (FILE_MANAGER_PLUGIN.equals(pluginName)) {
-            return normalizeFileManagerResponse(response);
+            return fileManagerNormalizer.normalizeResponse(response);
         }
         return response;
-    }
-
-    private Map<String, Object> normalizeCommandExecuteArgs(Map<String, Object> args) {
-        String cmd = asTrimString(args != null ? args.get("cmd") : null);
-        if (cmd == null || cmd.isEmpty()) {
-            return localFailure("cmd is required");
-        }
-
-        String cwd = asTrimString(args.get("cwd"));
-        String charset = asTrimString(args.get("charset"));
-        if (charset == null || charset.isEmpty()) {
-            charset = "UTF-8";
-        }
-
-        String cdTarget = parseCdTarget(cmd);
-        Map<String, Object> normalized = new HashMap<>();
-        normalized.put("cwd", cwd == null ? "" : cwd);
-        normalized.put("charset", charset);
-        if (cdTarget != null) {
-            normalized.put("op", "cd");
-            normalized.put("cdTarget", cdTarget);
-            return normalized;
-        }
-
-        Map<String, Object> template = toStringObjectMap(args.get("commandTemplate"));
-        String executable = template == null ? null : renderTemplate(asTrimString(template.get("executable")), cmd, cwd);
-        if (executable == null || executable.isEmpty()) {
-            return localFailure("commandTemplate.executable is required");
-        }
-        normalized.put("op", "exec");
-        normalized.put("executable", executable);
-        normalized.put("argv", parseTemplateArgs(template.get("args"), cmd, cwd));
-        normalized.put("env", parseTemplateEnv(template.get("env"), cmd, cwd));
-        return normalized;
-    }
-
-    private Map<String, Object> normalizeFileManagerArgs(Map<String, Object> args) {
-        try {
-            Map<String, Object> source = args == null ? new HashMap<>() : args;
-            return normalizeFileManagerMap(source);
-        } catch (IllegalArgumentException e) {
-            return localFailure("file-manager args normalization failed: " + e.getMessage());
-        }
-    }
-
-    private Map<String, Object> normalizeFileManagerMap(Map<String, Object> source) {
-        Map<String, Object> normalized = new HashMap<>();
-        for (Map.Entry<String, Object> entry : source.entrySet()) {
-            if (entry.getKey() == null) {
-                continue;
-            }
-            String key = entry.getKey();
-            normalized.put(key, normalizeFileManagerValue(key, entry.getValue()));
-        }
-        return normalized;
-    }
-
-    private Object normalizeFileManagerValue(String key, Object value) {
-        if (value == null) {
-            return null;
-        }
-        if ("bytes".equals(key)) {
-            return toByteArray(value);
-        }
-        if (value instanceof Map<?, ?> mapValue) {
-            return normalizeFileManagerMap(toStringObjectMap(mapValue));
-        }
-        if (value instanceof Iterable<?>) {
-            List<Object> list = new ArrayList<>();
-            for (Object item : (Iterable<?>) value) {
-                list.add(normalizeFileManagerValue(null, item));
-            }
-            return list;
-        }
-        if (value.getClass().isArray()) {
-            int length = Array.getLength(value);
-            List<Object> list = new ArrayList<>(length);
-            for (int i = 0; i < length; i++) {
-                list.add(normalizeFileManagerValue(null, Array.get(value, i)));
-            }
-            return list;
-        }
-        return value;
-    }
-
-    private byte[] toByteArray(Object raw) {
-        if (raw == null) {
-            return null;
-        }
-        if (raw instanceof byte[] bytes) {
-            return bytes;
-        }
-        if (raw instanceof Iterable<?> iterable) {
-            List<Byte> bytes = new ArrayList<>();
-            for (Object item : iterable) {
-                bytes.add(toSingleByte(item));
-            }
-            byte[] out = new byte[bytes.size()];
-            for (int i = 0; i < bytes.size(); i++) {
-                out[i] = bytes.get(i);
-            }
-            return out;
-        }
-        if (raw.getClass().isArray()) {
-            int length = Array.getLength(raw);
-            byte[] out = new byte[length];
-            for (int i = 0; i < length; i++) {
-                out[i] = toSingleByte(Array.get(raw, i));
-            }
-            return out;
-        }
-        throw new IllegalArgumentException("unsupported bytes value type: " + raw.getClass().getName());
-    }
-
-    private byte toSingleByte(Object raw) {
-        if (!(raw instanceof Number number)) {
-            throw new IllegalArgumentException("bytes element is not a number: " + raw);
-        }
-        int value = number.intValue();
-        if (value < 0 || value > 255) {
-            throw new IllegalArgumentException("bytes element out of range [0,255]: " + value);
-        }
-        return (byte) value;
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> normalizeFileManagerResponse(Map<String, Object> response) {
-        Object converted = convertBinaryToJsonSafeValue(response);
-        if (converted instanceof Map<?, ?> map) {
-            return (Map<String, Object>) map;
-        }
-        return response;
-    }
-
-    private Object convertBinaryToJsonSafeValue(Object raw) {
-        if (raw == null) {
-            return null;
-        }
-        if (raw instanceof byte[] bytes) {
-            List<Integer> numbers = new ArrayList<>(bytes.length);
-            for (byte b : bytes) {
-                numbers.add(b & 0xff);
-            }
-            return numbers;
-        }
-        if (raw instanceof Map<?, ?> map) {
-            Map<String, Object> copied = new HashMap<>();
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (entry.getKey() == null) {
-                    continue;
-                }
-                copied.put(String.valueOf(entry.getKey()), convertBinaryToJsonSafeValue(entry.getValue()));
-            }
-            return copied;
-        }
-        if (raw instanceof Iterable<?> iterable) {
-            List<Object> copied = new ArrayList<>();
-            for (Object item : iterable) {
-                copied.add(convertBinaryToJsonSafeValue(item));
-            }
-            return copied;
-        }
-        if (raw.getClass().isArray()) {
-            int length = Array.getLength(raw);
-            List<Object> copied = new ArrayList<>(length);
-            for (int i = 0; i < length; i++) {
-                copied.add(convertBinaryToJsonSafeValue(Array.get(raw, i)));
-            }
-            return copied;
-        }
-        return raw;
     }
 
     private boolean isLocalFailure(Map<String, Object> response) {
@@ -454,112 +285,5 @@ public abstract class ShellConnection {
         }
         Object code = response.get(Constants.CODE);
         return code instanceof Number && ((Number) code).intValue() == Constants.FAILURE;
-    }
-
-    private Map<String, Object> localFailure(String message) {
-        Map<String, Object> response = new HashMap<>();
-        response.put(Constants.CODE, Constants.FAILURE);
-        response.put(Constants.ERROR, message);
-        return response;
-    }
-
-    private Map<String, Object> toStringObjectMap(Object rawValue) {
-        if (!(rawValue instanceof Map<?, ?> map)) {
-            return null;
-        }
-        Map<String, Object> copied = new HashMap<>();
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (entry.getKey() == null) {
-                continue;
-            }
-            copied.put(String.valueOf(entry.getKey()), entry.getValue());
-        }
-        return copied;
-    }
-
-    private List<String> parseTemplateArgs(Object rawArgs, String cmd, String cwd) {
-        List<String> args = new ArrayList<>();
-        if (rawArgs == null) {
-            return args;
-        }
-        if (rawArgs instanceof Iterable<?>) {
-            for (Object item : (Iterable<?>) rawArgs) {
-                if (item != null) {
-                    args.add(renderTemplate(String.valueOf(item), cmd, cwd));
-                }
-            }
-            return args;
-        }
-        Class<?> rawArgsClass = rawArgs.getClass();
-        if (rawArgsClass.isArray()) {
-            int length = Array.getLength(rawArgs);
-            for (int i = 0; i < length; i++) {
-                Object item = Array.get(rawArgs, i);
-                if (item != null) {
-                    args.add(renderTemplate(String.valueOf(item), cmd, cwd));
-                }
-            }
-            return args;
-        }
-        String single = asTrimString(rawArgs);
-        if (single != null && !single.isEmpty()) {
-            args.add(renderTemplate(single, cmd, cwd));
-        }
-        return args;
-    }
-
-    private Map<String, String> parseTemplateEnv(Object rawEnv, String cmd, String cwd) {
-        Map<String, String> env = new HashMap<>();
-        if (!(rawEnv instanceof Map<?, ?> map)) {
-            return env;
-        }
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            if (entry.getKey() == null || entry.getValue() == null) {
-                continue;
-            }
-            String key = asTrimString(entry.getKey());
-            if (key == null || key.isEmpty()) {
-                continue;
-            }
-            env.put(key, renderTemplate(String.valueOf(entry.getValue()), cmd, cwd));
-        }
-        return env;
-    }
-
-    private String parseCdTarget(String cmd) {
-        if (cmd == null) {
-            return null;
-        }
-        String trimmed = cmd.trim();
-        if (!trimmed.startsWith("cd")) {
-            return null;
-        }
-        if (trimmed.length() > 2 && !Character.isWhitespace(trimmed.charAt(2))) {
-            return null;
-        }
-        String rawTarget = trimmed.substring(2).trim();
-        if (rawTarget.contains("&&") || rawTarget.contains("||") || rawTarget.contains(";") || rawTarget.contains("|")) {
-            return null;
-        }
-        if (rawTarget.isEmpty()) {
-            return "~";
-        }
-        return rawTarget;
-    }
-
-    private String renderTemplate(String template, String cmd, String cwd) {
-        if (template == null) {
-            return null;
-        }
-        String rendered = template.replace(CMD_PLACEHOLDER, cmd);
-        return rendered.replace(CWD_PLACEHOLDER, cwd == null ? "" : cwd);
-    }
-
-    private String asTrimString(Object value) {
-        if (value == null) {
-            return null;
-        }
-        String text = String.valueOf(value).trim();
-        return text.isEmpty() ? null : text;
     }
 }

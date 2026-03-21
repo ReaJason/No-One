@@ -12,7 +12,7 @@ import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boun
 import MainConfigCard from "@/components/memshell/main-config-card";
 import PackageConfigCard from "@/components/memshell/package-config-card";
 import ShellResult from "@/components/memshell/shell-result";
-import AddShellButton from "@/components/shell/add-shell-button";
+import AddShellButton, { type AddShellParams } from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,13 +27,6 @@ type MemShellLoaderData = {
   mainConfig: ReturnType<typeof getMainConfig>;
   packerConfig: ReturnType<typeof getPackers>;
 };
-
-type AddShellParams = {
-  profileId?: string;
-  loaderProfileId?: string;
-  shellType?: string;
-  staging?: boolean;
-} | null;
 
 // Validation helper functions
 const urlPatternIsNeeded = (shellType: string) => {
@@ -226,6 +219,7 @@ export default function MemShell() {
       loaderProfileId: isStaging ? (loaderProfileId ?? undefined) : undefined,
       shellType: generateResult.shellConfig.shellType ?? undefined,
       staging: isStaging || undefined,
+      interfaceName: generateResult.injectorConfig.injectorHelperClassName ?? undefined,
     };
   }, [generateResult]);
 

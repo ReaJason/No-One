@@ -27,6 +27,8 @@ val javaPluginMapping = mapOf(
     "log-monitor" to "com.reajason.noone.plugin.LogMonitor",
     "port-scanner" to "com.reajason.noone.plugin.PortScanner",
     "task-manager" to "com.reajason.noone.plugin.TaskManager",
+    "http-repeater" to "com.reajason.noone.plugin.HttpRepeater",
+    "process-monitor" to "com.reajason.noone.plugin.ProcessMonitor",
 )
 
 // ── Resolve all paths at configuration time (configuration cache safe) ──

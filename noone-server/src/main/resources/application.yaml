@@ -22,6 +22,9 @@ spring:
       enabled: true
 jwt:
   secret: "u3SJYZOHd06qmX+AsSHKy9Mab8f3ciIWCQiqVvhsqlYZ9+HRmKp7akyzibfn1OdVMqCE2zjz1iHeWyj1Kg5zrg"
+logging:
+  level:
+    org.apache.dubbo: WARN
 noone:
   plugin-registry:
     enabled: false

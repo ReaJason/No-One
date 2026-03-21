@@ -10,6 +10,7 @@ import com.reajason.noone.server.config.AuthorizationService;
 import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
 import com.reajason.noone.server.plugin.JavaPluginPayloadService;
 import com.reajason.noone.server.plugin.Plugin;
+import com.reajason.noone.server.plugin.PluginRepository;
 import com.reajason.noone.server.shell.dto.*;
 import com.reajason.noone.server.shell.oplog.ShellOperationLogService;
 import com.reajason.noone.server.shell.oplog.ShellOperationType;
@@ -58,6 +59,8 @@ public class ShellService {
     private JavaPluginPayloadService javaPluginPayloadService;
     @Resource
     private BuiltinPluginRegistryService builtinPluginRegistryService;
+    @Resource
+    private PluginRepository pluginRepository;
 
     // ==================== Shell Management Operations ====================
 
@@ -314,6 +317,7 @@ public class ShellService {
         tempShell.setUrl(request.getUrl());
         tempShell.setStaging(Boolean.TRUE.equals(request.getStaging()));
         tempShell.setShellType(request.getShellType());
+        tempShell.setInterfaceName(request.getInterfaceName());
         tempShell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         tempShell.setProfileId(request.getProfileId());
         tempShell.setLoaderProfileId(request.getLoaderProfileId());
@@ -330,10 +334,13 @@ public class ShellService {
                 put("connected", connection.test());
             }};
         } catch (ShellRequestException e) {
+            log.error("Failed to test shell connection", e);
             return failureResponse("Test failed: " + safeMessage(e), e);
         } catch (ShellResponseException e) {
+            log.error("Failed to test shell connection", e);
             return failureResponse("Test failed: " + safeMessage(e), e);
         } catch (Exception e) {
+            log.error("Failed to test shell connection", e);
             return failureResponse("Test failed: " + safeMessage(e), e);
         }
     }
@@ -382,7 +389,25 @@ public class ShellService {
             if (isSuccess(response.get(Constants.CODE))) {
                 shellStatusUpdater.markConnected(shellId);
                 if ("system-info".equals(pluginId)) {
-                    shell.setBasicInfo(((Map<String, Object>) response.get("data")));
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> data = (Map<String, Object>) response.get("data");
+                    shell.setBasicInfo(data);
+
+                    String rawOsName = SystemInfoNormalizer.extractString(data, "os", "name");
+                    String normalizedOs = SystemInfoNormalizer.normalizeOsName(rawOsName);
+                    shell.setOs(normalizedOs);
+
+                    String rawArch = SystemInfoNormalizer.extractString(data, "os", "arch");
+                    shell.setArch(SystemInfoNormalizer.normalizeArch(rawArch, normalizedOs));
+
+                    String runtimeType = SystemInfoNormalizer.extractString(data, "runtime", "type");
+                    String runtimeVer = SystemInfoNormalizer.extractString(data, "runtime", "version");
+                    if (runtimeType != null && runtimeVer != null) {
+                        shell.setRuntimeVersion(runtimeType + " " + runtimeVer);
+                    } else if (runtimeVer != null) {
+                        shell.setRuntimeVersion(runtimeVer);
+                    }
+
                     shellRepository.save(shell);
                 }
             }
@@ -425,6 +450,20 @@ public class ShellService {
         ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
         loadPlugin(connection, plugin, shellLanguage, true);
         return toPluginStatus(plugin, connection);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, ShellPluginStatusResponse> getAllPluginStatuses(Long shellId) {
+        Shell shell = shellRepository.findById(shellId)
+                .orElseThrow(() -> new IllegalArgumentException("Shell not found: " + shellId));
+        ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
+        List<Plugin> plugins = pluginRepository.findAllByLanguage(shellLanguage.getValue());
+        ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+        Map<String, ShellPluginStatusResponse> result = new LinkedHashMap<>();
+        for (Plugin plugin : plugins) {
+            result.put(plugin.getPluginId(), toPluginStatus(plugin, connection));
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -515,13 +554,37 @@ public class ShellService {
 
     private ShellPluginStatusResponse toPluginStatus(Plugin plugin, ShellConnection connection) {
         String shellVersion = connection.getLoadedPluginVersion(plugin.getPluginId());
+        boolean loaded = shellVersion != null || !connection.needLoadPlugin(plugin.getPluginId());
+        boolean needsUpdate = shellVersion != null && compareVersions(plugin.getVersion(), shellVersion) > 0;
         return ShellPluginStatusResponse.builder()
                 .pluginId(plugin.getPluginId())
                 .serverVersion(plugin.getVersion())
                 .shellVersion(shellVersion)
-                .loaded(shellVersion != null || !connection.needLoadPlugin(plugin.getPluginId()))
-                .needsUpdate(!plugin.getVersion().equals(shellVersion))
+                .loaded(loaded)
+                .needsUpdate(needsUpdate)
                 .build();
+    }
+
+    private static int compareVersions(String left, String right) {
+        String[] leftParts = left.split("[^A-Za-z0-9]+");
+        String[] rightParts = right.split("[^A-Za-z0-9]+");
+        int length = Math.max(leftParts.length, rightParts.length);
+        for (int i = 0; i < length; i++) {
+            String leftPart = i < leftParts.length ? leftParts[i] : "0";
+            String rightPart = i < rightParts.length ? rightParts[i] : "0";
+            boolean leftNumeric = leftPart.chars().allMatch(Character::isDigit);
+            boolean rightNumeric = rightPart.chars().allMatch(Character::isDigit);
+            int cmp;
+            if (leftNumeric && rightNumeric) {
+                cmp = Integer.compare(Integer.parseInt(leftPart), Integer.parseInt(rightPart));
+            } else if (leftNumeric != rightNumeric) {
+                cmp = leftNumeric ? 1 : -1;
+            } else {
+                cmp = leftPart.compareToIgnoreCase(rightPart);
+            }
+            if (cmp != 0) return cmp;
+        }
+        return 0;
     }
 
     private void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage, boolean forceRefresh) {

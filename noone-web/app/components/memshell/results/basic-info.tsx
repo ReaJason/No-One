@@ -7,6 +7,7 @@ import { type MemShellResult } from "@/types/memshell";
 import { CopyableField } from "../copyable-field";
 
 export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShellResult }>) {
+  const isDubbo = generateResult?.shellConfig.server === "Dubbo";
   return (
     <Card>
       <CardHeader>
@@ -31,6 +32,20 @@ export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShe
             value={generateResult?.shellClassName}
             text={`${generateResult?.shellClassName} (${generateResult?.shellSize} bytes)`}
           />
+          {isDubbo && (
+            <>
+              <CopyableField
+                label={"serviceName"}
+                value={generateResult?.injectorConfig.urlPattern}
+                text={`${generateResult?.injectorConfig.urlPattern}`}
+              />
+              <CopyableField
+                label={"interfaceName"}
+                value={generateResult?.injectorConfig.injectorHelperClassName}
+                text={`${generateResult?.injectorConfig.injectorHelperClassName}`}
+              />
+            </>
+          )}
         </div>
       </CardContent>
     </Card>

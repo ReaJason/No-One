@@ -15,7 +15,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 )
 @JsonSubTypes({
         @JsonSubTypes.Type(value = HttpProtocolConfig.class, name = "HTTP"),
-        @JsonSubTypes.Type(value = WebSocketProtocolConfig.class, name = "WEBSOCKET")
+        @JsonSubTypes.Type(value = WebSocketProtocolConfig.class, name = "WEBSOCKET"),
+        @JsonSubTypes.Type(value = DubboProtocolConfig.class, name = "DUBBO")
 })
 public abstract class ProtocolConfig {
 

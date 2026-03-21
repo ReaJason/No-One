@@ -7,21 +7,17 @@ import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import {
   dispatchShellPluginFromRoute,
-  getShellPluginStatusFromRoute,
   parseShellIdParam,
   parseShellRouteFormData,
   shellRouteError,
   shellRouteSuccess,
-  updateShellPluginFromRoute,
 } from "@/lib/shell-route.server";
 
 import { useShellManagerContext } from "./shell-manager-context";
 
 const CommandExecute = lazy(() => import("@/components/shell/command-execute"));
 
-type ShellCommandRouteData = {
-  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
-};
+type ShellCommandRouteData = Record<string, never>;
 type ShellCommandLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
 
 export function loader({ context, params, request }: LoaderFunctionArgs) {
@@ -31,18 +27,10 @@ export function loader({ context, params, request }: LoaderFunctionArgs) {
 }
 
 async function loadShellCommandRouteData({
-  context,
   params,
-  request,
 }: ShellCommandLoaderArgs): Promise<ShellCommandRouteData> {
-  const shellId = parseShellIdParam(params.shellId);
-  const pluginStatus = await getShellPluginStatusFromRoute(
-    request,
-    context,
-    shellId,
-    "command-execute",
-  );
-  return { pluginStatus };
+  parseShellIdParam(params.shellId);
+  return {};
 }
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
@@ -50,13 +38,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
     const shellId = parseShellIdParam(params.shellId);
     const { intent, payload, requestId } =
       await parseShellRouteFormData<Record<string, unknown>>(request);
-    if (intent !== "run-command" && intent !== "update-plugin") {
+    if (intent !== "run-command") {
       return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
-    }
-
-    if (intent === "update-plugin") {
-      const data = await updateShellPluginFromRoute(request, context, shellId, "command-execute");
-      return shellRouteSuccess(data, requestId);
     }
 
     const data = await dispatchShellPluginFromRoute(request, context, shellId, {
@@ -86,20 +69,11 @@ export default function ShellCommandRoute() {
 
 function ShellCommandContent({ routeData }: { routeData: Promise<ShellCommandRouteData> }) {
   const { shell } = useShellManagerContext();
-  const { pluginStatus } = use(routeData);
+  use(routeData);
   const revalidator = useRevalidator();
-  const os = shell.basicInfo?.os;
-  const process = shell.basicInfo?.process;
-
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <PluginRuntimeStatusCard
-        pluginId="command-execute"
-        pluginName="Command Execute"
-        status={pluginStatus}
-        actionPath={`/shells/${shell.id}/command`}
-        onUpdated={() => revalidator.revalidate()}
-      />
+      <PluginRuntimeStatusCard pluginId="command-execute" pluginName="Command Execute" />
       <Suspense
         fallback={
           <ShellSectionSkeleton
@@ -111,8 +85,8 @@ function ShellCommandContent({ routeData }: { routeData: Promise<ShellCommandRou
       >
         <CommandExecute
           shellId={shell.id}
-          osName={os.name}
-          cwdHint={process.cwd}
+          osName={shell.os}
+          cwdHint={shell.basicInfo?.process?.cwd}
           actionPath={`/shells/${shell.id}/command`}
           onExecuted={() => revalidator.revalidate()}
         />

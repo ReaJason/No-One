@@ -23,6 +23,19 @@ export async function dispatchPlugin(
   }
 }
 
+export async function getAllPluginStatuses(
+  shellId: number,
+  authFetch: AuthFetch,
+): Promise<Record<string, PluginRuntimeStatus>> {
+  try {
+    return await authFetch(`/shells/${shellId}/plugins/statuses`, {
+      method: "GET",
+    });
+  } catch (error) {
+    throw new Error(resolveApiErrorMessage(error, "Load plugin statuses failed"));
+  }
+}
+
 export async function getPluginStatus(
   shellId: number,
   pluginId: string,

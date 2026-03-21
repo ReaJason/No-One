@@ -11,6 +11,8 @@ interface PendingRequest<T> {
 
 export function useShellRouteFetcher<T>() {
   const fetcher = useFetcher<ShellRouteResult<T>>();
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
   const pendingRef = useRef<PendingRequest<T> | null>(null);
 
   useEffect(() => {
@@ -51,9 +53,9 @@ export function useShellRouteFetcher<T>() {
         }
 
         pendingRef.current = { requestId, resolve, reject };
-        fetcher.submit(formData, options);
+        fetcherRef.current.submit(formData, options);
       }),
-    [fetcher],
+    [],
   );
 
   const load = useCallback(
@@ -65,9 +67,9 @@ export function useShellRouteFetcher<T>() {
         }
 
         pendingRef.current = { requestId, resolve, reject };
-        fetcher.load(href);
+        fetcherRef.current.load(href);
       }),
-    [fetcher],
+    [],
   );
 
   return {

@@ -89,6 +89,9 @@ public class ShellConnectionPool {
             coreClient = new HttpClient(shell.getUrl(), config);
         } else if (profile.getProtocolType() == ProtocolType.WEBSOCKET) {
             coreClient = new WebSocketClient(shell.getUrl(), config);
+        } else if (profile.getProtocolType() == ProtocolType.DUBBO) {
+            DubboClientConfig dubboConfig = buildDubboClientConfig(shell, profile);
+            coreClient = new DubboClient(shell.getUrl(), config, dubboConfig);
         }
 
         ShellLanguage language = effectiveLanguage(shell);
@@ -99,6 +102,9 @@ public class ShellConnectionPool {
                 loaderClient = new HttpClient(shell.getUrl(), loaderConfig);
             } else if (loaderProfile.getProtocolType() == ProtocolType.WEBSOCKET) {
                 loaderClient = new WebSocketClient(shell.getUrl(), loaderConfig);
+            } else if (loaderProfile.getProtocolType() == ProtocolType.DUBBO) {
+                DubboClientConfig dubboConfig = buildDubboClientConfig(shell, loaderProfile);
+                loaderClient = new DubboClient(shell.getUrl(), loaderConfig, dubboConfig);
             }
         }
 
@@ -184,6 +190,9 @@ public class ShellConnectionPool {
             builder.requestTemplate(wsConfig.getMessageTemplate());
             builder.responseTemplate(wsConfig.getResponseTemplate());
             builder.responseBodyType(HttpResponseBodyType.BINARY);
+        } else if (protocolConfig instanceof DubboProtocolConfig dubboConfig) {
+            builder.requestTemplate(dubboConfig.getRequestTemplate());
+            builder.responseTemplate(dubboConfig.getResponseTemplate());
         }
     }
 
@@ -241,6 +250,21 @@ public class ShellConnectionPool {
             case QUERY_PARAM -> requestParams.put(identifier.getName(), identifier.getValue());
             case COOKIE -> requestCookies.put(identifier.getName(), identifier.getValue());
         }
+    }
+
+    private DubboClientConfig buildDubboClientConfig(Shell shell, Profile profile) {
+        DubboClientConfig.DubboClientConfigBuilder builder = DubboClientConfig.builder();
+        builder.interfaceName(shell.getInterfaceName());
+        ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        if (protocolConfig instanceof DubboProtocolConfig dubboProtoConfig) {
+            if (dubboProtoConfig.getMethodName() != null && !dubboProtoConfig.getMethodName().isEmpty()) {
+                builder.methodName(dubboProtoConfig.getMethodName());
+            }
+            if (dubboProtoConfig.getParameterTypes() != null && dubboProtoConfig.getParameterTypes().length > 0) {
+                builder.parameterTypes(dubboProtoConfig.getParameterTypes());
+            }
+        }
+        return builder.build();
     }
 
     private ClientConfig.ProxyConfig parseProxyUrl(String proxyUrl) {

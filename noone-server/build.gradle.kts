@@ -48,6 +48,12 @@ dependencies {
     implementation(libs.commons.lang3)
     implementation(libs.okhttp3)
     implementation(libs.fastjson2)
+    implementation(libs.dubbo) {
+        exclude(group = "org.springframework")
+        exclude(group = "org.springframework.boot")
+    }
+    implementation(libs.dubbo.rpc.hessian)
+    implementation(libs.dubbo.remoting.http)
     implementation(libs.reactor.netty.core)
     implementation(libs.javax.servlet.api)
     implementation(libs.javax.websocket.api)
@@ -105,7 +111,12 @@ tasks.withType<JacocoReport> {
     }
 }
 
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
+}
+
 tasks.test {
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")

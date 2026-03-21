@@ -14,6 +14,7 @@ export interface CreateShellConnectionRequest {
   url: string;
   staging?: boolean;
   shellType?: string;
+  interfaceName?: string;
   language: ShellLanguage;
   group?: string;
   projectId?: number;
@@ -33,6 +34,7 @@ export interface UpdateShellConnectionRequest {
   url?: string;
   staging?: boolean;
   shellType?: string | null;
+  interfaceName?: string | null;
   language: ShellLanguage;
   group?: string;
   projectId?: number | null;
@@ -134,6 +136,7 @@ export interface TestShellConfigRequest {
   url: string;
   staging?: boolean;
   shellType?: string;
+  interfaceName?: string;
   language: ShellLanguage;
   profileId: number;
   loaderProfileId?: number;

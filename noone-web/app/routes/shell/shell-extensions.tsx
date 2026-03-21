@@ -1,15 +1,22 @@
 import type { PluginTabState } from "@/components/shell/plugin-tab-panel";
 import type { Plugin } from "@/types/plugin";
 
-import { Puzzle, X } from "lucide-react";
-import { lazy, startTransition, Suspense, use, useCallback, useState } from "react";
-import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router";
+import { Circle, Puzzle, Search } from "lucide-react";
+import { lazy, Suspense, use, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ActionFunctionArgs,
+  type LoaderFunctionArgs,
+  useLoaderData,
+  useSearchParams,
+} from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
+import { usePluginStatusContext } from "@/components/shell/plugin-status-context";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   dispatchShellPluginFromRoute,
   updateShellPluginFromRoute,
@@ -21,7 +28,6 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-const PluginCatalog = lazy(() => import("@/components/shell/plugin-catalog"));
 const PluginTabPanel = lazy(() => import("@/components/shell/plugin-tab-panel"));
 
 type ShellExtensionsRouteData = {
@@ -82,7 +88,10 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
   } catch (error) {
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+      return Response.json(
+        { ok: false, error: message, requestId: undefined },
+        { status: error.status || 400 },
+      );
     }
     return shellRouteError(error, "Plugin execution failed");
   }
@@ -102,46 +111,50 @@ export default function ShellExtensionsRoute() {
 function ShellExtensionsContent({ routeData }: { routeData: Promise<ShellExtensionsRouteData> }) {
   const { shell } = useShellManagerContext();
   const { extensionPlugins } = use(routeData);
+  const [searchParams] = useSearchParams();
 
-  const [extensionSubTab, setExtensionSubTab] = useState("catalog");
-  const [openPlugins, setOpenPlugins] = useState<Plugin[]>([]);
+  const initialPluginId = searchParams.get("plugin");
+  const [selectedPluginId, setSelectedPluginId] = useState<string | null>(
+    initialPluginId && extensionPlugins.some((p) => p.id === initialPluginId)
+      ? initialPluginId
+      : null,
+  );
+  const [search, setSearch] = useState("");
   const [pluginStates, setPluginStates] = useState<Record<string, PluginTabState>>({});
 
-  const openPlugin = useCallback((plugin: Plugin) => {
-    startTransition(() => {
-      setOpenPlugins((prev) => {
-        if (prev.some((p) => p.id === plugin.id)) {
-          setExtensionSubTab(`plugin-${plugin.id}`);
-          return prev;
-        }
-        return [...prev, plugin];
-      });
-      setPluginStates((prev) => {
-        if (prev[plugin.id]) return prev;
-        const actionKeys = plugin.actions ? Object.keys(plugin.actions) : [];
-        return {
-          ...prev,
-          [plugin.id]: {
-            selectedAction: actionKeys.length > 0 ? actionKeys[0] : "",
-            args: {},
-            result: null,
-            loading: false,
-          },
-        };
-      });
-      setExtensionSubTab(`plugin-${plugin.id}`);
-    });
-  }, []);
+  useEffect(() => {
+    if (initialPluginId && extensionPlugins.some((p) => p.id === initialPluginId)) {
+      setSelectedPluginId(initialPluginId);
+    }
+  }, [initialPluginId, extensionPlugins]);
 
-  const closePlugin = useCallback((pluginId: string) => {
-    startTransition(() => {
-      setOpenPlugins((prev) => prev.filter((p) => p.id !== pluginId));
-      setPluginStates((prev) => {
-        const next = { ...prev };
-        delete next[pluginId];
-        return next;
-      });
-      setExtensionSubTab((prev) => (prev === `plugin-${pluginId}` ? "catalog" : prev));
+  const filteredPlugins = useMemo(() => {
+    if (!search.trim()) return extensionPlugins;
+    const q = search.toLowerCase();
+    return extensionPlugins.filter(
+      (p) => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q),
+    );
+  }, [extensionPlugins, search]);
+
+  const selectedPlugin = useMemo(
+    () => extensionPlugins.find((p) => p.id === selectedPluginId) ?? null,
+    [extensionPlugins, selectedPluginId],
+  );
+
+  const selectPlugin = useCallback((plugin: Plugin) => {
+    setSelectedPluginId(plugin.id);
+    setPluginStates((prev) => {
+      if (prev[plugin.id]) return prev;
+      const actionKeys = plugin.actions ? Object.keys(plugin.actions) : [];
+      return {
+        ...prev,
+        [plugin.id]: {
+          selectedAction: actionKeys.length > 0 ? actionKeys[0] : "",
+          args: {},
+          result: null,
+          loading: false,
+        },
+      };
     });
   }, []);
 
@@ -153,89 +166,109 @@ function ShellExtensionsContent({ routeData }: { routeData: Promise<ShellExtensi
   }, []);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <div className="flex min-h-0 flex-1 flex-col">
-        <Tabs
-          value={extensionSubTab}
-          onValueChange={(val) => val != null && setExtensionSubTab(val)}
-          className="flex min-h-0 flex-1 flex-col"
-        >
-          <TabsList className="flex w-full shrink-0 overflow-x-auto">
-            <TabsTrigger value="catalog" className="flex shrink-0 items-center gap-2">
-              <Puzzle className="h-4 w-4" />
-              Catalog
-            </TabsTrigger>
-            {openPlugins.map((plugin) => (
-              <TabsTrigger
-                key={`plugin-${plugin.id}`}
-                value={`plugin-${plugin.id}`}
-                className="group/tab flex max-w-[160px] shrink-0 items-center gap-1.5"
-              >
-                <Puzzle className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{plugin.name}</span>
-                <button
-                  type="button"
-                  className="ml-1 shrink-0 rounded-sm p-0.5 opacity-0 transition-opacity group-hover/tab:opacity-100 hover:bg-muted"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    closePlugin(plugin.id);
-                  }}
-                >
-                  <span className="sr-only">Close</span>
-                  <X className="h-3 w-3" />
-                </button>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+    <div className="flex h-full min-h-0">
+      {/* Plugin list sidebar */}
+      <aside className="hidden w-60 shrink-0 border-r border-border/70 bg-muted/20 md:flex md:flex-col">
+        <div className="shrink-0 border-b border-border/70 p-3">
+          <div className="relative">
+            <Search className="absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search plugins..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 pl-8 text-sm"
+            />
+          </div>
+        </div>
+        <ScrollArea className="flex-1">
+          <div className="p-1">
+            {filteredPlugins.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {search ? "No plugins match your search" : "No extension plugins available"}
+              </div>
+            ) : (
+              filteredPlugins.map((plugin) => {
+                const isSelected = plugin.id === selectedPluginId;
+                const actions = plugin.actions ?? {};
+                const actionCount = Object.keys(actions).length;
+                return (
+                  <button
+                    key={plugin.id}
+                    type="button"
+                    onClick={() => selectPlugin(plugin)}
+                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                      isSelected
+                        ? "bg-accent text-accent-foreground"
+                        : "text-foreground/80 hover:bg-accent/50"
+                    }`}
+                  >
+                    <Puzzle className="size-3.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate font-medium">{plugin.name}</span>
+                        <PluginStatusDot pluginId={plugin.id} />
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <span>{plugin.version}</span>
+                        <span>&middot;</span>
+                        <span>
+                          {actionCount} {actionCount === 1 ? "action" : "actions"}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </ScrollArea>
+      </aside>
 
-          <TabsContent value="catalog" className="mt-4 flex min-h-0 flex-1 flex-col overflow-auto">
-            <Suspense
-              fallback={
-                <ShellSectionSkeleton
-                  label="Loading extension catalog"
-                  variant="extensions"
-                  showStatusCard={false}
-                />
-              }
-            >
-              <PluginCatalog
-                extensionPlugins={extensionPlugins}
-                openPluginIds={openPlugins.map((p) => p.id)}
-                onOpenPlugin={openPlugin}
+      {/* Detail panel */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto p-4">
+        {selectedPlugin && pluginStates[selectedPlugin.id] ? (
+          <Suspense
+            fallback={
+              <ShellSectionSkeleton
+                label="Loading extension panel"
+                variant="extensions"
+                showStatusCard={false}
               />
-            </Suspense>
-          </TabsContent>
-
-          {openPlugins.map((plugin) => (
-            <TabsContent
-              key={`plugin-${plugin.id}`}
-              value={`plugin-${plugin.id}`}
-              className="mt-4 flex min-h-0 flex-1 flex-col overflow-auto"
-            >
-              {pluginStates[plugin.id] && (
-                <Suspense
-                  fallback={
-                    <ShellSectionSkeleton
-                      label="Loading extension panel"
-                      variant="extensions"
-                      showStatusCard={false}
-                    />
-                  }
-                >
-                  <PluginTabPanel
-                    plugin={plugin}
-                    actionPath={`/shells/${shell.id}/extensions`}
-                    taskStatusPath={`/shells/${shell.id}/extensions/status`}
-                    pluginStatusPath={`/shells/${shell.id}/extensions/plugin-status`}
-                    state={pluginStates[plugin.id]}
-                    onStateChange={(update) => updatePluginState(plugin.id, update)}
-                  />
-                </Suspense>
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+            }
+          >
+            <PluginTabPanel
+              plugin={selectedPlugin}
+              actionPath={`/shells/${shell.id}/extensions`}
+              taskStatusPath={`/shells/${shell.id}/extensions/status`}
+              pluginStatusPath={`/shells/${shell.id}/extensions/plugin-status`}
+              state={pluginStates[selectedPlugin.id]}
+              onStateChange={(update) => updatePluginState(selectedPlugin.id, update)}
+            />
+          </Suspense>
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Puzzle className="size-12 opacity-20" />
+            <p className="text-sm">
+              {extensionPlugins.length > 0
+                ? "Select a plugin from the list to get started"
+                : "No extension plugins available for this shell"}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
+}
+
+function PluginStatusDot({ pluginId }: { pluginId: string }) {
+  const { statuses } = usePluginStatusContext();
+  const status = statuses[pluginId];
+  if (!status) return null;
+  if (!status.loaded) {
+    return <Circle className="size-2 shrink-0 fill-muted-foreground/40 text-muted-foreground/40" />;
+  }
+  if (status.needsUpdate) {
+    return <Circle className="size-2 shrink-0 fill-amber-500 text-amber-500" />;
+  }
+  return <Circle className="size-2 shrink-0 fill-emerald-500 text-emerald-500" />;
 }

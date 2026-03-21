@@ -22,6 +22,8 @@ public class ShellTestConfigRequest {
 
     private String shellType;
 
+    private String interfaceName;
+
     private ShellLanguage language;
 
     @NotNull(message = "Profile ID cannot be null")

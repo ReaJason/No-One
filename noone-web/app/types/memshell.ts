@@ -41,6 +41,7 @@ export interface NoOneShellToolConfig {
 
 export interface InjectorConfig {
   injectorClassName?: string;
+  injectorHelperClassName?: string;
   classInheritance?: string;
   urlPattern?: string;
   staticInitialize?: boolean;
@@ -79,6 +80,7 @@ export interface MemShellResult {
   injectorClassName: string;
   injectorSize: number;
   injectorBytesBase64Str: string;
+  injectorHelperBytesBase64Str: string;
   shellConfig: ShellConfig;
   shellToolConfig: NoOneShellToolConfig;
   injectorConfig: InjectorConfig;

@@ -1,32 +1,16 @@
 import { lazy, Suspense, use, useState } from "react";
-import {
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  useLoaderData,
-  useNavigate,
-  useRevalidator,
-} from "react-router";
+import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import * as shellApi from "@/api/shell-api";
 import * as opLogApi from "@/api/shell-operation-log-api";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
-import {
-  getShellPluginStatusFromRoute,
-  parseShellIdParam,
-  parseShellRouteFormData,
-  shellRouteError,
-  shellRouteSuccess,
-  updateShellPluginFromRoute,
-} from "@/lib/shell-route.server";
-
-import { useShellManagerContext } from "./shell-manager-context";
+import { parseShellIdParam } from "@/lib/shell-route.server";
 
 const SystemDashboard = lazy(() => import("@/components/shell/system-info"));
 
 type ShellInfoRouteData = {
-  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
   systemInfo: unknown;
   error: string | null;
 };
@@ -38,6 +22,8 @@ export function loader({ context, params, request }: LoaderFunctionArgs) {
   };
 }
 
+const DISPATCH_TIMEOUT_MS = 20_000;
+
 async function loadShellInfoRouteData({
   context,
   params,
@@ -47,57 +33,36 @@ async function loadShellInfoRouteData({
   const url = new URL(request.url);
   const forceRefresh = url.searchParams.has("forceRefresh");
   const authFetch = createAuthFetch(request, context);
-  const pluginStatusPromise = getShellPluginStatusFromRoute(
-    request,
-    context,
-    shellId,
-    "system-info",
-  );
-  const cachedResultPromise = forceRefresh
-    ? Promise.resolve(null)
-    : opLogApi.getLatestShellOperation(shellId, "system-info", authFetch).catch(() => null);
-  let [pluginStatus, cached] = await Promise.all([pluginStatusPromise, cachedResultPromise]);
+  const cachedResult = forceRefresh
+    ? null
+    : await opLogApi.getLatestShellOperation(shellId, "system-info", authFetch).catch(() => null);
 
   try {
-    if (cached?.result) {
-      return { pluginStatus, systemInfo: cached.result, error: null };
+    if (cachedResult?.result) {
+      return { systemInfo: cachedResult.result, error: null };
     }
 
-    const data = await shellApi.dispatchPlugin(
-      {
-        id: shellId,
-        pluginId: "system-info",
-      },
-      authFetch,
-    );
-    if (!pluginStatus.loaded) {
-      pluginStatus = await getShellPluginStatusFromRoute(request, context, shellId, "system-info");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), DISPATCH_TIMEOUT_MS);
+    try {
+      const data = await shellApi.dispatchPlugin(
+        { id: shellId, pluginId: "system-info" },
+        authFetch,
+        { signal: controller.signal },
+      );
+      return { systemInfo: data, error: null };
+    } finally {
+      clearTimeout(timeout);
     }
-    return { pluginStatus, systemInfo: data, error: null };
   } catch (err: any) {
+    const message =
+      err.name === "AbortError"
+        ? "Request timed out — the remote shell may be unresponsive"
+        : err.message || "Unknown error";
     return {
-      pluginStatus,
       systemInfo: null,
-      error: `Failed to load system info: ${err.message || "Unknown error"}`,
+      error: `Failed to load system info: ${message}`,
     };
-  }
-}
-
-export async function action({ context, params, request }: ActionFunctionArgs) {
-  try {
-    const shellId = parseShellIdParam(params.shellId);
-    const { intent, requestId } = await parseShellRouteFormData<Record<string, unknown>>(request);
-    if (intent !== "update-plugin") {
-      return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
-    }
-    const data = await updateShellPluginFromRoute(request, context, shellId, "system-info");
-    return shellRouteSuccess(data, requestId);
-  } catch (error) {
-    if (error instanceof Response) {
-      const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
-    }
-    return shellRouteError(error, "System info plugin update failed");
   }
 }
 
@@ -113,29 +78,21 @@ export default function ShellInfoRoute() {
 }
 
 function ShellInfoContent({ routeData }: { routeData: Promise<ShellInfoRouteData> }) {
-  const { pluginStatus, systemInfo, error } = use(routeData);
+  const { systemInfo, error } = use(routeData);
   const navigate = useNavigate();
-  const revalidator = useRevalidator();
-  const { shell } = useShellManagerContext();
+
   const [refreshing, setRefreshing] = useState(false);
   const hasSystemInfo = systemInfo != null;
 
   const handleRefresh = () => {
     setRefreshing(true);
     navigate(`?forceRefresh=${Date.now()}`, { replace: true });
-    // refreshing state will reset on re-render from navigation
     setTimeout(() => setRefreshing(false), 500);
   };
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <PluginRuntimeStatusCard
-        pluginId="system-info"
-        pluginName="System Info"
-        status={pluginStatus}
-        actionPath={`/shells/${shell.id}/info`}
-        onUpdated={() => revalidator.revalidate()}
-      />
+      <PluginRuntimeStatusCard pluginId="system-info" pluginName="System Info" />
       {error && (
         <div className="shrink-0 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
           {error}

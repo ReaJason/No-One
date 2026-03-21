@@ -35,7 +35,7 @@ export const JREVersionFormField = memo(function JREVersionFormField({
   // Optimize: Use effect with primitive dependencies (rerender-dependencies)
   // biome-ignore lint/correctness/useExhaustiveDependencies: value change by itself
   useEffect(() => {
-    if (server === "SpringWebFlux" || server?.startsWith("XXL")) {
+    if (server === "SpringWebFlux" || server?.startsWith("XXL") || server === "Dubbo") {
       const currentVersion = parseInt(value, 10);
       if (currentVersion < 52) {
         setValue("52");

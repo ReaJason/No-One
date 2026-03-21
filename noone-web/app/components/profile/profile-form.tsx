@@ -25,6 +25,7 @@ import {
   COMPRESSION_OPTIONS,
   DEFAULT_REQUEST_TEMPLATES,
   DEFAULT_RESPONSE_TEMPLATES,
+  DUBBO_IDENTIFIER_LOCATION_OPTIONS,
   ENCODING_OPTIONS,
   ENCRYPTION_OPTIONS,
   HTTP_IDENTIFIER_LOCATION_OPTIONS,
@@ -50,6 +51,7 @@ type ProfileFormProps = {
 const IDENTIFIER_LOCATION_OPTIONS_BY_PROTOCOL = {
   HTTP: HTTP_IDENTIFIER_LOCATION_OPTIONS,
   WEBSOCKET: WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS,
+  DUBBO: DUBBO_IDENTIFIER_LOCATION_OPTIONS,
 } satisfies Record<ProtocolType, Array<{ label: string; value: string }>>;
 
 function getNextTemplateValue<T extends string>(
@@ -179,6 +181,7 @@ export function ProfileForm({
                       <SelectGroup>
                         <SelectItem value="HTTP">HTTP</SelectItem>
                         <SelectItem value="WEBSOCKET">WebSocket</SelectItem>
+                        <SelectItem value="DUBBO">Dubbo</SelectItem>
                       </SelectGroup>
                     </SelectContent>
                   </Select>
@@ -275,7 +278,51 @@ export function ProfileForm({
         </CardContent>
       </Card>
 
-      {protocolType === "HTTP" ? (
+      {protocolType === "DUBBO" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Dubbo Config</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FieldGroup className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="dubboRequestTemplate">Request Template</FieldLabel>
+                <Controller
+                  name="dubboRequestTemplate"
+                  control={control}
+                  render={({ field }) => (
+                    <Textarea
+                      id="dubboRequestTemplate"
+                      rows={6}
+                      className="font-mono text-sm leading-6"
+                      placeholder="<base64>aGVsbG8=</base64>{{payload}}"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="dubboResponseTemplate">Response Template</FieldLabel>
+                <Controller
+                  name="dubboResponseTemplate"
+                  control={control}
+                  render={({ field }) => (
+                    <Textarea
+                      id="dubboResponseTemplate"
+                      rows={6}
+                      className="font-mono text-sm leading-6"
+                      placeholder="<base64>aGVsbG8=</base64>{{payload}}"
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
+                  )}
+                />
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
+      ) : protocolType === "HTTP" ? (
         <Card>
           <CardHeader>
             <CardTitle>HTTP Config</CardTitle>

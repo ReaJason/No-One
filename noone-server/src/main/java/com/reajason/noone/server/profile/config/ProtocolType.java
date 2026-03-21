@@ -7,6 +7,7 @@ package com.reajason.noone.server.profile.config;
  */
 public enum ProtocolType {
     HTTP,
-    WEBSOCKET
+    WEBSOCKET,
+    DUBBO
 }
 

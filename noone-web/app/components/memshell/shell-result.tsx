@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { downloadBytes } from "@/lib/utils";
+import { cn, downloadBytes } from "@/lib/utils";
 
 import CodeViewer from "./code-viewer";
 import { BasicInfo } from "./results/basic-info";
@@ -27,15 +27,19 @@ const ShellResult = memo(function ShellResult({
   if (!generateResult) {
     return <></>;
   }
+  const hasHelper =
+    generateResult?.injectorHelperBytesBase64Str &&
+    generateResult?.injectorHelperBytesBase64Str !== "";
 
   const height = 553;
 
   return (
     <Tabs defaultValue="packResult">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className={cn("grid w-full", hasHelper ? "grid-cols-4" : "grid-cols-3")}>
         <TabsTrigger value="packResult">Generate Result</TabsTrigger>
         <TabsTrigger value="shell">ShellClass</TabsTrigger>
         <TabsTrigger value="injector">InjectorClass</TabsTrigger>
+        {hasHelper && <TabsTrigger value="injectorHelper">InjectorHelperClass</TabsTrigger>}
       </TabsList>
       <TabsContent value="packResult" className="space-y-2">
         <BasicInfo generateResult={generateResult} />
@@ -102,6 +106,42 @@ const ShellResult = memo(function ShellResult({
           language="text"
         />
       </TabsContent>
+      {hasHelper && (
+        <TabsContent value="injectorHelper" className="mt-4">
+          <CodeViewer
+            showLineNumbers={false}
+            wrapLongLines={true}
+            header={
+              <div className="text-xs">
+                {generateResult?.injectorConfig.injectorHelperClassName}
+              </div>
+            }
+            button={
+              <Button
+                variant="ghost"
+                size="icon"
+                type="button"
+                className="h-7 w-7 [&_svg]:h-4 [&_svg]:w-4"
+                onClick={() => {
+                  if (!generateResult?.injectorHelperBytesBase64Str) {
+                    toast.warning("Shell bytes is empty, please generate shell first");
+                    return;
+                  }
+                  downloadBytes(
+                    generateResult?.injectorHelperBytesBase64Str,
+                    generateResult?.injectorConfig.injectorHelperClassName,
+                  );
+                }}
+              >
+                <DownloadIcon className="h-4 w-4" />
+              </Button>
+            }
+            height={height}
+            code={generateResult?.injectorHelperBytesBase64Str ?? ""}
+            language="text"
+          />
+        </TabsContent>
+      )}
     </Tabs>
   );
 });

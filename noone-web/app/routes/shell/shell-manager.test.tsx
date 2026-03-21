@@ -5,6 +5,7 @@ import { loader } from "@/routes/shell/shell-manager";
 
 const createAuthFetchMock = vi.fn();
 const getShellConnectionByIdMock = vi.fn();
+const getPluginsMock = vi.fn();
 
 vi.mock("@/api/api.server", () => ({
   createAuthFetch: (...args: unknown[]) => createAuthFetchMock(...args),
@@ -12,6 +13,10 @@ vi.mock("@/api/api.server", () => ({
 
 vi.mock("@/api/shell-connection-api", () => ({
   getShellConnectionById: (...args: unknown[]) => getShellConnectionByIdMock(...args),
+}));
+
+vi.mock("@/api/plugin-api", () => ({
+  getPlugins: (...args: unknown[]) => getPluginsMock(...args),
 }));
 
 function createDeferred<T>() {
@@ -28,6 +33,8 @@ describe("shell manager loader", () => {
   beforeEach(() => {
     createAuthFetchMock.mockReset();
     getShellConnectionByIdMock.mockReset();
+    getPluginsMock.mockReset();
+    getPluginsMock.mockResolvedValue({ content: [] });
   });
 
   it("returns a promise-backed shell payload so the route can suspend", async () => {
@@ -41,6 +48,9 @@ describe("shell manager loader", () => {
 
     createAuthFetchMock.mockReturnValue(authFetch);
     getShellConnectionByIdMock.mockReturnValue(deferred.promise);
+    getPluginsMock.mockResolvedValue({
+      content: [{ id: "system-info" }, { id: "command-execute" }],
+    });
 
     const result = (await loader({
       context: {} as never,
@@ -54,11 +64,13 @@ describe("shell manager loader", () => {
         status: "CONNECTED";
         language: string;
       }>;
+      standardPluginIds: Promise<string[]>;
     };
 
     expect(createAuthFetchMock).toHaveBeenCalled();
     expect(getShellConnectionByIdMock).toHaveBeenCalledWith("42", authFetch);
     expect(result.shell).toBeInstanceOf(Promise);
+    expect(result.standardPluginIds).toBeInstanceOf(Promise);
 
     deferred.resolve({
       id: 42,
@@ -71,6 +83,7 @@ describe("shell manager loader", () => {
       id: 42,
       url: "https://shell.example",
     });
+    await expect(result.standardPluginIds).resolves.toEqual(["system-info", "command-execute"]);
   });
 
   it("rejects the shell promise with a 404 response when the shell is missing", async () => {
@@ -82,7 +95,9 @@ describe("shell manager loader", () => {
       params: { shellId: "404" },
       request: new Request("http://localhost/shells/404/info"),
       unstable_pattern: "/shells/:shellId",
-    } as never)) as { shell: Promise<unknown> };
+    } as never)) as { shell: Promise<unknown>; standardPluginIds: Promise<unknown> };
+
+    result.standardPluginIds.catch(() => {});
 
     await expect(result.shell).rejects.toMatchObject({
       status: 404,

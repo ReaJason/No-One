@@ -1,5 +1,5 @@
 // Protocol Types
-export type ProtocolType = "HTTP" | "WEBSOCKET";
+export type ProtocolType = "HTTP" | "WEBSOCKET" | "DUBBO";
 
 export type HttpMethod = "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 
@@ -68,7 +68,13 @@ export interface WebSocketProtocolConfig {
   messageFormat?: MessageFormat;
 }
 
-export type ProtocolConfig = HttpProtocolConfig | WebSocketProtocolConfig;
+export interface DubboProtocolConfig {
+  type: "DUBBO";
+  requestTemplate?: string;
+  responseTemplate?: string;
+}
+
+export type ProtocolConfig = HttpProtocolConfig | WebSocketProtocolConfig | DubboProtocolConfig;
 
 // Profile
 export interface Profile {
@@ -180,6 +186,8 @@ export const HTTP_IDENTIFIER_LOCATION_OPTIONS = [
 export const WEBSOCKET_IDENTIFIER_LOCATION_OPTIONS = [
   { label: "Handshake Header", value: "HANDSHAKE_HEADER" },
 ];
+
+export const DUBBO_IDENTIFIER_LOCATION_OPTIONS = [{ label: "Metadata", value: "METADATA" }];
 
 export const REQUEST_BODY_TYPE_OPTIONS = [
   { value: "JSON", label: "JSON" },

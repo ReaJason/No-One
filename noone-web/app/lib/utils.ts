@@ -18,14 +18,19 @@ export function downloadContent(content: Blob, fileName: string, fileExtension?:
   document.body.removeChild(link);
 }
 
-export function base64ToBytes(base64String: string) {
+export function base64ToBytes(base64String: string): Uint8Array {
   const byteNumbers = Array.from(atob(base64String), (char) => char.charCodeAt(0));
   return new Uint8Array(byteNumbers);
 }
 
+export function bytesToBase64(bytes: Uint8Array): string {
+  const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join("");
+  return btoa(binary);
+}
+
 export function downloadBytes(base64String: string, className?: string, jarName?: string) {
   const byteArray = base64ToBytes(base64String);
-  const blob = new Blob([byteArray], {
+  const blob = new Blob([byteArray as BlobPart], {
     type: className ? "application/java-vm" : "application/java-archive",
   });
 

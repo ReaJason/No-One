@@ -9,9 +9,9 @@ import {
   MoreHorizontal,
   Terminal,
   Trash2,
-  Zap,
   Wifi,
   WifiOff,
+  Zap,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useFetcher, useNavigate } from "react-router";
@@ -263,12 +263,18 @@ export function getShellColumns({
       header: ({ column }) => <DataTableColumnHeader column={column} label="Language" />,
       cell: ({ row }) => {
         const language = row.getValue("language") as ShellLanguage;
+        const version = row.original.runtimeVersion;
         const labels: Record<ShellLanguage, string> = {
           java: "Java",
           nodejs: "NodeJs",
           dotnet: "DotNet",
         };
-        return <Badge variant="secondary">{labels[language] ?? language}</Badge>;
+        return (
+          <span className={"space-x-2"}>
+            <Badge variant="secondary">{labels[language] ?? language}</Badge>
+            <Badge variant="outline">{version ?? "Unknown"}</Badge>
+          </span>
+        );
       },
       meta: {
         label: "Language",
@@ -280,7 +286,7 @@ export function getShellColumns({
         ],
       },
       enableColumnFilter: true,
-      size: 100,
+      size: 200,
     },
     {
       id: "projectId",
@@ -338,51 +344,24 @@ export function getShellColumns({
         ],
       },
       enableColumnFilter: true,
+      size: 200,
     },
     {
-      id: "basicInfo",
-      accessorKey: "basicInfo",
-      header: ({ column }) => <DataTableColumnHeader column={column} label="Basic Info" />,
+      id: "os",
+      accessorKey: "os",
+      header: ({ column }) => <DataTableColumnHeader column={column} label="OS" />,
       cell: ({ row }) => {
-        const basicInfo = row.getValue("basicInfo") as Record<string, any> | undefined;
-        if (!basicInfo || Object.keys(basicInfo).length === 0) {
-          return <span className="text-sm text-muted-foreground">Unknown</span>;
+        const os = row.getValue("os");
+        if (os) {
+          return `${os} ${row.original.arch ?? ""}`.trim();
         }
-        const os = basicInfo.os as Record<string, string> | undefined;
-        const runtime = basicInfo.runtime as Record<string, string> | undefined;
-        const proc = basicInfo.process as Record<string, any> | undefined;
-
-        const items: [string, string][] = [];
-        if (os?.name) items.push(["OS", os.name]);
-        if (os?.hostname) items.push(["Host", os.hostname]);
-        if (runtime?.type)
-          items.push(["Runtime", `${runtime.type} ${runtime.version ?? ""}`.trim()]);
-        if (proc?.pid) items.push(["PID", String(proc.pid)]);
-
-        if (items.length === 0) {
-          return <span className="text-sm text-muted-foreground">Unknown</span>;
-        }
-
-        return (
-          <table className="text-xs">
-            <tbody>
-              {items.map(([label, value]) => (
-                <tr key={label}>
-                  <td className="pr-2 whitespace-nowrap text-muted-foreground">{label}</td>
-                  <td className="max-w-40 truncate" title={value}>
-                    {value}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        );
+        return "Unknown";
+      },
+      meta: {
+        label: "OS",
       },
       enableSorting: false,
-      size: 200,
-      meta: {
-        label: "Basic Info",
-      },
+      enableColumnFilter: false,
     },
     {
       id: "lastOnlineAt",

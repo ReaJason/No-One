@@ -95,7 +95,7 @@ public class NoOneStagelessNettyHandler extends ChannelDuplexHandler {
     }
 
     private byte[] getArgFromContent(byte[] content) {
-        return null;
+        return content;
     }
 
     private byte[] transformReqPayload(byte[] input) {

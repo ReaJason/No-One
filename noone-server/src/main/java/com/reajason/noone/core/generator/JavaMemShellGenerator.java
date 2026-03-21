@@ -41,6 +41,7 @@ public class JavaMemShellGenerator {
                 .addShellClass(JAKARTA_LISTENER, NoOneStagelessListener.class)
                 .addShellClass(NETTY_HANDLER, NoOneStagelessNettyHandler.class)
                 .addShellClass(WEBSOCKET, NoOneStagelessWebSocket.class)
+                .addShellClass(DUBBO_SERVICE, NoOneStagelessDubboService.class)
                 .addShellClass(VALVE, NoOneStagelessValve.class)
                 .addShellClass(JAKARTA_VALVE, NoOneStagelessValve.class)
                 .addShellClass(ACTION, NoOneStagelessStruct2Action.class)

@@ -20,7 +20,8 @@ export type AddShellParams = {
   shellType?: string;
   staging?: boolean;
   language?: string;
-};
+  interfaceName?: string;
+} | null;
 
 interface AddShellButtonProps {
   params: AddShellParams;
@@ -64,20 +65,24 @@ const AddShellButton = memo(function AddShellButton({
 
     const searchParams = new URLSearchParams({ shellUrl: targetUrl });
 
-    if (params.staging) {
+    if (params?.staging) {
       searchParams.set("staging", "true");
-      if (params.loaderProfileId) {
+      if (params?.loaderProfileId) {
         searchParams.set("loaderProfileId", params.loaderProfileId);
       }
-    } else if (params.profileId) {
+    } else if (params?.profileId) {
       searchParams.set("profileId", params.profileId);
     }
 
-    if (params.shellType) {
+    if (params?.shellType) {
       searchParams.set("shellType", params.shellType);
     }
-    if (params.language) {
+    if (params?.language) {
       searchParams.set("language", params.language);
+    }
+
+    if (params?.interfaceName) {
+      searchParams.set("interfaceName", params.interfaceName);
     }
 
     window.open(`/shells/create?${searchParams.toString()}`);

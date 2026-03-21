@@ -5,7 +5,7 @@ import com.reajason.noone.server.shell.dto.ShellCreateRequest;
 import com.reajason.noone.server.shell.dto.ShellResponse;
 import com.reajason.noone.server.shell.dto.ShellUpdateRequest;
 import jakarta.annotation.Resource;
-import org.springframework.stereotype.Component;
+import org.mapstruct.*;
 
 /**
  * Mapper for converting between Shell entities and DTOs
@@ -13,133 +13,85 @@ import org.springframework.stereotype.Component;
  * @author ReaJason
  * @since 2025/12/27
  */
-@Component
-public class ShellMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+public abstract class ShellMapper {
 
     @Resource
-    private ProfileRepository profileRepository;
+    protected ProfileRepository profileRepository;
 
-    public Shell toEntity(ShellCreateRequest request) {
-        Shell shell = new Shell();
-        shell.setName(request.getName());
-        shell.setUrl(request.getUrl());
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "remark", ignore = true)
+    @Mapping(target = "lastOnlineAt", ignore = true)
+    @Mapping(target = "lastOperatorId", ignore = true)
+    @Mapping(target = "basicInfo", ignore = true)
+    @Mapping(target = "os", ignore = true)
+    @Mapping(target = "arch", ignore = true)
+    @Mapping(target = "runtimeVersion", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "staging", ignore = true)
+    @Mapping(target = "language", ignore = true)
+    public abstract Shell toEntity(ShellCreateRequest request);
+
+    @AfterMapping
+    protected void afterToEntity(@MappingTarget Shell shell, ShellCreateRequest request) {
         shell.setStaging(Boolean.TRUE.equals(request.getStaging()));
-        shell.setShellType(normalizeText(request.getShellType()));
         shell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
-        shell.setProjectId(request.getProjectId());
         shell.setStatus(ShellStatus.DISCONNECTED);
-
-        // New fields
-        shell.setProfileId(request.getProfileId());
-        shell.setLoaderProfileId(request.getLoaderProfileId());
-        shell.setProxyUrl(request.getProxyUrl());
-        shell.setCustomHeaders(request.getCustomHeaders());
-        shell.setConnectTimeoutMs(request.getConnectTimeoutMs());
-        shell.setReadTimeoutMs(request.getReadTimeoutMs());
-        shell.setSkipSslVerify(request.getSkipSslVerify());
-        shell.setMaxRetries(request.getMaxRetries());
-        shell.setRetryDelayMs(request.getRetryDelayMs());
-
-        return shell;
     }
 
-    public void updateEntity(Shell shell, ShellUpdateRequest request) {
-        if (request.getUrl() != null && !request.getUrl().isBlank()) {
-            shell.setUrl(request.getUrl());
-        }
-        if (request.getName() != null && !request.getName().isBlank()) {
-            shell.setName(request.getName());
-        }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "tags", ignore = true)
+    @Mapping(target = "remark", ignore = true)
+    @Mapping(target = "lastOnlineAt", ignore = true)
+    @Mapping(target = "lastOperatorId", ignore = true)
+    @Mapping(target = "basicInfo", ignore = true)
+    @Mapping(target = "os", ignore = true)
+    @Mapping(target = "arch", ignore = true)
+    @Mapping(target = "runtimeVersion", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    @Mapping(target = "language", ignore = true)
+    @Mapping(target = "loaderProfileId", ignore = true)
+    public abstract void updateEntity(@MappingTarget Shell shell, ShellUpdateRequest request);
+
+    @AfterMapping
+    protected void afterUpdateEntity(@MappingTarget Shell shell, ShellUpdateRequest request) {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             shell.setStatus(ShellStatus.valueOf(request.getStatus().toUpperCase()));
         }
-        if (request.getProjectId() != null) {
-            shell.setProjectId(request.getProjectId());
-        }
-        boolean staging = request.getStaging() != null ? request.getStaging() : Boolean.TRUE.equals(shell.getStaging());
-        if (request.getStaging() != null) {
-            shell.setStaging(request.getStaging());
-        }
-        if (request.getShellType() != null) {
-            shell.setShellType(normalizeText(request.getShellType()));
-        }
-
         if (request.getLanguage() != null) {
             shell.setLanguage(request.getLanguage());
         } else if (shell.getLanguage() == null) {
             shell.setLanguage(ShellLanguage.JAVA);
         }
-
-        // New fields - profileId is required
-        shell.setProfileId(request.getProfileId());
+        boolean staging = request.getStaging() != null
+                ? request.getStaging()
+                : Boolean.TRUE.equals(shell.getStaging());
         if (!staging) {
             shell.setLoaderProfileId(null);
         } else if (request.getLoaderProfileId() != null) {
             shell.setLoaderProfileId(request.getLoaderProfileId());
         }
-        if (request.getProxyUrl() != null) {
-            shell.setProxyUrl(request.getProxyUrl());
-        }
-        if (request.getCustomHeaders() != null) {
-            shell.setCustomHeaders(request.getCustomHeaders());
-        }
-        if (request.getConnectTimeoutMs() != null) {
-            shell.setConnectTimeoutMs(request.getConnectTimeoutMs());
-        }
-        if (request.getReadTimeoutMs() != null) {
-            shell.setReadTimeoutMs(request.getReadTimeoutMs());
-        }
-        if (request.getSkipSslVerify() != null) {
-            shell.setSkipSslVerify(request.getSkipSslVerify());
-        }
-        if (request.getMaxRetries() != null) {
-            shell.setMaxRetries(request.getMaxRetries());
-        }
-        if (request.getRetryDelayMs() != null) {
-            shell.setRetryDelayMs(request.getRetryDelayMs());
-        }
     }
 
-    public ShellResponse toResponse(Shell shell) {
-        ShellResponse response = new ShellResponse();
-        response.setId(shell.getId());
-        response.setName(shell.getName());
-        response.setUrl(shell.getUrl());
-        response.setStaging(shell.getStaging());
-        response.setLanguage(shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA);
-        response.setShellType(shell.getShellType());
-        response.setStatus(shell.getStatus().name());
-        response.setProjectId(shell.getProjectId());
-        response.setCreatedAt(shell.getCreatedAt());
-        response.setLastOnlineAt(shell.getLastOnlineAt());
-        response.setUpdatedAt(shell.getUpdatedAt());
+    @Mapping(target = "profileName", ignore = true)
+    public abstract ShellResponse toResponse(Shell shell);
 
-        // New fields
-        response.setProfileId(shell.getProfileId());
-        response.setLoaderProfileId(shell.getLoaderProfileId());
-        response.setProxyUrl(shell.getProxyUrl());
-        response.setCustomHeaders(shell.getCustomHeaders());
-        response.setConnectTimeoutMs(shell.getConnectTimeoutMs());
-        response.setReadTimeoutMs(shell.getReadTimeoutMs());
-        response.setSkipSslVerify(shell.getSkipSslVerify());
-        response.setMaxRetries(shell.getMaxRetries());
-        response.setRetryDelayMs(shell.getRetryDelayMs());
-        response.setBasicInfo(shell.getBasicInfo());
-
-        // Fetch profile name for display
+    @AfterMapping
+    protected void afterToResponse(@MappingTarget ShellResponse response, Shell shell) {
+        if (response.getLanguage() == null) {
+            response.setLanguage(ShellLanguage.JAVA);
+        }
         if (shell.getProfileId() != null) {
             profileRepository.findById(shell.getProfileId())
                     .ifPresent(profile -> response.setProfileName(profile.getName()));
         }
-
-        return response;
-    }
-
-    private String normalizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
     }
 }

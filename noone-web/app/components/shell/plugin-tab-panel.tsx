@@ -1,9 +1,18 @@
-import type { Plugin, PluginRuntimeStatus, TaskStatus } from "@/types/plugin";
+import type { Plugin, TaskStatus } from "@/types/plugin";
 
-import { Clock, Loader2, Play, Puzzle, RefreshCw, Square } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowUpCircle,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Play,
+  Puzzle,
+  RefreshCw,
+  Square,
+} from "lucide-react";
+import { useCallback, useEffect, useRef } from "react";
 
-import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
+import { usePluginStatusContext } from "@/components/shell/plugin-status-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +73,6 @@ export default function PluginTabPanel({
   plugin,
   actionPath,
   taskStatusPath,
-  pluginStatusPath,
   state,
   onStateChange,
 }: PluginTabPanelProps) {
@@ -75,18 +83,11 @@ export default function PluginTabPanel({
   const { submit: submitPluginAction } = useShellRouteFetcher<Record<string, unknown>>();
   const { fetcher: taskStatusFetcher, load: loadTaskStatus } =
     useShellRouteFetcher<Record<string, unknown>>();
-  const { fetcher: pluginStatusFetcher, load: loadPluginStatus } =
-    useShellRouteFetcher<PluginRuntimeStatus>();
-  const [pluginStatus, setPluginStatus] = useState<PluginRuntimeStatus | null>(null);
+  const pluginStatusCtx = usePluginStatusContext();
+
   const refreshPluginStatus = useCallback(async () => {
-    const requestId = createShellRouteRequestId();
-    const url = new URL(pluginStatusPath, window.location.origin);
-    url.searchParams.set("pluginId", plugin.id);
-    url.searchParams.set("requestId", requestId);
-    const status = await loadPluginStatus(`${url.pathname}${url.search}`, requestId);
-    setPluginStatus(status);
-    return status;
-  }, [loadPluginStatus, plugin.id, pluginStatusPath]);
+    await pluginStatusCtx.refreshOne(plugin.id);
+  }, [pluginStatusCtx, plugin.id]);
 
   const handleActionSelect = (action: string | null) => {
     if (!action) return;
@@ -111,10 +112,6 @@ export default function PluginTabPanel({
   useEffect(() => {
     return () => stopPolling();
   }, [stopPolling]);
-
-  useEffect(() => {
-    refreshPluginStatus().catch(() => undefined);
-  }, [refreshPluginStatus]);
 
   const pollTaskStatus = useCallback(
     async (taskId: string) => {
@@ -209,7 +206,7 @@ export default function PluginTabPanel({
 
       if (isAsyncLike(plugin) && result?.taskId) {
         const taskId = String(result.taskId);
-        await refreshPluginStatus().catch(() => undefined);
+        await refreshPluginStatus();
         onStateChange({
           taskId,
           taskStatus: result.status as TaskStatus,
@@ -218,7 +215,7 @@ export default function PluginTabPanel({
         });
         startPolling(taskId);
       } else {
-        await refreshPluginStatus().catch(() => undefined);
+        await refreshPluginStatus();
         onStateChange({
           result: formatResult(result),
           loading: false,
@@ -238,6 +235,8 @@ export default function PluginTabPanel({
     onStateChange,
     startPolling,
     stopPolling,
+    submitPluginAction,
+    actionPath,
   ]);
 
   const cancelTask = useCallback(async () => {
@@ -280,51 +279,91 @@ export default function PluginTabPanel({
     state.taskStatus === "RUNNING" ||
     state.taskStatus === "SUBMITTED" ||
     state.taskStatus === "SCHEDULED";
-  const isPluginStatusLoading = pluginStatus == null && pluginStatusFetcher.state !== "idle";
+
+  const pluginStatus = pluginStatusCtx.statuses[plugin.id];
+  const isPluginUpdating = pluginStatusCtx.updatingIds.has(plugin.id);
+  const needsAction = pluginStatus && (pluginStatus.needsUpdate || !pluginStatus.loaded);
 
   return (
     <div className="space-y-4">
-      {/* Plugin header */}
-      <div className="flex items-center gap-3">
-        <Puzzle className="h-5 w-5 text-muted-foreground" />
-        <div className="flex items-center gap-2">
-          <span className="text-base font-semibold">{plugin.name}</span>
-          <Badge variant="outline">{plugin.version}</Badge>
-          <Badge variant="secondary">{plugin.language}</Badge>
-          {plugin.runMode && plugin.runMode !== "sync" && (
-            <Badge variant="default" className="gap-1">
-              {plugin.runMode === "async" ? (
-                <RefreshCw className="h-3 w-3" />
-              ) : (
-                <Clock className="h-3 w-3" />
-              )}
-              {plugin.runMode}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Puzzle className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-base font-semibold">{plugin.name}</span>
+            <Badge variant="outline" className="text-xs">
+              {plugin.version}
             </Badge>
+            {plugin.runMode && plugin.runMode !== "sync" && (
+              <Badge variant="default" className="gap-1 text-xs">
+                {plugin.runMode === "async" ? (
+                  <RefreshCw className="h-3 w-3" />
+                ) : (
+                  <Clock className="h-3 w-3" />
+                )}
+                {plugin.runMode}
+              </Badge>
+            )}
+          </div>
+          {pluginStatus && needsAction && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => pluginStatusCtx.updatePlugin(plugin.id)}
+              disabled={isPluginUpdating}
+            >
+              {isPluginUpdating ? (
+                <>
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  {pluginStatus.loaded ? (
+                    <ArrowUpCircle className="mr-1.5 size-3.5" />
+                  ) : (
+                    <CheckCircle2 className="mr-1.5 size-3.5" />
+                  )}
+                  {pluginStatus.loaded ? "Update Plugin" : "Install Plugin"}
+                </>
+              )}
+            </Button>
           )}
         </div>
+        {pluginStatus && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Server</span>
+            <Badge variant="outline" className="text-[10px]">
+              {pluginStatus.serverVersion}
+            </Badge>
+            <span>Shell</span>
+            <Badge variant={needsAction ? "secondary" : "outline"} className="text-[10px]">
+              {pluginStatus.shellVersion ?? "Not installed"}
+            </Badge>
+            {!needsAction && pluginStatus.loaded && (
+              <Badge variant="secondary" className="text-[10px]">
+                Ready
+              </Badge>
+            )}
+            {pluginStatus.needsUpdate && (
+              <Badge variant="secondary" className="text-[10px] text-amber-600 dark:text-amber-400">
+                Update Available
+              </Badge>
+            )}
+            {!pluginStatus.loaded && (
+              <Badge variant="outline" className="text-[10px]">
+                Not Installed
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
-      {pluginStatus && (
-        <PluginRuntimeStatusCard
-          pluginId={plugin.id}
-          pluginName={plugin.name}
-          status={pluginStatus}
-          actionPath={actionPath}
-          onUpdated={(nextStatus) => {
-            setPluginStatus(nextStatus);
-            onStateChange({ result: null, loading: false });
-          }}
-        />
-      )}
-      {isPluginStatusLoading && (
-        <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-          Checking plugin runtime status...
-        </div>
-      )}
+
       {firstActionDescription && (
         <p className="text-sm text-muted-foreground">{firstActionDescription}</p>
       )}
 
-      {/* Action selector (only if >1 actions) */}
       {actionKeys.length > 1 && (
         <div>
           <Label className="mb-1.5 block text-sm font-medium">Action</Label>
@@ -343,7 +382,6 @@ export default function PluginTabPanel({
         </div>
       )}
 
-      {/* Dynamic form fields */}
       {currentAction?.argSchema && currentAction.argSchema.length > 0 && (
         <div className="space-y-3">
           {currentAction.argSchema.map((field) => (
@@ -367,7 +405,6 @@ export default function PluginTabPanel({
         </div>
       )}
 
-      {/* Scheduled mode: interval field */}
       {isScheduledMode(plugin) && (
         <div>
           <Label className="mb-1.5 block text-sm font-medium">
@@ -388,7 +425,6 @@ export default function PluginTabPanel({
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="flex gap-2">
         <Button onClick={executePlugin} disabled={state.loading || isRunning} className="flex-1">
           {state.loading && !isRunning ? (
@@ -412,7 +448,6 @@ export default function PluginTabPanel({
         )}
       </div>
 
-      {/* Task status indicator */}
       {state.taskId && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {isRunning && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
@@ -435,7 +470,6 @@ export default function PluginTabPanel({
         </div>
       )}
 
-      {/* Result display */}
       {state.result && (
         <div className="max-h-96 overflow-auto rounded-lg bg-zinc-950 p-4 font-mono text-sm whitespace-pre-wrap text-zinc-200">
           {state.result}

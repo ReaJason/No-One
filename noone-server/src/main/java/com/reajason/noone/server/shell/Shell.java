@@ -40,6 +40,12 @@ public class Shell {
     @Column(name = "shell_type")
     private String shellType;
 
+    /**
+     * Dubbo service interface name for RPC invocation (only used with DUBBO protocol).
+     */
+    @Column(name = "interface_name", length = 500)
+    private String interfaceName;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "language")
     private ShellLanguage language = ShellLanguage.JAVA;
@@ -112,6 +118,15 @@ public class Shell {
     @Column(name = "basic_info", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> basicInfo;
+
+    @Column(name = "os")
+    private String os;
+
+    @Column(name = "arch")
+    private String arch;
+
+    @Column(name = "runtime_version")
+    private String runtimeVersion;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -66,6 +66,7 @@ type LoaderData =
       loaderProfileIdParam: string;
       shellTypeParam: string;
       stagingParam: boolean;
+      interfaceNameParam: string;
       languageParam?: ShellLanguage;
       projects: Project[];
       profiles: Profile[];
@@ -81,6 +82,7 @@ type ShellFormSeed = {
   name: string;
   url: string;
   shellType: string;
+  interfaceName: string;
   staging: boolean;
   projectId: string;
   profileId: string;
@@ -147,6 +149,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
   const stagingParamRaw = (url.searchParams.get("staging") ?? "").trim().toLowerCase();
   const languageParamRaw = (url.searchParams.get("language") ?? "").trim().toLowerCase();
   const projectIdParam = url.searchParams.get("projectId") ?? "";
+  const interfaceNameParam = url.searchParams.get("interfaceName") ?? "";
   const parsedProjectId = Number(projectIdParam);
   return {
     shellUrlParam,
@@ -157,6 +160,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
     languageParam: isShellLanguage(languageParamRaw) ? languageParamRaw : undefined,
     projects,
     profiles,
+    interfaceNameParam,
     initialProjectId:
       Number.isFinite(parsedProjectId) && parsedProjectId !== 0 ? parsedProjectId : undefined,
   } satisfies LoaderData;
@@ -448,15 +452,15 @@ function ShellForm({
                   <Input
                     id="url"
                     name="url"
-                    type="url"
+                    type="text"
                     defaultValue={formSeed.url}
-                    placeholder="http://example.com/shell.jsp"
+                    placeholder="http://example.com/shell.jsp or dubbo://host:20880/com.example.Service"
                     aria-invalid={Boolean(errors?.url) || undefined}
                     aria-describedby="url-description"
                     required
                   />
                   <FieldDescription id="url-description">
-                    Target endpoint that accepts your payloads.
+                    Target endpoint. For Dubbo use dubbo://, hessian://, or tri:// scheme.
                   </FieldDescription>
                   <FieldError>{errors?.url}</FieldError>
                 </Field>
@@ -515,6 +519,22 @@ function ShellForm({
                     Runtime shell type, such as `Servlet`, `Filter`, or `NettyHandler`.
                   </FieldDescription>
                   <FieldError>{errors?.shellType}</FieldError>
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="interfaceName">Interface Name</FieldLabel>
+                  <Input
+                    id="interfaceName"
+                    name="interfaceName"
+                    type="text"
+                    defaultValue={formSeed.interfaceName}
+                    placeholder="com.example.ShellService"
+                    aria-describedby="interfaceName-description"
+                    disabled={isPrefilled}
+                  />
+                  <FieldDescription id="interfaceName-description">
+                    Dubbo service interface name for RPC invocation (DUBBO protocol only).
+                  </FieldDescription>
                 </Field>
 
                 <Field data-invalid={Boolean(errors?.projectId)}>
@@ -724,6 +744,7 @@ function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
       name: shell.name ?? "",
       url: shell.url ?? "",
       shellType: shell.shellType ?? "",
+      interfaceName: shell.interfaceName ?? "",
       staging: shell.staging ?? false,
       projectId: shell.projectId == null ? "" : String(shell.projectId),
       profileId: String(shell.profileId),
@@ -746,6 +767,7 @@ function getShellFormSeed(loaderData: LoaderData): ShellFormSeed {
     name: "",
     url: loaderData.shellUrlParam,
     shellType: loaderData.shellTypeParam,
+    interfaceName: loaderData.interfaceNameParam,
     staging: loaderData.stagingParam,
     projectId:
       loaderData.initialProjectId != null
@@ -791,6 +813,7 @@ function parseTestConfigFormData(
   | { payload?: undefined; errors: Record<string, string> } {
   const url = readTrimmedField(formData, "url");
   const shellType = readTextField(formData, "shellType");
+  const interfaceName = readTrimmedField(formData, "interfaceName");
   const staging = formData.get("staging") === "on";
   const language = parseLanguage(readTrimmedField(formData, "language"));
   const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
@@ -819,6 +842,7 @@ function parseTestConfigFormData(
       url,
       staging: staging || undefined,
       shellType: shellType || undefined,
+      interfaceName,
       language: language ?? "java",
       profileId,
       loaderProfileId: staging ? loaderProfileId : undefined,
@@ -855,6 +879,7 @@ function parseShellFormData(
   const name = readTrimmedField(formData, "name");
   const url = readTrimmedField(formData, "url");
   const shellType = readTextField(formData, "shellType");
+  const interfaceName = readTrimmedField(formData, "interfaceName");
   const staging = formData.get("staging") === "on";
   const language = parseLanguage(readTrimmedField(formData, "language"));
   const profileId = parseFiniteNumber(readTrimmedField(formData, "profileId"));
@@ -903,6 +928,7 @@ function parseShellFormData(
         url,
         staging,
         shellType: shellType ?? null,
+        interfaceName: interfaceName ?? null,
         language: language as ShellLanguage,
         projectId,
         profileId: profileId as number,
@@ -924,6 +950,7 @@ function parseShellFormData(
       url: url as string,
       staging: staging || undefined,
       shellType: shellType || undefined,
+      interfaceName,
       language: language as ShellLanguage,
       projectId: projectId ?? undefined,
       profileId: profileId as number,

@@ -1,10 +1,7 @@
+import type { FileManagerInitialState } from "@/lib/file-manager-initial-state";
+
 import { lazy, Suspense, use, useMemo } from "react";
-import {
-  type ActionFunctionArgs,
-  type LoaderFunctionArgs,
-  useLoaderData,
-  useRevalidator,
-} from "react-router";
+import { type LoaderFunctionArgs, useLoaderData } from "react-router";
 
 import { createAuthFetch } from "@/api/api.server";
 import { dispatchPlugin } from "@/api/shell-api";
@@ -13,83 +10,61 @@ import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import { deriveFileManagerInitialState } from "@/lib/file-manager-initial-state";
 import { ensureShellDispatchPayload } from "@/lib/shell-dispatch";
-import {
-  getShellPluginStatusFromRoute,
-  parseShellIdParam,
-  parseShellRouteFormData,
-  shellRouteError,
-  shellRouteSuccess,
-  updateShellPluginFromRoute,
-} from "@/lib/shell-route.server";
+import { parseShellIdParam } from "@/lib/shell-route.server";
 
 import { useShellManagerContext } from "./shell-manager-context";
 
 const FileManager = lazy(() => import("@/components/shell/file-manager"));
 
+const DISPATCH_TIMEOUT_MS = 20_000;
+
 type ShellFilesRouteData = {
-  pluginStatus: Awaited<ReturnType<typeof getShellPluginStatusFromRoute>>;
-  initialState: ReturnType<typeof deriveFileManagerInitialState>;
-  initialDirectory: Record<string, unknown>;
+  initialState: FileManagerInitialState;
+  initialDirectory: Record<string, unknown> | null;
+  error: string | null;
 };
-type ShellFilesLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
 
 export function loader({ context, params, request }: LoaderFunctionArgs) {
+  const shellId = parseShellIdParam(params.shellId);
+  const authFetch = createAuthFetch(request, context);
   return {
-    routeData: loadShellFilesRouteData({ context, params, request }),
+    routeData: loadShellFilesRouteData(shellId, authFetch),
   };
 }
 
-async function loadShellFilesRouteData({
-  context,
-  params,
-  request,
-}: ShellFilesLoaderArgs): Promise<ShellFilesRouteData> {
-  const shellId = parseShellIdParam(params.shellId);
-  const authFetch = createAuthFetch(request, context);
-  const [shell, initialPluginStatus] = await Promise.all([
-    getShellConnectionById(shellId, authFetch),
-    getShellPluginStatusFromRoute(request, context, shellId, "file-manager"),
-  ]);
+async function loadShellFilesRouteData(
+  shellId: number,
+  authFetch: ReturnType<typeof createAuthFetch>,
+): Promise<ShellFilesRouteData> {
+  const shell = await getShellConnectionById(shellId, authFetch);
   if (!shell) {
     throw new Response("Shell connection not found", { status: 404 });
   }
-  const initialState = deriveFileManagerInitialState(shell.basicInfo);
-  const initialDirectory = ensureShellDispatchPayload(
-    await dispatchPlugin(
-      {
-        id: shellId,
-        pluginId: "file-manager",
-        args: { op: "list", path: initialState.cwd },
-      },
-      authFetch,
-    ),
-  );
-  const pluginStatus = initialPluginStatus.loaded
-    ? initialPluginStatus
-    : await getShellPluginStatusFromRoute(request, context, shellId, "file-manager");
+  const initialState = deriveFileManagerInitialState(shell.basicInfo, shell.os);
 
-  return {
-    pluginStatus,
-    initialState,
-    initialDirectory,
-  };
-}
-
-export async function action({ context, params, request }: ActionFunctionArgs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DISPATCH_TIMEOUT_MS);
   try {
-    const shellId = parseShellIdParam(params.shellId);
-    const { intent, requestId } = await parseShellRouteFormData<Record<string, unknown>>(request);
-    if (intent !== "update-plugin") {
-      return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
-    }
-    const data = await updateShellPluginFromRoute(request, context, shellId, "file-manager");
-    return shellRouteSuccess(data, requestId);
-  } catch (error) {
-    if (error instanceof Response) {
-      const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
-    }
-    return shellRouteError(error, "File manager plugin update failed");
+    const initialDirectory = ensureShellDispatchPayload(
+      await dispatchPlugin(
+        { id: shellId, pluginId: "file-manager", args: { op: "list", path: initialState.cwd } },
+        authFetch,
+        { signal: controller.signal },
+      ),
+    );
+    return { initialState, initialDirectory, error: null };
+  } catch (err: any) {
+    const message =
+      err.name === "AbortError"
+        ? "Request timed out — the remote shell may be unresponsive"
+        : err.message || "Unknown error";
+    return {
+      initialState,
+      initialDirectory: null,
+      error: `Failed to load file manager: ${message}`,
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -106,19 +81,17 @@ export default function ShellFilesRoute() {
 
 function ShellFilesContent({ routeData }: { routeData: Promise<ShellFilesRouteData> }) {
   const { shell } = useShellManagerContext();
-  const { initialState, initialDirectory, pluginStatus } = use(routeData);
-  const revalidator = useRevalidator();
-  const actionPath = useMemo(() => `/shells/${shell.id}/files/data`, [shell.id]);
+  const { initialState, initialDirectory, error } = use(routeData);
+  const dataPath = useMemo(() => `/shells/${shell.id}/files/data`, [shell.id]);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
-      <PluginRuntimeStatusCard
-        pluginId="file-manager"
-        pluginName="File Manager"
-        status={pluginStatus}
-        actionPath={`/shells/${shell.id}/files`}
-        onUpdated={() => revalidator.revalidate()}
-      />
+      <PluginRuntimeStatusCard pluginId="file-manager" pluginName="File Manager" />
+      {error && (
+        <div className="shrink-0 rounded-md border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
+          {error}
+        </div>
+      )}
       {initialDirectory && (
         <Suspense
           fallback={
@@ -132,7 +105,7 @@ function ShellFilesContent({ routeData }: { routeData: Promise<ShellFilesRouteDa
           <FileManager
             initialState={initialState}
             initialDirectory={initialDirectory}
-            dataPath={actionPath}
+            dataPath={dataPath}
           />
         </Suspense>
       )}

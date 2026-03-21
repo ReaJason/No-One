@@ -110,7 +110,10 @@ function extractDataContainer(payload: unknown): Record<string, unknown> {
   return p;
 }
 
-export function deriveFileManagerInitialState(payload: unknown): FileManagerInitialState {
+export function deriveFileManagerInitialState(
+  payload: unknown,
+  osHint?: string,
+): FileManagerInitialState {
   const container = extractDataContainer(payload);
   const processInfo = (container.process as Record<string, unknown> | undefined) ?? {};
   const envInfo = (container.env as Record<string, unknown> | undefined) ?? {};
@@ -131,7 +134,12 @@ export function deriveFileManagerInitialState(payload: unknown): FileManagerInit
     readEnvCaseInsensitive(envInfo, "USERPROFILE") ||
     `${readEnvCaseInsensitive(envInfo, "HOMEDRIVE")}${readEnvCaseInsensitive(envInfo, "HOMEPATH")}`;
 
-  const osFamily = detectOsFamily(osName, rawCwd, disks);
+  const osFamily =
+    osHint === "windows"
+      ? "windows"
+      : osHint === "linux" || osHint === "macos"
+        ? "unix"
+        : detectOsFamily(osName, rawCwd, disks);
   const fallbackRoot = osFamily === "windows" ? "C:\\" : "/";
   const cwd = normalizeAbsolutePath(rawCwd || fallbackRoot, osFamily);
   const home = normalizeAbsolutePath(homeFromEnv || fallbackRoot, osFamily);
