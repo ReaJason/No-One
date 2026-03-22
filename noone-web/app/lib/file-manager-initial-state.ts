@@ -80,22 +80,6 @@ function readEnvCaseInsensitive(env: Record<string, unknown>, key: string) {
   return typeof entry?.[1] === "string" ? entry[1] : "";
 }
 
-function detectOsFamily(osName: unknown, cwd: string, disks: string[]): OsFamily {
-  if (typeof osName === "string" && osName.toLowerCase() === "darwin") {
-    return "unix";
-  }
-  if (typeof osName === "string" && osName.toLowerCase().includes("win")) {
-    return "windows";
-  }
-  if (isWindowsAbsolutePath(cwd)) {
-    return "windows";
-  }
-  if (disks.some((disk) => isWindowsAbsolutePath(disk))) {
-    return "windows";
-  }
-  return "unix";
-}
-
 function extractDataContainer(payload: unknown): Record<string, unknown> {
   if (!payload || typeof payload !== "object") {
     return {};
@@ -117,8 +101,7 @@ export function deriveFileManagerInitialState(
   const container = extractDataContainer(payload);
   const processInfo = (container.process as Record<string, unknown> | undefined) ?? {};
   const envInfo = (container.env as Record<string, unknown> | undefined) ?? {};
-  const osObj = (container.os as Record<string, unknown> | undefined) ?? {};
-  const osName = osObj.name;
+
   const rawFs = Array.isArray(container.file_systems) ? container.file_systems : [];
   const disks = rawFs
     .map((fs) => {
@@ -134,12 +117,7 @@ export function deriveFileManagerInitialState(
     readEnvCaseInsensitive(envInfo, "USERPROFILE") ||
     `${readEnvCaseInsensitive(envInfo, "HOMEDRIVE")}${readEnvCaseInsensitive(envInfo, "HOMEPATH")}`;
 
-  const osFamily =
-    osHint === "windows"
-      ? "windows"
-      : osHint === "linux" || osHint === "macos"
-        ? "unix"
-        : detectOsFamily(osName, rawCwd, disks);
+  const osFamily = osHint === "windows" ? "windows" : "unix";
   const fallbackRoot = osFamily === "windows" ? "C:\\" : "/";
   const cwd = normalizeAbsolutePath(rawCwd || fallbackRoot, osFamily);
   const home = normalizeAbsolutePath(homeFromEnv || fallbackRoot, osFamily);

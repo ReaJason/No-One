@@ -5,6 +5,8 @@ import {
   getActiveShellSectionPath,
   getPendingShellSectionPath,
   loader,
+  shouldRevalidate,
+  shouldRevalidateShellManagerLoader,
 } from "@/routes/shell/shell-manager";
 
 const createAuthFetchMock = vi.fn();
@@ -185,5 +187,64 @@ describe("getActiveShellSectionPath", () => {
         shellId: 5,
       }),
     ).toBe("/shells/5/info");
+  });
+});
+
+describe("shouldRevalidateShellManagerLoader", () => {
+  it("skips parent loader revalidation when switching child routes within the same shell", () => {
+    expect(
+      shouldRevalidateShellManagerLoader({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/5/files",
+        currentShellId: "5",
+        nextShellId: "5",
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("falls back to the router default when navigating to another shell", () => {
+    expect(
+      shouldRevalidateShellManagerLoader({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/9/info",
+        currentShellId: "5",
+        nextShellId: "9",
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("falls back to the router default when shell params are unavailable", () => {
+    expect(
+      shouldRevalidateShellManagerLoader({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/5/files",
+        currentShellId: undefined,
+        nextShellId: "5",
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(true);
+  });
+});
+
+describe("shouldRevalidate", () => {
+  it("delegates same-shell child navigations to the shell manager revalidation helper", () => {
+    expect(
+      shouldRevalidate({
+        currentUrl: new URL("http://localhost/shells/5/info"),
+        nextUrl: new URL("http://localhost/shells/5/command"),
+        currentParams: { shellId: "5" },
+        nextParams: { shellId: "5" },
+        defaultShouldRevalidate: true,
+        actionResult: undefined,
+        actionStatus: undefined,
+        formAction: undefined,
+        formData: undefined,
+        formEncType: undefined,
+        formMethod: undefined,
+        text: undefined,
+      } as never),
+    ).toBe(false);
   });
 });

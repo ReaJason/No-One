@@ -19,6 +19,7 @@ import {
   type LoaderFunctionArgs,
   NavLink,
   Outlet,
+  type ShouldRevalidateFunctionArgs,
   useLoaderData,
   useLocation,
   useNavigation,
@@ -51,26 +52,53 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import {
+  getShellNavigationDurationMs,
+  getShellRouteRequestKind,
+  logShellRouteDebug,
+  markShellNavigationTrace,
+  readShellNavigationTrace,
+} from "@/lib/shell-route-debug";
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;
   if (!shellId) {
     throw new Response("Invalid shell ID", { status: 400 });
   }
+  const startedAt = Date.now();
+  const url = new URL(request.url);
+  logShellRouteDebug("shell-manager", "loader start", {
+    shellId,
+    kind: getShellRouteRequestKind(url),
+    method: request.method,
+    url: request.url,
+  });
   const authFetch = createAuthFetch(request, context);
   const shellPromise = getShellConnectionById(shellId, authFetch).then((shell) => {
     if (!shell) {
       throw new Response("Shell connection not found", { status: 404 });
     }
+    logShellRouteDebug("shell-manager", "shell resolved", {
+      shellId,
+      durationMs: Date.now() - startedAt,
+    });
     return shell;
   });
   return {
     shell: shellPromise,
     standardPluginIds: shellPromise.then(async (shell) => {
+      const pluginsStartedAt = Date.now();
       const result = await pluginApi.getPlugins(
         { type: "Standard", language: shell.language },
         authFetch,
       );
+      logShellRouteDebug("shell-manager", "standard plugins resolved", {
+        shellId,
+        language: shell.language,
+        count: result.content.length,
+        durationMs: Date.now() - pluginsStartedAt,
+        totalDurationMs: Date.now() - startedAt,
+      });
       return result.content.map((p) => p.id);
     }),
   } as {
@@ -167,6 +195,42 @@ export function getActiveShellSectionPath({
   );
 }
 
+export function shouldRevalidateShellManagerLoader({
+  currentPathname,
+  nextPathname,
+  currentShellId,
+  nextShellId,
+  defaultShouldRevalidate,
+}: {
+  currentPathname: string;
+  nextPathname: string;
+  currentShellId: string | undefined;
+  nextShellId: string | undefined;
+  defaultShouldRevalidate: boolean;
+}) {
+  if (!currentShellId || !nextShellId || currentShellId !== nextShellId) {
+    return defaultShouldRevalidate;
+  }
+
+  const currentPrefix = `/shells/${currentShellId}/`;
+  const nextPrefix = `/shells/${nextShellId}/`;
+  if (currentPathname.startsWith(currentPrefix) && nextPathname.startsWith(nextPrefix)) {
+    return false;
+  }
+
+  return defaultShouldRevalidate;
+}
+
+export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
+  return shouldRevalidateShellManagerLoader({
+    currentPathname: args.currentUrl.pathname,
+    nextPathname: args.nextUrl.pathname,
+    currentShellId: args.currentParams.shellId,
+    nextShellId: args.nextParams.shellId,
+    defaultShouldRevalidate: args.defaultShouldRevalidate,
+  });
+}
+
 function ShellManagerSidebar({
   shell,
   standardPluginIds,
@@ -220,7 +284,24 @@ function ShellManagerSidebar({
                         isActive ? (
                           <div className="flex items-center gap-2" />
                         ) : (
-                          <NavLink to={url} viewTransition discover="render" prefetch="intent" />
+                          <NavLink
+                            to={url}
+                            viewTransition
+                            discover="render"
+                            onClick={() => {
+                              const trace = markShellNavigationTrace({
+                                from: location.pathname,
+                                to: url,
+                              });
+                              logShellRouteDebug("shell-manager", "section click", {
+                                traceId: trace?.traceId,
+                                shellId: shell.id,
+                                from: location.pathname,
+                                to: url,
+                                targetSection: item.id,
+                              });
+                            }}
+                          />
                         )
                       }
                     >
@@ -294,15 +375,35 @@ function ShellManagerLayout({
           nextPathname: navigation.location?.pathname,
           shellId: shell.id,
         });
-  console.log("render shelll manager layout");
   useEffect(() => {
-    console.count("[shell-manager] layout commit");
-    console.log("[shell-manager] layout commit", {
+    const trace = readShellNavigationTrace(location.pathname);
+    logShellRouteDebug("shell-manager", "layout commit", {
+      traceId: trace?.traceId,
       pathname: location.pathname,
       search: location.search,
       shellId: shell.id,
+      navDurationMs: getShellNavigationDurationMs(location.pathname),
     });
   }, [location.pathname, location.search, shell.id]);
+  useEffect(() => {
+    if (!pendingShellSectionPath) {
+      return;
+    }
+
+    const trace =
+      readShellNavigationTrace(pendingShellSectionPath) ??
+      markShellNavigationTrace({
+        from: location.pathname,
+        to: pendingShellSectionPath,
+      });
+    logShellRouteDebug("shell-manager", "navigation pending", {
+      traceId: trace?.traceId,
+      shellId: shell.id,
+      from: location.pathname,
+      to: pendingShellSectionPath,
+      navigationState: navigation.state,
+    });
+  }, [location.pathname, navigation.state, pendingShellSectionPath, shell.id]);
   return (
     <PluginStatusProvider shellId={shell.id}>
       <ShellManagerSidebar shell={shell} standardPluginIds={standardPluginIds} />

@@ -1,10 +1,18 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
-import { lazy, Suspense, use } from "react";
-import { useLoaderData, useRevalidator } from "react-router";
+import { lazy, Suspense, use, useEffect } from "react";
+import { useLoaderData, useLocation, useRevalidator } from "react-router";
 
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
+import {
+  clearShellNavigationTrace,
+  createShellRouteTraceId,
+  getShellNavigationDurationMs,
+  getShellRouteRequestKind,
+  logShellRouteDebug,
+  readShellNavigationTrace,
+} from "@/lib/shell-route-debug";
 import {
   dispatchShellPluginFromRoute,
   parseShellIdParam,
@@ -15,21 +23,53 @@ import {
 
 import { useShellManagerContext } from "./shell-manager-context";
 
-const CommandExecute = lazy(() => import("@/components/shell/command-execute"));
+const CommandExecute = lazy(async () => {
+  const startedAt = Date.now();
+  logShellRouteDebug("shell-command", "command chunk import start");
+  const mod = await import("@/components/shell/command-execute");
+  logShellRouteDebug("shell-command", "command chunk import resolved", {
+    durationMs: Date.now() - startedAt,
+  });
+  return mod;
+});
 
 type ShellCommandRouteData = Record<string, never>;
 type ShellCommandLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
 
 export function loader({ context, params, request }: LoaderFunctionArgs) {
+  const traceId = createShellRouteTraceId();
+  const url = new URL(request.url);
+  logShellRouteDebug("shell-command", "loader start", {
+    traceId,
+    shellId: params.shellId,
+    kind: getShellRouteRequestKind(url),
+    method: request.method,
+    url: request.url,
+  });
   return {
-    routeData: loadShellCommandRouteData({ context, params, request }),
+    routeData: loadShellCommandRouteData({ context, params, request }, traceId),
   };
 }
 
-async function loadShellCommandRouteData({
-  params,
-}: ShellCommandLoaderArgs): Promise<ShellCommandRouteData> {
+async function loadShellCommandRouteData(
+  { params, request }: ShellCommandLoaderArgs,
+  traceId: string,
+): Promise<ShellCommandRouteData> {
+  const startedAt = Date.now();
+  const url = new URL(request.url);
+  logShellRouteDebug("shell-command", "routeData start", {
+    traceId,
+    shellId: params.shellId,
+    kind: getShellRouteRequestKind(url),
+    pathname: url.pathname,
+    search: url.search,
+  });
   parseShellIdParam(params.shellId);
+  logShellRouteDebug("shell-command", "routeData resolved", {
+    traceId,
+    shellId: params.shellId,
+    totalDurationMs: Date.now() - startedAt,
+  });
   return {};
 }
 
@@ -60,6 +100,16 @@ export default function ShellCommandRoute() {
   const { routeData } = useLoaderData() as {
     routeData: Promise<ShellCommandRouteData>;
   };
+  const location = useLocation();
+  useEffect(() => {
+    const trace = readShellNavigationTrace(location.pathname);
+    logShellRouteDebug("shell-command", "route commit", {
+      traceId: trace?.traceId,
+      pathname: location.pathname,
+      search: location.search,
+      navDurationMs: getShellNavigationDurationMs(location.pathname),
+    });
+  }, [location.pathname, location.search]);
   return (
     <Suspense fallback={<ShellSectionSkeleton variant="command" />}>
       <ShellCommandContent routeData={routeData} />
@@ -69,8 +119,18 @@ export default function ShellCommandRoute() {
 
 function ShellCommandContent({ routeData }: { routeData: Promise<ShellCommandRouteData> }) {
   const { shell } = useShellManagerContext();
+  const location = useLocation();
   use(routeData);
   const revalidator = useRevalidator();
+  useEffect(() => {
+    const trace = readShellNavigationTrace(location.pathname);
+    logShellRouteDebug("shell-command", "content commit", {
+      traceId: trace?.traceId,
+      pathname: location.pathname,
+      navDurationMs: getShellNavigationDurationMs(location.pathname),
+    });
+    clearShellNavigationTrace(location.pathname);
+  }, [location.pathname]);
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
       <PluginRuntimeStatusCard pluginId="command-execute" pluginName="Command Execute" />
