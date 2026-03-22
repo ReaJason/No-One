@@ -1,7 +1,11 @@
 import { render, screen } from "@testing-library/react";
 
 import { ShellManagerSkeleton, ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
-import { loader } from "@/routes/shell/shell-manager";
+import {
+  getActiveShellSectionPath,
+  getPendingShellSectionPath,
+  loader,
+} from "@/routes/shell/shell-manager";
 
 const createAuthFetchMock = vi.fn();
 const getShellConnectionByIdMock = vi.fn();
@@ -117,5 +121,69 @@ describe("shell loading fallbacks", () => {
     render(<ShellSectionSkeleton label="Loading shell section" variant="command" />);
 
     expect(screen.getByRole("status", { name: /loading shell section/i })).toBeInTheDocument();
+  });
+});
+
+describe("getPendingShellSectionPath", () => {
+  it("returns the next child route when navigating within the same shell", () => {
+    expect(
+      getPendingShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/5/files",
+        shellId: 5,
+      }),
+    ).toBe("/shells/5/files");
+  });
+
+  it("returns null when the navigation stays on the same child route", () => {
+    expect(
+      getPendingShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/5/info",
+        shellId: 5,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null when the navigation leaves the current shell manager", () => {
+    expect(
+      getPendingShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/9/files",
+        shellId: 5,
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("getActiveShellSectionPath", () => {
+  it("prefers the pending child route within the same shell", () => {
+    expect(
+      getActiveShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells/5/files",
+        shellId: 5,
+      }),
+    ).toBe("/shells/5/files");
+  });
+
+  it("falls back to the current pathname when there is no pending shell child route", () => {
+    expect(
+      getActiveShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: null,
+        shellId: 5,
+      }),
+    ).toBe("/shells/5/info");
+  });
+
+  it("ignores pending navigations that leave the current shell manager", () => {
+    expect(
+      getActiveShellSectionPath({
+        currentPathname: "/shells/5/info",
+        nextPathname: "/shells",
+        shellId: 5,
+      }),
+    ).toBe("/shells/5/info");
   });
 });

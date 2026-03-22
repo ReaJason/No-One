@@ -14,8 +14,15 @@ import {
   Terminal,
 } from "lucide-react";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
-import { Suspense, use, useMemo } from "react";
-import { type LoaderFunctionArgs, NavLink, Outlet, useLoaderData, useLocation } from "react-router";
+import { Suspense, use, useEffect, useMemo } from "react";
+import {
+  type LoaderFunctionArgs,
+  NavLink,
+  Outlet,
+  useLoaderData,
+  useLocation,
+  useNavigation,
+} from "react-router";
 import { Toaster } from "sonner";
 
 import { createAuthFetch } from "@/api/api.server";
@@ -121,6 +128,45 @@ function getShellSectionVariant(pathname: string): ShellSectionSkeletonVariant {
   return "dashboard";
 }
 
+export function getPendingShellSectionPath({
+  currentPathname,
+  nextPathname,
+  shellId,
+}: {
+  currentPathname: string;
+  nextPathname: string | null | undefined;
+  shellId: number;
+}) {
+  if (!nextPathname || nextPathname === currentPathname) {
+    return null;
+  }
+
+  const shellPrefix = `/shells/${shellId}/`;
+  if (!currentPathname.startsWith(shellPrefix) || !nextPathname.startsWith(shellPrefix)) {
+    return null;
+  }
+
+  return nextPathname;
+}
+
+export function getActiveShellSectionPath({
+  currentPathname,
+  nextPathname,
+  shellId,
+}: {
+  currentPathname: string;
+  nextPathname: string | null | undefined;
+  shellId: number;
+}) {
+  return (
+    getPendingShellSectionPath({
+      currentPathname,
+      nextPathname,
+      shellId,
+    }) ?? currentPathname
+  );
+}
+
 function ShellManagerSidebar({
   shell,
   standardPluginIds,
@@ -129,6 +175,12 @@ function ShellManagerSidebar({
   standardPluginIds: string[];
 }) {
   const location = useLocation();
+  const navigation = useNavigation();
+  const activePathname = getActiveShellSectionPath({
+    currentPathname: location.pathname,
+    nextPathname: navigation.location?.pathname,
+    shellId: shell.id,
+  });
   const visibleSections = useMemo(() => {
     const pluginIdSet = new Set(standardPluginIds);
     return shellSections.filter(
@@ -159,7 +211,7 @@ function ShellManagerSidebar({
             <SidebarMenu>
               {visibleSections.map((item) => {
                 const url = `/shells/${shell.id}/${item.id}`;
-                const isActive = location.pathname.endsWith(`/${item.id}`);
+                const isActive = activePathname.endsWith(`/${item.id}`);
                 return (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton
@@ -232,8 +284,25 @@ function ShellManagerLayout({
   const shell = use(shellPromise);
   const standardPluginIds = use(standardPluginIdsPromise);
   const location = useLocation();
+  const navigation = useNavigation();
   const outletContext = useMemo(() => ({ shell }), [shell]);
-
+  const pendingShellSectionPath =
+    navigation.state === "idle"
+      ? null
+      : getPendingShellSectionPath({
+          currentPathname: location.pathname,
+          nextPathname: navigation.location?.pathname,
+          shellId: shell.id,
+        });
+  console.log("render shelll manager layout");
+  useEffect(() => {
+    console.count("[shell-manager] layout commit");
+    console.log("[shell-manager] layout commit", {
+      pathname: location.pathname,
+      search: location.search,
+      shellId: shell.id,
+    });
+  }, [location.pathname, location.search, shell.id]);
   return (
     <PluginStatusProvider shellId={shell.id}>
       <ShellManagerSidebar shell={shell} standardPluginIds={standardPluginIds} />
@@ -261,6 +330,7 @@ function ShellManagerLayout({
               variant="ghost"
               size="icon"
               className="size-8"
+              nativeButton={false}
               render={
                 <a
                   aria-label="GitHub repo"
@@ -276,17 +346,25 @@ function ShellManagerLayout({
         </header>
         <NuqsAdapter>
           <main className="min-h-0 flex-1 overflow-hidden">
-            <Suspense
-              fallback={
-                <ShellSectionSkeleton
-                  label="Loading shell section"
-                  variant={getShellSectionVariant(location.pathname)}
-                  showStatusCard={false}
-                />
-              }
-            >
-              <Outlet context={outletContext} />
-            </Suspense>
+            {pendingShellSectionPath ? (
+              <ShellSectionSkeleton
+                label="Loading shell section"
+                variant={getShellSectionVariant(pendingShellSectionPath)}
+                showStatusCard={false}
+              />
+            ) : (
+              <Suspense
+                fallback={
+                  <ShellSectionSkeleton
+                    label="Loading shell section"
+                    variant={getShellSectionVariant(location.pathname)}
+                    showStatusCard={false}
+                  />
+                }
+              >
+                <Outlet context={outletContext} />
+              </Suspense>
+            )}
           </main>
         </NuqsAdapter>
         <Toaster />

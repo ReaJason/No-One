@@ -215,9 +215,10 @@ describe("ProfileForm", () => {
     const nextValues = buildInitialValues({
       name: "Bravo Profile",
       protocolType: "WEBSOCKET",
-      identifierLocation: "MESSAGE_FRAME",
-      messageFormat: "BINARY",
-      subprotocol: "graphql-ws",
+      identifierLocation: "HANDSHAKE_HEADER",
+      handshakeHeaders: '{"Authorization":"Bearer bravo"}',
+      messageTemplate: '{"action":"ping","payload":"{{payload}}"}',
+      wsResponseTemplate: '{"status":"ok","payload":"{{payload}}"}',
     });
 
     const { rerenderWith } = renderProfileForm({ initialValues: firstValues });
@@ -234,9 +235,11 @@ describe("ProfileForm", () => {
     await waitFor(() => {
       expect(screen.getByPlaceholderText("Profile unique name")).toHaveValue("Bravo Profile");
       expect(getSelectByLabel("Protocol Type")).toHaveValue("WEBSOCKET");
-      expect(getSelectByLabel("Message Format")).toHaveValue("BINARY");
       expect(screen.getByText("WebSocket Config")).toBeInTheDocument();
-      expect(screen.getByLabelText("Subprotocol")).toHaveValue("graphql-ws");
+      expect(screen.queryByText("HTTP Config")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Handshake Headers (JSON)")).toHaveValue(
+        '{"Authorization":"Bearer bravo"}',
+      );
     });
   });
 

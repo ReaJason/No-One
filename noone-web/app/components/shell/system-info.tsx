@@ -12,17 +12,16 @@ import {
   Server,
   Terminal,
 } from "lucide-react";
-import { lazy, memo, Suspense, useMemo } from "react";
+import { memo, useMemo } from "react";
 
 import KeyValueList from "@/components/shell/key-value-list";
+import MemoryCharts from "@/components/shell/system-info-memory-charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBytes, formatUptime } from "@/lib/utils";
-
-const MemoryCharts = lazy(() => import("./system-info-memory-charts"));
 
 type SystemInfoOs = {
   hostname?: string;
@@ -101,19 +100,6 @@ function splitIps(ips: unknown) {
     .map((ip) => ip.trim())
     .filter(Boolean);
 }
-
-const ChartFallback = memo(function ChartFallback({ isJava }: { isJava: boolean }) {
-  if (isJava) {
-    return (
-      <div className="flex shrink-0 flex-col flex-wrap items-center justify-center gap-2">
-        <div className="h-24 w-24 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />
-        <div className="h-24 w-24 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />
-      </div>
-    );
-  }
-
-  return <div className="h-24 w-24 animate-pulse rounded-full bg-zinc-100 dark:bg-zinc-800" />;
-});
 
 const OsWidget = memo(function OsWidget({ os }: { os: SystemInfoOs }) {
   const hostname = os.hostname ?? "-";
@@ -222,17 +208,15 @@ const MemoryWidget = memo(function MemoryWidget({ runtime }: { runtime: SystemIn
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col items-center gap-2 p-4 md:flex-row">
-        <Suspense fallback={<ChartFallback isJava={isJava} />}>
-          <MemoryCharts
-            isJava={isJava}
-            heapUsed={heapUsed}
-            heapFree={heapFree}
-            heapUsagePercent={heapUsagePercent}
-            nonHeapUsed={nonHeapUsed}
-            nonHeapFree={nonHeapFree}
-            nonHeapUsagePercent={nonHeapUsagePercent}
-          />
-        </Suspense>
+        <MemoryCharts
+          isJava={isJava}
+          heapUsed={heapUsed}
+          heapFree={heapFree}
+          heapUsagePercent={heapUsagePercent}
+          nonHeapUsed={nonHeapUsed}
+          nonHeapFree={nonHeapFree}
+          nonHeapUsagePercent={nonHeapUsagePercent}
+        />
 
         <div className="w-full flex-1 space-y-2">
           {isJava ? (

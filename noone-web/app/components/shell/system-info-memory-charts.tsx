@@ -19,6 +19,8 @@ function pieSectorShape(props: any) {
   return <Sector {...props} fill={props.payload?.fill ?? props.fill} />;
 }
 
+const CHART_SIZE = 96;
+
 export default function MemoryCharts({
   isJava,
   heapUsed,
@@ -85,8 +87,12 @@ export default function MemoryCharts({
       <div className="flex shrink-0 flex-col flex-wrap items-center justify-center gap-4">
         <div className="w-24">
           <div className="relative h-24 w-24">
-            <ChartContainer config={heapConfig} className="aspect-square h-full w-full">
-              <PieChart>
+            <ChartContainer
+              config={heapConfig}
+              responsive={false}
+              className="aspect-square h-full w-full"
+            >
+              <PieChart width={CHART_SIZE} height={CHART_SIZE}>
                 <Pie
                   data={heapData}
                   innerRadius={30}
@@ -107,8 +113,12 @@ export default function MemoryCharts({
 
         <div className="w-24">
           <div className="relative h-24 w-24">
-            <ChartContainer config={nonHeapConfig} className="aspect-square h-full w-full">
-              <PieChart>
+            <ChartContainer
+              config={nonHeapConfig}
+              responsive={false}
+              className="aspect-square h-full w-full"
+            >
+              <PieChart width={CHART_SIZE} height={CHART_SIZE}>
                 <Pie
                   data={nonHeapData}
                   innerRadius={30}
@@ -132,8 +142,12 @@ export default function MemoryCharts({
 
   return (
     <div className="relative h-24 w-24 flex-shrink-0">
-      <ChartContainer config={heapConfig} className="aspect-square h-full w-full">
-        <PieChart>
+      <ChartContainer
+        config={heapConfig}
+        responsive={false}
+        className="aspect-square h-full w-full"
+      >
+        <PieChart width={CHART_SIZE} height={CHART_SIZE}>
           <Pie
             data={heapData}
             innerRadius={30}
