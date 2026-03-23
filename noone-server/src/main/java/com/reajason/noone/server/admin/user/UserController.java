@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,7 +27,6 @@ public class UserController {
 
     private final UserService userService;
     private final UserSessionService userSessionService;
-    private final UserIpWhitelistService userIpWhitelistService;
 
     @PostMapping
     @PreAuthorize("@authorizationService.hasSystemPermission('user:create')")
@@ -115,37 +113,6 @@ public class UserController {
             @PathVariable Long id,
             @PathVariable String sessionId) {
         userSessionService.revokeSession(id, sessionId, "ADMIN_FORCE_LOGOUT");
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}/ip-whitelist")
-    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:read')")
-    public ResponseEntity<List<UserIpWhitelistResponse>> listIpWhitelist(@PathVariable Long id) {
-        return ResponseEntity.ok(userIpWhitelistService.list(id));
-    }
-
-    @PostMapping("/{id}/ip-whitelist")
-    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
-    public ResponseEntity<UserIpWhitelistResponse> addIpWhitelistEntry(
-            @PathVariable Long id,
-            @Valid @RequestBody UserIpWhitelistCreateRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(userIpWhitelistService.add(id, request));
-    }
-
-    @PutMapping("/{id}/ip-whitelist")
-    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
-    public ResponseEntity<List<UserIpWhitelistResponse>> replaceIpWhitelist(
-            @PathVariable Long id,
-            @RequestBody List<String> ipAddresses) {
-        return ResponseEntity.ok(userIpWhitelistService.replace(id, ipAddresses));
-    }
-
-    @DeleteMapping("/{id}/ip-whitelist/{entryId}")
-    @PreAuthorize("@authorizationService.hasSystemPermission('user:whitelist:manage')")
-    public ResponseEntity<Void> deleteIpWhitelistEntry(
-            @PathVariable Long id,
-            @PathVariable Long entryId) {
-        userIpWhitelistService.delete(id, entryId);
         return ResponseEntity.noContent().build();
     }
 

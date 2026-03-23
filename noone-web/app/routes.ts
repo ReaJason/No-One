@@ -57,9 +57,6 @@ export default [
         route("/:userId/sessions", "routes/admin/users/user-sessions.tsx", {
           id: "users-sessions",
         }),
-        route("/:userId/ip-whitelist", "routes/admin/users/user-ip-whitelist.tsx", {
-          id: "users-ip-whitelist",
-        }),
       ]),
       route("/roles", "routes/admin/roles.tsx"),
       route("/roles/create", "routes/admin/roles/role-editor.tsx", { id: "roles-create" }),

@@ -60,9 +60,6 @@ class UserControllerTest {
     private UserSessionRepository userSessionRepository;
 
     @Autowired
-    private UserIpWhitelistRepository userIpWhitelistRepository;
-
-    @Autowired
     private LoginLogRepository loginLogRepository;
 
     @Autowired
@@ -80,12 +77,10 @@ class UserControllerTest {
     void setUp() {
         Permission createPerm = permissionRepository.save(Permission.builder().code("user:create").name("Create User").build());
         Permission updatePerm = permissionRepository.save(Permission.builder().code("user:update").name("Update User").build());
-        Permission readWhitelistPerm = permissionRepository.save(Permission.builder().code("user:whitelist:read").name("Read User Whitelist").build());
-        Permission manageWhitelistPerm = permissionRepository.save(Permission.builder().code("user:whitelist:manage").name("Manage User Whitelist").build());
         Permission readLoginLogPerm = permissionRepository.save(Permission.builder().code("auth:log:read").name("Read Auth Logs").build());
 
         Role role = Role.builder().name("User Manager").build();
-        role.setPermissions(Set.of(createPerm, updatePerm, readWhitelistPerm, manageWhitelistPerm, readLoginLogPerm));
+        role.setPermissions(Set.of(createPerm, updatePerm, readLoginLogPerm));
         roleRepository.save(role);
 
         User admin = User.builder()
@@ -248,127 +243,6 @@ class UserControllerTest {
     }
 
     @Test
-    void shouldListWhitelistEntries() throws Exception {
-        User targetUser = userRepository.save(User.builder()
-                .username("whitelist-target-list")
-                .password(passwordEncoder.encode("OldPass1!"))
-                .email("whitelist-target-list@example.com")
-                .status(UserStatus.ENABLED)
-                .build());
-
-        userIpWhitelistRepository.save(UserIpWhitelist.builder()
-                .user(targetUser)
-                .ipAddress("10.0.0.1")
-                .build());
-
-        mockMvc.perform(get("/api/users/{id}/ip-whitelist", targetUser.getId())
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].ipAddress").value("10.0.0.1"))
-                .andExpect(jsonPath("$[0].userId").value(targetUser.getId()));
-    }
-
-    @Test
-    void shouldAddWhitelistEntry() throws Exception {
-        User targetUser = userRepository.save(User.builder()
-                .username("whitelist-target-add")
-                .password(passwordEncoder.encode("OldPass1!"))
-                .email("whitelist-target-add@example.com")
-                .status(UserStatus.ENABLED)
-                .build());
-
-        mockMvc.perform(post("/api/users/{id}/ip-whitelist", targetUser.getId())
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"ipAddress":"10.0.0.2"}
-                                """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.userId").value(targetUser.getId()))
-                .andExpect(jsonPath("$.ipAddress").value("10.0.0.2"));
-
-        assertThat(userIpWhitelistRepository.existsByUserIdAndIpAddress(targetUser.getId(), "10.0.0.2")).isTrue();
-    }
-
-    @Test
-    void shouldReplaceWhitelistEntriesAndDeduplicate() throws Exception {
-        User targetUser = userRepository.save(User.builder()
-                .username("whitelist-target-replace")
-                .password(passwordEncoder.encode("OldPass1!"))
-                .email("whitelist-target-replace@example.com")
-                .status(UserStatus.ENABLED)
-                .build());
-
-        userIpWhitelistRepository.save(UserIpWhitelist.builder()
-                .user(targetUser)
-                .ipAddress("10.0.0.9")
-                .build());
-
-        mockMvc.perform(put("/api/users/{id}/ip-whitelist", targetUser.getId())
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(List.of("10.0.0.1", "10.0.0.1", "10.0.0.2"))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].ipAddress").value("10.0.0.1"))
-                .andExpect(jsonPath("$[1].ipAddress").value("10.0.0.2"));
-
-        assertThat(userIpWhitelistRepository.findByUserIdOrderByCreatedAtAsc(targetUser.getId()))
-                .extracting(UserIpWhitelist::getIpAddress)
-                .containsExactly("10.0.0.1", "10.0.0.2");
-    }
-
-    @Test
-    void shouldDeleteWhitelistEntry() throws Exception {
-        User targetUser = userRepository.save(User.builder()
-                .username("whitelist-target-delete")
-                .password(passwordEncoder.encode("OldPass1!"))
-                .email("whitelist-target-delete@example.com")
-                .status(UserStatus.ENABLED)
-                .build());
-
-        UserIpWhitelist entry = userIpWhitelistRepository.save(UserIpWhitelist.builder()
-                .user(targetUser)
-                .ipAddress("10.0.0.3")
-                .build());
-
-        mockMvc.perform(delete("/api/users/{id}/ip-whitelist/{entryId}", targetUser.getId(), entry.getId())
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isNoContent());
-
-        assertThat(userIpWhitelistRepository.findById(entry.getId())).isEmpty();
-    }
-
-    @Test
-    void shouldReturn400WhenWhitelistIpIsInvalid() throws Exception {
-        User targetUser = userRepository.save(User.builder()
-                .username("whitelist-target-invalid")
-                .password(passwordEncoder.encode("OldPass1!"))
-                .email("whitelist-target-invalid@example.com")
-                .status(UserStatus.ENABLED)
-                .build());
-
-        mockMvc.perform(post("/api/users/{id}/ip-whitelist", targetUser.getId())
-                        .header("Authorization", "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"ipAddress":"10.0.0.*"}
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("IP地址不合法：10.0.0.*"));
-    }
-
-    @Test
-    void shouldReturn404WhenWhitelistUserNotFound() throws Exception {
-        mockMvc.perform(get("/api/users/{id}/ip-whitelist", 99999L)
-                        .header("Authorization", "Bearer " + accessToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("用户不存在：99999"));
-    }
-
-    @Test
     void shouldPageAndFilterLoginLogs() throws Exception {
         User targetUser = userRepository.save(User.builder()
                 .username("login-log-target")
@@ -436,42 +310,6 @@ class UserControllerTest {
                         .header("Authorization", "Bearer " + accessToken)
                         .param("loginTimeAfter", "not-a-date"))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void shouldReturn403WhenMissingWhitelistReadPermission() throws Exception {
-        User noPermUser = userRepository.save(User.builder()
-                .username("no-whitelist-read")
-                .password(passwordEncoder.encode("password"))
-                .email("no-whitelist-read@example.com")
-                .roles(Set.of(roleRepository.save(Role.builder().name("No Whitelist Read").build())))
-                .status(UserStatus.ENABLED)
-                .build());
-        String noPermToken = createAccessToken(noPermUser);
-
-        mockMvc.perform(get("/api/users/{id}/ip-whitelist", noPermUser.getId())
-                        .header("Authorization", "Bearer " + noPermToken))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    void shouldReturn403WhenMissingWhitelistManagePermission() throws Exception {
-        User noPermUser = userRepository.save(User.builder()
-                .username("no-whitelist-manage")
-                .password(passwordEncoder.encode("password"))
-                .email("no-whitelist-manage@example.com")
-                .roles(Set.of(roleRepository.save(Role.builder().name("No Whitelist Manage").build())))
-                .status(UserStatus.ENABLED)
-                .build());
-        String noPermToken = createAccessToken(noPermUser);
-
-        mockMvc.perform(post("/api/users/{id}/ip-whitelist", noPermUser.getId())
-                        .header("Authorization", "Bearer " + noPermToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"ipAddress":"10.0.0.4"}
-                                """))
-                .andExpect(status().isForbidden());
     }
 
     private String createAccessToken(User user) {

@@ -26,6 +26,8 @@ logging:
   level:
     org.apache.dubbo: WARN
 noone:
+  security:
+    login-ip-whitelist: []
   plugin-registry:
     enabled: false
     catalog-url: ""

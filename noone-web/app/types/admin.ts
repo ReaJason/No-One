@@ -74,10 +74,3 @@ export interface UserSession {
   revokedAt?: string | null;
   revokeReason?: string | null;
 }
-
-export interface UserIpWhitelistEntry {
-  id: number;
-  userId: number;
-  ipAddress: string;
-  createdAt: string;
-}

@@ -9,6 +9,7 @@ import com.reajason.noone.server.admin.user.User;
 import com.reajason.noone.server.admin.user.UserRepository;
 import com.reajason.noone.server.admin.user.UserStatus;
 import com.reajason.noone.server.config.JwtConfig;
+import com.reajason.noone.server.config.LoginIpPolicyProperties;
 import com.reajason.noone.server.plugin.PluginService;
 import com.reajason.noone.server.plugin.dto.PluginCreateRequest;
 import com.reajason.noone.server.plugin.registry.PluginRegistryProperties;
@@ -44,7 +45,7 @@ import static org.springframework.data.web.config.EnableSpringDataWebSupport.Pag
 @SpringBootApplication
 @EnableJpaAuditing
 @EnableSpringDataWebSupport(pageSerializationMode = VIA_DTO)
-@EnableConfigurationProperties({JwtConfig.class, PluginRegistryProperties.class})
+@EnableConfigurationProperties({JwtConfig.class, PluginRegistryProperties.class, LoginIpPolicyProperties.class})
 public class NooneApplication {
 
     public static void main(String[] args) {
@@ -115,8 +116,7 @@ public class NooneApplication {
                     "permission:create", "permission:read", "permission:update", "permission:delete", "permission:list",
                     "profile:create", "profile:read", "profile:update", "profile:delete", "profile:list",
                     "plugin:create", "plugin:list",
-                    "auth:log:read", "auth:session:manage",
-                    "user:whitelist:read", "user:whitelist:manage"));
+                    "auth:log:read", "auth:session:manage"));
             seedRole("System Auditor", selectPermissions(permissionsByCode,
                     "auth:log:read",
                     "user:read", "user:list",
@@ -185,9 +185,6 @@ public class NooneApplication {
 
                     createPermission("auth:log:read", "ReadAuth"),
                     createPermission("auth:session:manage", "ManageAuth"),
-
-                    createPermission("user:whitelist:read", "ReadUserWhitelist"),
-                    createPermission("user:whitelist:manage", "ManageUserWhitelist"),
 
                     createPermission("project:create", "CreateProject"),
                     createPermission("project:list", "ReadProject"),

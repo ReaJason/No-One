@@ -94,12 +94,6 @@ const UserActionsCell = React.memo(({ user }: { user: User }) => {
                 Sessions
               </DropdownMenuItem>
             </Link>
-            <Link to={`/admin/users/${user.id}/ip-whitelist`}>
-              <DropdownMenuItem>
-                <Shield className="mr-2 h-4 w-4" />
-                IP Whitelist
-              </DropdownMenuItem>
-            </Link>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setIsDeleteOpen(true)} className="text-destructive">
               <Trash2 className="mr-2 h-4 w-4" />

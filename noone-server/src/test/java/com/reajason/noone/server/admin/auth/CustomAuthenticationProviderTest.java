@@ -1,9 +1,9 @@
 package com.reajason.noone.server.admin.auth;
 
 import com.reajason.noone.server.admin.user.User;
-import com.reajason.noone.server.admin.user.UserIpWhitelistRepository;
 import com.reajason.noone.server.admin.user.UserRepository;
 import com.reajason.noone.server.admin.user.UserStatus;
+import com.reajason.noone.server.config.LoginIpPolicyService;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -40,7 +40,7 @@ class CustomAuthenticationProviderTest {
     @Mock
     private JwtUtil jwtUtil;
     @Mock
-    private UserIpWhitelistRepository ipWhitelistRepository;
+    private LoginIpPolicyService loginIpPolicyService;
 
     @InjectMocks
     private CustomAuthenticationProvider provider;
@@ -57,10 +57,11 @@ class CustomAuthenticationProviderTest {
                 .failedAttempts(0)
                 .build();
 
-        // Mock request context for IP
         HttpServletRequest request = mock(HttpServletRequest.class);
         lenient().when(request.getRemoteAddr()).thenReturn("127.0.0.1");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        lenient().when(loginIpPolicyService.isAllowed("127.0.0.1")).thenReturn(true);
     }
 
     @AfterEach
@@ -78,7 +79,7 @@ class CustomAuthenticationProviderTest {
 
         assertNotNull(result);
         assertEquals("testuser", result.getName());
-        verify(userRepository, never()).save(any(User.class)); // no save if failed match is 0
+        verify(userRepository, never()).save(any(User.class));
     }
 
     @Test
@@ -109,7 +110,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testLockedUserThrowsException() {
-        testUser.setLockTime(LocalDateTime.now().minusMinutes(5)); // Locked 5 mins ago (still locked)
+        testUser.setLockTime(LocalDateTime.now().minusMinutes(5));
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
@@ -120,7 +121,7 @@ class CustomAuthenticationProviderTest {
 
     @Test
     void testLockedUserUnlockAfterTimeout() {
-        testUser.setLockTime(LocalDateTime.now().minusMinutes(35)); // Locked 35 mins ago (should unlock)
+        testUser.setLockTime(LocalDateTime.now().minusMinutes(35));
         testUser.setFailedAttempts(5);
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
@@ -132,14 +133,13 @@ class CustomAuthenticationProviderTest {
         assertNotNull(result);
         assertEquals(0, testUser.getFailedAttempts());
         assertNull(testUser.getLockTime());
-        verify(userRepository, times(1)).save(testUser); // unlocked save
+        verify(userRepository, times(1)).save(testUser);
     }
 
     @Test
-    void testIpWhitelistBlocksUnlistedIp() {
+    void testLoginIpPolicyBlocksUnlistedIp() {
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
-        when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true); // User has whitelist
-        when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "127.0.0.1")).thenReturn(false); // IP not listed
+        when(loginIpPolicyService.isAllowed("127.0.0.1")).thenReturn(false);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
 
@@ -148,10 +148,8 @@ class CustomAuthenticationProviderTest {
     }
 
     @Test
-    void testIpWhitelistAllowsListedIp() {
+    void testLoginIpPolicyAllowsListedIp() {
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
-        when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true); // User has whitelist
-        when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "127.0.0.1")).thenReturn(true); // IP listed
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);
@@ -161,14 +159,13 @@ class CustomAuthenticationProviderTest {
     }
 
     @Test
-    void testIpWhitelistAllowsNormalizedIpv6Address() {
+    void testLoginIpPolicyAllowsNormalizedIpv6Address() {
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getRemoteAddr()).thenReturn("2001:db8::1");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         when(userRepository.findByUsernameAndDeletedFalse("testuser")).thenReturn(Optional.of(testUser));
-        when(ipWhitelistRepository.existsByUserId(1L)).thenReturn(true);
-        when(ipWhitelistRepository.existsByUserIdAndIpAddress(1L, "2001:db8:0:0:0:0:0:1")).thenReturn(true);
+        when(loginIpPolicyService.isAllowed("2001:db8:0:0:0:0:0:1")).thenReturn(true);
         when(passwordEncoder.matches("password", "encodedpassword")).thenReturn(true);
 
         Authentication auth = new TwoFactorAuthenticationToken("testuser", "password", null);

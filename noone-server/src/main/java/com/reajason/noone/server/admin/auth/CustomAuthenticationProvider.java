@@ -1,9 +1,9 @@
 package com.reajason.noone.server.admin.auth;
 
 import com.reajason.noone.server.admin.user.User;
-import com.reajason.noone.server.admin.user.UserIpWhitelistRepository;
 import com.reajason.noone.server.admin.user.UserRepository;
 import com.reajason.noone.server.admin.user.UserStatus;
+import com.reajason.noone.server.config.LoginIpPolicyService;
 import com.reajason.noone.server.util.IpUtils;
 import com.reajason.noone.server.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,7 +31,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
     private final PasswordEncoder passwordEncoder;
     private final TwoFactorAuthService twoFactorAuthService;
     private final JwtUtil jwtUtil; // For generating setup token
-    private final UserIpWhitelistRepository ipWhitelistRepository;
+    private final LoginIpPolicyService loginIpPolicyService;
 
     private static final int MAX_FAILED_ATTEMPTS = 5;
     private static final int LOCK_TIME_MINUTES = 30;
@@ -65,10 +65,8 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
             HttpServletRequest request = attributes.getRequest();
             String ipAddress = IpUtils.getIpAddr(request);
             String normalizedIpAddress = IpUtils.normalizeExactIp(ipAddress);
-            if (ipWhitelistRepository.existsByUserId(user.getId())
-                    && !ipWhitelistRepository.existsByUserIdAndIpAddress(
-                    user.getId(),
-                    normalizedIpAddress == null ? ipAddress : normalizedIpAddress)) {
+            String candidateIpAddress = normalizedIpAddress == null ? ipAddress : normalizedIpAddress;
+            if (!loginIpPolicyService.isAllowed(candidateIpAddress)) {
                 log.warn("Login attempt from non-whitelisted IP: {} for user: {}", ipAddress, username);
                 throw new BadCredentialsException("Login not allowed from this IP address");
             }
