@@ -1,19 +1,19 @@
 package com.reajason.noone.server.profile;
 
-import com.reajason.noone.server.profile.config.ProtocolType;
+import com.reajason.noone.core.profile.config.ProtocolType;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.ObjectUtils;
 
 public class ProfileSpecifications {
 
-    public static Specification<Profile> notDeleted() {
+    public static Specification<ProfileEntity> notDeleted() {
         return (root, query, criteriaBuilder) -> criteriaBuilder.or(
                 criteriaBuilder.isFalse(root.get("deleted")),
                 criteriaBuilder.isNull(root.get("deleted"))
         );
     }
 
-    public static Specification<Profile> hasName(String name) {
+    public static Specification<ProfileEntity> hasName(String name) {
         return (root, query, cb) -> {
             if (ObjectUtils.isEmpty(name)) {
                 return cb.conjunction();
@@ -22,7 +22,7 @@ public class ProfileSpecifications {
         };
     }
 
-    public static Specification<Profile> hasProtocolType(String protocolType) {
+    public static Specification<ProfileEntity> hasProtocolType(String protocolType) {
         return (root, query, cb) -> {
             if (ObjectUtils.isEmpty(protocolType)) {
                 return cb.conjunction();

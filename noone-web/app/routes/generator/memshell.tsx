@@ -209,19 +209,19 @@ export default function MemShell() {
   }, []);
 
   const addShellParams = useMemo(() => {
-    if (!generateResult) return null;
-    const loaderProfileId = generateResult.shellToolConfig.loaderProfile?.id;
+    const result = actionData?.success ? (actionData.result as MemShellResult) : generateResult;
+    if (!result) return null;
+    const loaderProfileId = result.shellToolConfig.loaderProfile?.id;
     const isStaging = Boolean(loaderProfileId);
+    console.log(generateResult);
     return {
-      profileId: isStaging
-        ? undefined
-        : (generateResult.shellToolConfig.coreProfile?.id ?? undefined),
+      profileId: isStaging ? undefined : (result.shellToolConfig.coreProfile?.id ?? undefined),
       loaderProfileId: isStaging ? (loaderProfileId ?? undefined) : undefined,
-      shellType: generateResult.shellConfig.shellType ?? undefined,
+      shellType: result.shellConfig.shellType ?? undefined,
       staging: isStaging || undefined,
-      interfaceName: generateResult.injectorConfig.injectorHelperClassName ?? undefined,
+      interfaceName: result.injectorConfig.injectorHelperClassName ?? undefined,
     };
-  }, [generateResult]);
+  }, [actionData, generateResult]);
 
   return (
     <Form method="post" className="flex flex-col gap-6">

@@ -8,7 +8,6 @@ import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
 import com.reajason.noone.server.profile.dto.ProfileQueryRequest;
 import com.reajason.noone.server.profile.dto.ProfileResponse;
 import com.reajason.noone.server.profile.dto.ProfileUpdateRequest;
-import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,21 +40,21 @@ public class ProfileService {
         if (StringUtils.isNoneBlank(request.getPassword())) {
             request.setPassword(passwordEncoder.encode(request.getPassword()));
         }
-        Profile profile = profileMapper.toEntity(request);
-        Profile saved = profileRepository.save(profile);
+        ProfileEntity profile = profileMapper.toEntity(request);
+        ProfileEntity saved = profileRepository.save(profile);
         return profileMapper.toResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public ProfileResponse getById(Long id) {
-        Profile profile = profileRepository.findByIdAndDeletedFalse(id)
+        ProfileEntity profile = profileRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found：" + id));
         return profileMapper.toResponse(profile);
     }
 
     @AuditLog(module = AuditModule.PROFILE, action = AuditAction.UPDATE, targetType = "Profile", targetId = "#id")
     public ProfileResponse update(Long id, ProfileUpdateRequest request) {
-        Profile profile = profileRepository.findByIdAndDeletedFalse(id)
+        ProfileEntity profile = profileRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found：" + id));
 
         if (request.getName() != null && profileRepository.existsByNameAndIdNotAndDeletedFalse(request.getName(), id)) {
@@ -67,13 +66,13 @@ public class ProfileService {
         }
 
         profileMapper.updateEntity(profile, request);
-        Profile saved = profileRepository.save(profile);
+        ProfileEntity saved = profileRepository.save(profile);
         return profileMapper.toResponse(saved);
     }
 
     @AuditLog(module = AuditModule.PROFILE, action = AuditAction.DELETE, targetType = "Profile", targetId = "#id")
     public void delete(Long id) {
-        Profile profile = profileRepository.findByIdAndDeletedFalse(id)
+        ProfileEntity profile = profileRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found：" + id));
         profile.setDeleted(Boolean.TRUE);
         profileRepository.save(profile);
@@ -88,7 +87,7 @@ public class ProfileService {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize(), sort);
 
-        Specification<Profile> spec = ProfileSpecifications.hasName(request.getName())
+        Specification<ProfileEntity> spec = ProfileSpecifications.hasName(request.getName())
                 .and(ProfileSpecifications.notDeleted())
                 .and(ProfileSpecifications.hasProtocolType(request.getProtocolType()));
 

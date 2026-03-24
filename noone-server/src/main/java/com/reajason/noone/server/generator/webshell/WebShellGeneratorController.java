@@ -7,7 +7,8 @@ import com.reajason.noone.core.generator.ServletModule;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateRequest;
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateResponse;
-import com.reajason.noone.server.profile.Profile;
+import com.reajason.noone.server.profile.ProfileEntity;
+import com.reajason.noone.server.profile.ProfileMapper;
 import com.reajason.noone.server.profile.ProfileRepository;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,17 +25,19 @@ public class WebShellGeneratorController {
     private static final Set<String> NODEJS_FORMATS = Set.of("MJS");
 
     private final ProfileRepository profileRepository;
+    private final ProfileMapper profileMapper;
 
-    public WebShellGeneratorController(ProfileRepository profileRepository) {
+    public WebShellGeneratorController(ProfileRepository profileRepository, ProfileMapper profileMapper) {
         this.profileRepository = profileRepository;
+        this.profileMapper = profileMapper;
     }
 
     @PostMapping("/generate")
     public WebShellGenerateResponse generate(@RequestBody WebShellGenerateRequest request) {
-        Profile profile = profileRepository.findById(request.getProfileId())
+        ProfileEntity profile = profileRepository.findById(request.getProfileId())
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found: " + request.getProfileId()));
 
-        NoOneConfig config = new NoOneConfig(profile);
+        NoOneConfig config = new NoOneConfig(profileMapper.toProfile(profile));
         String language = normalizeValue(request.getLanguage(), "language");
         String format = normalizeValue(request.getFormat(), "format");
 

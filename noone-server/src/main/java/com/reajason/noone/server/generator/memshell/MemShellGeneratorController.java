@@ -6,11 +6,13 @@ import com.reajason.javaweb.memshell.config.InjectorConfig;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.memshell.config.ShellToolConfig;
 import com.reajason.javaweb.packer.*;
-import com.reajason.noone.Constants;
+import com.reajason.noone.core.Constants;
 import com.reajason.noone.core.generator.JavaMemShellGenerator;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.server.generator.memshell.dto.MemShellGenerateRequest;
 import com.reajason.noone.server.generator.memshell.dto.MemShellGenerateResponse;
+import com.reajason.noone.server.profile.ProfileEntity;
+import com.reajason.noone.server.profile.ProfileMapper;
 import com.reajason.noone.server.profile.ProfileRepository;
 import lombok.Data;
 import org.springframework.web.bind.annotation.*;
@@ -25,12 +27,16 @@ import java.util.*;
 @RequestMapping("/api/memshell")
 @CrossOrigin("*")
 public class MemShellGeneratorController {
+
     private final JavaMemShellGenerator javaMemShellGenerator;
     private final ProfileRepository profileRepository;
+    private final ProfileMapper profileMapper;
 
-    public MemShellGeneratorController(JavaMemShellGenerator javaMemShellGenerator, ProfileRepository profileRepository) {
-        this.javaMemShellGenerator = javaMemShellGenerator;
+    public MemShellGeneratorController(ProfileRepository profileRepository, ProfileMapper profileMapper) {
+        this.javaMemShellGenerator = new JavaMemShellGenerator();
+        this.javaMemShellGenerator.init();
         this.profileRepository = profileRepository;
+        this.profileMapper = profileMapper;
     }
 
     @PostMapping("/generate")
@@ -55,15 +61,17 @@ public class MemShellGeneratorController {
         MemShellGenerateRequest.ShellToolConfigDTO shellToolConfig = request.getShellToolConfig();
         if (shellToolConfig.getStaging()) {
             request.getShellConfig().setShellTool(Constants.NO_ONE_STAGING);
+            ProfileEntity profileEntity = profileRepository.findById(shellToolConfig.getLoaderProfileId()).get();
             return NoOneConfig.builder()
                     .shellClassName(shellToolConfig.getShellClassName())
-                    .loaderProfile(profileRepository.findById(shellToolConfig.getLoaderProfileId()).get())
+                    .loaderProfile(profileMapper.toProfile(profileEntity))
                     .build();
         }
         request.getShellConfig().setShellTool(Constants.NO_ONE);
+        ProfileEntity profileEntity = profileRepository.findById(shellToolConfig.getCoreProfileId()).get();
         return NoOneConfig.builder()
                 .shellClassName(shellToolConfig.getShellClassName())
-                .coreProfile(profileRepository.findById(shellToolConfig.getCoreProfileId()).get())
+                .coreProfile(profileMapper.toProfile(profileEntity))
                 .build();
     }
 
@@ -91,7 +99,7 @@ public class MemShellGeneratorController {
                 option.setName(packer.name());
                 option.setOutputKind(packer.getOutputKind());
                 option.setSchema(packer.getSchema());
-                if(!packer.hasChildren()){
+                if (!packer.hasChildren()) {
                     options.add(option);
                 }
             }

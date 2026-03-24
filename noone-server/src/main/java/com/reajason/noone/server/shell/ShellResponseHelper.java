@@ -1,6 +1,6 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.Constants;
+import com.reajason.noone.core.Constants;
 import com.reajason.noone.core.exception.CommunicationPhase;
 import com.reajason.noone.core.exception.ResponseDecodeException;
 import com.reajason.noone.core.exception.ShellCommunicationException;

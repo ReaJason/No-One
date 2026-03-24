@@ -1,5 +1,8 @@
 package com.reajason.noone.server.profile;
 
+import com.reajason.noone.core.profile.config.IdentifierLocation;
+import com.reajason.noone.core.profile.config.IdentifierOperator;
+import com.reajason.noone.core.profile.config.ProtocolType;
 import tools.jackson.databind.ObjectMapper;
 import com.reajason.noone.server.TestPGContainerConfiguration;
 import com.reajason.noone.server.admin.permission.Permission;
@@ -11,7 +14,6 @@ import com.reajason.noone.server.audit.AuditAction;
 import com.reajason.noone.server.audit.AuditLogEntity;
 import com.reajason.noone.server.audit.AuditLogRepository;
 import com.reajason.noone.server.audit.AuditModule;
-import com.reajason.noone.server.profile.config.*;
 import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
 import com.reajason.noone.server.profile.dto.ProfileUpdateRequest;
 import com.reajason.noone.server.util.JwtUtil;
@@ -154,7 +156,7 @@ class ProfileControllerTest {
     @Test
     void shouldCreateProfileWithFullConfig() throws Exception {
         ProfileCreateRequest request = createRequest("full-config");
-        request.setIdentifier(new IdentifierConfig(
+        request.setIdentifier(new com.reajason.noone.core.profile.config.IdentifierConfig(
                 IdentifierLocation.HEADER, IdentifierOperator.EQUALS, "X-Token", "abc123"));
         request.setRequestTransformations(List.of("base64"));
         request.setResponseTransformations(List.of("base64-decode"));
@@ -205,7 +207,7 @@ class ProfileControllerTest {
 
     @Test
     void shouldCreateProfileWhenDeletedProfileHasSameName() throws Exception {
-        Profile deletedProfile = buildProfile("reusable-name");
+        ProfileEntity deletedProfile = buildProfile("reusable-name");
         deletedProfile.setDeleted(Boolean.TRUE);
         profileRepository.save(deletedProfile);
 
@@ -223,7 +225,7 @@ class ProfileControllerTest {
 
     @Test
     void shouldGetProfileById() throws Exception {
-        Profile saved = profileRepository.save(buildProfile("get-test"));
+        ProfileEntity saved = profileRepository.save(buildProfile("get-test"));
 
         mockMvc.perform(get("/api/profiles/{id}", saved.getId())
                         .header("Authorization", "Bearer " + accessToken))
@@ -242,9 +244,9 @@ class ProfileControllerTest {
 
     @Test
     void shouldReturn404WhenGettingDeletedProfile() throws Exception {
-        Profile deletedProfile = buildProfile("deleted-get");
+        ProfileEntity deletedProfile = buildProfile("deleted-get");
         deletedProfile.setDeleted(Boolean.TRUE);
-        Profile saved = profileRepository.save(deletedProfile);
+        ProfileEntity saved = profileRepository.save(deletedProfile);
 
         mockMvc.perform(get("/api/profiles/{id}", saved.getId())
                         .header("Authorization", "Bearer " + accessToken))
@@ -255,7 +257,7 @@ class ProfileControllerTest {
 
     @Test
     void shouldUpdateProfile() throws Exception {
-        Profile saved = profileRepository.save(buildProfile("before-update"));
+        ProfileEntity saved = profileRepository.save(buildProfile("before-update"));
 
         ProfileUpdateRequest updateRequest = new ProfileUpdateRequest();
         updateRequest.setName("after-update");
@@ -268,7 +270,7 @@ class ProfileControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("after-update"));
 
-        Profile updated = profileRepository.findById(saved.getId()).orElseThrow();
+        ProfileEntity updated = profileRepository.findById(saved.getId()).orElseThrow();
         assertThat(updated.getName()).isEqualTo("after-update");
         assertThat(passwordEncoder.matches("new-pass", updated.getPassword())).isTrue();
 
@@ -286,7 +288,7 @@ class ProfileControllerTest {
     @Test
     void shouldReturn400WhenUpdateDuplicateName() throws Exception {
         profileRepository.save(buildProfile("existing-name"));
-        Profile target = profileRepository.save(buildProfile("to-update"));
+        ProfileEntity target = profileRepository.save(buildProfile("to-update"));
 
         ProfileUpdateRequest updateRequest = new ProfileUpdateRequest();
         updateRequest.setName("existing-name");
@@ -316,13 +318,13 @@ class ProfileControllerTest {
 
     @Test
     void shouldDeleteProfileAndReturn204() throws Exception {
-        Profile saved = profileRepository.save(buildProfile("to-delete"));
+        ProfileEntity saved = profileRepository.save(buildProfile("to-delete"));
 
         mockMvc.perform(delete("/api/profiles/{id}", saved.getId())
                         .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isNoContent());
 
-        Profile deleted = profileRepository.findById(saved.getId()).orElseThrow();
+        ProfileEntity deleted = profileRepository.findById(saved.getId()).orElseThrow();
         assertThat(deleted.getDeleted()).isTrue();
 
         List<AuditLogEntity> logs = auditLogRepository.findAll();
@@ -338,9 +340,9 @@ class ProfileControllerTest {
 
     @Test
     void shouldReturn404WhenDeletingDeletedProfile() throws Exception {
-        Profile deletedProfile = buildProfile("already-deleted");
+        ProfileEntity deletedProfile = buildProfile("already-deleted");
         deletedProfile.setDeleted(Boolean.TRUE);
-        Profile saved = profileRepository.save(deletedProfile);
+        ProfileEntity saved = profileRepository.save(deletedProfile);
 
         mockMvc.perform(delete("/api/profiles/{id}", saved.getId())
                         .header("Authorization", "Bearer " + accessToken))
@@ -363,7 +365,7 @@ class ProfileControllerTest {
         profileRepository.save(buildProfile("alpha-http"));
         profileRepository.save(buildProfile("beta-http"));
         profileRepository.save(buildProfile("gamma-ws"));
-        Profile deletedProfile = buildProfile("deleted-http");
+        ProfileEntity deletedProfile = buildProfile("deleted-http");
         deletedProfile.setDeleted(Boolean.TRUE);
         profileRepository.save(deletedProfile);
 
@@ -401,7 +403,7 @@ class ProfileControllerTest {
     void shouldQueryProfilesByProtocolType() throws Exception {
         profileRepository.save(buildProfile("http-1"));
         profileRepository.save(buildProfile("http-2"));
-        Profile wsProfile = buildProfile("ws-1");
+        ProfileEntity wsProfile = buildProfile("ws-1");
         wsProfile.setProtocolType(ProtocolType.WEBSOCKET);
         profileRepository.save(wsProfile);
 
@@ -467,19 +469,19 @@ class ProfileControllerTest {
         request.setName(name);
         request.setPassword("test-pass-123");
         request.setProtocolType(ProtocolType.HTTP);
-        HttpProtocolConfig config = new HttpProtocolConfig();
+        com.reajason.noone.core.profile.config.HttpProtocolConfig config = new com.reajason.noone.core.profile.config.HttpProtocolConfig();
         config.setRequestMethod("GET");
         config.setResponseStatusCode(200);
         request.setProtocolConfig(config);
         return request;
     }
 
-    private Profile buildProfile(String name) {
-        Profile profile = new Profile();
+    private ProfileEntity buildProfile(String name) {
+        ProfileEntity profile = new ProfileEntity();
         profile.setName(name);
         profile.setPassword(passwordEncoder.encode("stored-pass"));
         profile.setProtocolType(ProtocolType.HTTP);
-        HttpProtocolConfig config = new HttpProtocolConfig();
+        com.reajason.noone.core.profile.config.HttpProtocolConfig config = new com.reajason.noone.core.profile.config.HttpProtocolConfig();
         config.setRequestMethod("GET");
         config.setResponseStatusCode(200);
         profile.setProtocolConfig(config);

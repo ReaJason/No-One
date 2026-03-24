@@ -2,11 +2,13 @@ package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.*;
 import com.reajason.noone.core.client.*;
-import com.reajason.noone.core.client.HttpRequestBodyType;
-import com.reajason.noone.core.client.HttpResponseBodyType;
-import com.reajason.noone.server.profile.Profile;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
+import com.reajason.noone.core.profile.config.IdentifierLocation;
+import com.reajason.noone.core.profile.config.ProtocolType;
+import com.reajason.noone.server.profile.ProfileEntity;
+import com.reajason.noone.server.profile.ProfileMapper;
 import com.reajason.noone.server.profile.ProfileRepository;
-import com.reajason.noone.server.profile.config.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -28,13 +30,19 @@ public class ShellConnectionPool {
 
     private final ConcurrentHashMap<Long, CacheEntry> cache = new ConcurrentHashMap<>();
 
+    private final ProfileMapper profileMapper;
+
+    public ShellConnectionPool(ProfileMapper profileMapper) {
+        this.profileMapper = profileMapper;
+    }
+
     public ShellConnection getOrCreateCached(Shell shell) {
         if (shell.getId() == null) {
             return createUncached(shell);
         }
 
-        Profile profile = loadProfile(shell.getProfileId());
-        Profile loaderProfile;
+        ProfileEntity profile = loadProfile(shell.getProfileId());
+        ProfileEntity loaderProfile;
         if (shell.getStaging()) {
             loaderProfile = loadProfile(shell.getLoaderProfileId());
         } else {
@@ -59,8 +67,8 @@ public class ShellConnectionPool {
     }
 
     public ShellConnection createUncached(Shell shell) {
-        Profile profile = loadProfile(shell.getProfileId());
-        Profile loaderProfile = null;
+        ProfileEntity profile = loadProfile(shell.getProfileId());
+        ProfileEntity loaderProfile = null;
         if (shell.getStaging()) {
             loaderProfile = loadProfile(shell.getLoaderProfileId());
         }
@@ -77,12 +85,12 @@ public class ShellConnectionPool {
         }
     }
 
-    private Profile loadProfile(Long profileId) {
+    private ProfileEntity loadProfile(Long profileId) {
         return profileRepository.findById(profileId)
                 .orElseThrow(() -> new IllegalArgumentException("Profile not found: " + profileId));
     }
 
-    private ShellConnection createConnection(Shell shell, Profile profile, Profile loaderProfile) {
+    private ShellConnection createConnection(Shell shell, ProfileEntity profile, ProfileEntity loaderProfile) {
         ClientConfig config = buildClientConfig(shell, profile);
         Client coreClient = null;
         if (profile.getProtocolType() == ProtocolType.HTTP) {
@@ -112,7 +120,7 @@ public class ShellConnectionPool {
                 .coreClient(coreClient)
                 .loaderClient(loaderClient)
                 .shellType(shell.getShellType())
-                .coreProfile(profile)
+                .coreProfile(profileMapper.toProfile(profile))
                 .build();
 
         return switch (language) {
@@ -126,7 +134,7 @@ public class ShellConnectionPool {
         return shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
     }
 
-    private ClientConfig buildClientConfig(Shell shell, Profile profile) {
+    private ClientConfig buildClientConfig(Shell shell, ProfileEntity profile) {
         ClientConfig.ClientConfigBuilder builder = ClientConfig.builder();
 
         Map<String, String> requestHeaders = new HashMap<>();
@@ -151,7 +159,7 @@ public class ShellConnectionPool {
 
     private void applyProfileConfig(
             ClientConfig.ClientConfigBuilder builder,
-            Profile profile,
+            ProfileEntity profile,
             Map<String, String> requestHeaders,
             Map<String, String> requestParams,
             Map<String, String> requestCookies
@@ -162,12 +170,12 @@ public class ShellConnectionPool {
 
         applyIdentifierConfig(profile.getIdentifier(), requestHeaders, requestParams, requestCookies);
 
-        ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        com.reajason.noone.core.profile.config.ProtocolConfig protocolConfig = profile.getProtocolConfig();
         if (protocolConfig == null) {
             return;
         }
 
-        if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
+        if (protocolConfig instanceof com.reajason.noone.core.profile.config.HttpProtocolConfig httpConfig) {
             builder.requestMethod(httpConfig.getRequestMethod());
             builder.requestTemplate(httpConfig.getRequestTemplate());
             builder.expectedResponseStatusCode(httpConfig.getResponseStatusCode() > 0
@@ -183,14 +191,14 @@ public class ShellConnectionPool {
             if (httpConfig.getRequestHeaders() != null) {
                 requestHeaders.putAll(httpConfig.getRequestHeaders());
             }
-        } else if (protocolConfig instanceof WebSocketProtocolConfig wsConfig) {
+        } else if (protocolConfig instanceof com.reajason.noone.core.profile.config.WebSocketProtocolConfig wsConfig) {
             if (wsConfig.getHandshakeHeaders() != null) {
                 requestHeaders.putAll(wsConfig.getHandshakeHeaders());
             }
             builder.requestTemplate(wsConfig.getMessageTemplate());
             builder.responseTemplate(wsConfig.getResponseTemplate());
             builder.responseBodyType(HttpResponseBodyType.BINARY);
-        } else if (protocolConfig instanceof DubboProtocolConfig dubboConfig) {
+        } else if (protocolConfig instanceof com.reajason.noone.core.profile.config.DubboProtocolConfig dubboConfig) {
             builder.requestTemplate(dubboConfig.getRequestTemplate());
             builder.responseTemplate(dubboConfig.getResponseTemplate());
         }
@@ -232,7 +240,7 @@ public class ShellConnectionPool {
     }
 
     private void applyIdentifierConfig(
-            IdentifierConfig identifier,
+            com.reajason.noone.core.profile.config.IdentifierConfig identifier,
             Map<String, String> requestHeaders,
             Map<String, String> requestParams,
             Map<String, String> requestCookies
@@ -252,11 +260,11 @@ public class ShellConnectionPool {
         }
     }
 
-    private DubboClientConfig buildDubboClientConfig(Shell shell, Profile profile) {
+    private DubboClientConfig buildDubboClientConfig(Shell shell, ProfileEntity profile) {
         DubboClientConfig.DubboClientConfigBuilder builder = DubboClientConfig.builder();
         builder.interfaceName(shell.getInterfaceName());
-        ProtocolConfig protocolConfig = profile.getProtocolConfig();
-        if (protocolConfig instanceof DubboProtocolConfig dubboProtoConfig) {
+        com.reajason.noone.core.profile.config.ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        if (protocolConfig instanceof com.reajason.noone.core.profile.config.DubboProtocolConfig dubboProtoConfig) {
             if (dubboProtoConfig.getMethodName() != null && !dubboProtoConfig.getMethodName().isEmpty()) {
                 builder.methodName(dubboProtoConfig.getMethodName());
             }
@@ -297,7 +305,7 @@ public class ShellConnectionPool {
         }
     }
 
-    private String signature(Shell shell, Profile profile, Profile loaderProfile) {
+    private String signature(Shell shell, ProfileEntity profile, ProfileEntity loaderProfile) {
         StringBuilder sb = new StringBuilder();
         sb.append("url=").append(nullToEmpty(shell.getUrl())).append(SIG_DELIMITER);
         sb.append("language=").append(effectiveLanguage(shell).getValue()).append(SIG_DELIMITER);

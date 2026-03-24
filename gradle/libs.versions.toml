@@ -19,6 +19,7 @@ commons-io = "2.21.0"
 commons-lang3 = "3.20.0"
 commons-codec = "1.21.0"
 logback = "1.5.32" # https://mvnrepository.com/artifact/ch.qos.logback/logback-classic
+slf4j = "2.0.17"
 okhttp3 = "5.3.2" # https://mvnrepository.com/artifact/com.squareup.okhttp3/okhttp
 fastjson2 = "2.0.61" # https://mvnrepository.com/artifact/com.alibaba.fastjson2/fastjson2
 dubbo = "3.3.6" # https://mvnrepository.com/artifact/org.apache.dubbo/dubbo
@@ -51,12 +52,14 @@ javax-websocket-api = { module = "javax.websocket:javax.websocket-api", version.
 jakarta-websocket-api = { module = "jakarta.websocket:jakarta.websocket-api", version.ref = "jakarta-websocket-api" }
 jakarta-websocket-client-api = { module = "jakarta.websocket:jakarta.websocket-client-api", version.ref = "jakarta-websocket-api" }
 spring-webmvc = { module = "org.springframework:spring-webmvc", version.ref = "spring-webmvc" }
+spring-web = { module = "org.springframework:spring-web", version.ref = "spring-webmvc" }
 spring-webflux = { module = "org.springframework:spring-webflux", version.ref = "spring-webflux" }
 reactor-netty-core = { module = "io.projectreactor.netty:reactor-netty-core", version.ref = "reactor-netty" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 bcel = { module = "org.apache.bcel:bcel", version.ref = "bcel" }
 okhttp3 = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp3" }
 okhttp3-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3", version.ref = "okhttp3" }

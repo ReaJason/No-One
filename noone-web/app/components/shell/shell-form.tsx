@@ -163,6 +163,7 @@ export function ShellForm({
                     control={control}
                     render={({ field }) => (
                       <Select
+                        items={LANGUAGE_ITEMS}
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={isPrefilled}
@@ -223,6 +224,7 @@ export function ShellForm({
                     control={control}
                     render={({ field }) => (
                       <Select
+                        items={profileItems}
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={isPrefilled && !staging}
@@ -311,7 +313,11 @@ export function ShellForm({
                     name="projectId"
                     control={control}
                     render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select
+                        items={projectItems}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
                         <SelectTrigger
                           id="projectId"
                           aria-invalid={Boolean(fieldError("projectId")) || undefined}
@@ -365,6 +371,7 @@ export function ShellForm({
                     control={control}
                     render={({ field }) => (
                       <Select
+                        items={profileItems}
                         value={field.value}
                         onValueChange={field.onChange}
                         disabled={isPrefilled}

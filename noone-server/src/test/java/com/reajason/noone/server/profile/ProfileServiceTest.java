@@ -1,8 +1,8 @@
 package com.reajason.noone.server.profile;
 
 import com.reajason.noone.server.api.ResourceNotFoundException;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.ProtocolType;
+import com.reajason.noone.core.profile.config.HttpProtocolConfig;
+import com.reajason.noone.core.profile.config.ProtocolType;
 import com.reajason.noone.server.profile.dto.ProfileCreateRequest;
 import com.reajason.noone.server.profile.dto.ProfileQueryRequest;
 import com.reajason.noone.server.profile.dto.ProfileResponse;
@@ -59,8 +59,8 @@ class ProfileServiceTest {
     @Test
     void shouldCreateProfile() {
         ProfileCreateRequest request = createRequest("new-profile");
-        Profile entity = buildProfile(null, "new-profile");
-        Profile saved = buildProfile(1L, "new-profile");
+        ProfileEntity entity = buildProfile(null, "new-profile");
+        ProfileEntity saved = buildProfile(1L, "new-profile");
         ProfileResponse expectedResponse = buildResponse(1L, "new-profile");
 
         when(profileRepository.existsByNameAndDeletedFalse("new-profile")).thenReturn(false);
@@ -93,7 +93,7 @@ class ProfileServiceTest {
 
     @Test
     void shouldGetProfileById() {
-        Profile stored = buildProfile(10L, "get-test");
+        ProfileEntity stored = buildProfile(10L, "get-test");
         ProfileResponse expectedResponse = buildResponse(10L, "get-test");
 
         when(profileRepository.findByIdAndDeletedFalse(10L)).thenReturn(Optional.of(stored));
@@ -117,8 +117,8 @@ class ProfileServiceTest {
 
     @Test
     void shouldUpdateProfileNameAndPassword() {
-        Profile stored = buildProfile(20L, "before-update");
-        Profile saved = buildProfile(20L, "after-update");
+        ProfileEntity stored = buildProfile(20L, "before-update");
+        ProfileEntity saved = buildProfile(20L, "after-update");
         ProfileResponse expectedResponse = buildResponse(20L, "after-update");
 
         when(profileRepository.findByIdAndDeletedFalse(20L)).thenReturn(Optional.of(stored));
@@ -143,8 +143,8 @@ class ProfileServiceTest {
 
     @Test
     void shouldSkipNameCheckWhenNameIsNull() {
-        Profile stored = buildProfile(21L, "keep-name");
-        Profile saved = buildProfile(21L, "keep-name");
+        ProfileEntity stored = buildProfile(21L, "keep-name");
+        ProfileEntity saved = buildProfile(21L, "keep-name");
         ProfileResponse expectedResponse = buildResponse(21L, "keep-name");
 
         when(profileRepository.findByIdAndDeletedFalse(21L)).thenReturn(Optional.of(stored));
@@ -166,8 +166,8 @@ class ProfileServiceTest {
 
     @Test
     void shouldAllowUpdatingSameName() {
-        Profile stored = buildProfile(31L, "keep-same");
-        Profile saved = buildProfile(31L, "keep-same");
+        ProfileEntity stored = buildProfile(31L, "keep-same");
+        ProfileEntity saved = buildProfile(31L, "keep-same");
         ProfileResponse expectedResponse = buildResponse(31L, "keep-same");
 
         when(profileRepository.findByIdAndDeletedFalse(31L)).thenReturn(Optional.of(stored));
@@ -214,7 +214,7 @@ class ProfileServiceTest {
 
     @Test
     void shouldDeleteProfile() {
-        Profile stored = buildProfile(40L, "to-delete");
+        ProfileEntity stored = buildProfile(40L, "to-delete");
         when(profileRepository.findByIdAndDeletedFalse(40L)).thenReturn(Optional.of(stored));
 
         profileService.delete(40L);
@@ -250,12 +250,12 @@ class ProfileServiceTest {
 
     @Test
     void shouldQueryWithFiltersAndAscSort() {
-        Profile alpha = buildProfile(50L, "alpha");
-        Profile beta = buildProfile(51L, "beta");
+        ProfileEntity alpha = buildProfile(50L, "alpha");
+        ProfileEntity beta = buildProfile(51L, "beta");
         ProfileResponse alphaResp = buildResponse(50L, "alpha");
         ProfileResponse betaResp = buildResponse(51L, "beta");
 
-        Page<Profile> repositoryPage = new PageImpl<>(List.of(alpha, beta));
+        Page<ProfileEntity> repositoryPage = new PageImpl<>(List.of(alpha, beta));
         when(profileRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(repositoryPage);
         when(profileMapper.toResponse(alpha)).thenReturn(alphaResp);
@@ -284,10 +284,10 @@ class ProfileServiceTest {
 
     @Test
     void shouldQueryWithDescSort() {
-        Profile alpha = buildProfile(50L, "alpha");
+        ProfileEntity alpha = buildProfile(50L, "alpha");
         ProfileResponse alphaResp = buildResponse(50L, "alpha");
 
-        Page<Profile> repositoryPage = new PageImpl<>(List.of(alpha));
+        Page<ProfileEntity> repositoryPage = new PageImpl<>(List.of(alpha));
         when(profileRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(repositoryPage);
         when(profileMapper.toResponse(alpha)).thenReturn(alphaResp);
@@ -309,7 +309,7 @@ class ProfileServiceTest {
 
     @Test
     void shouldQueryWithDefaultParameters() {
-        Page<Profile> emptyPage = new PageImpl<>(List.of());
+        Page<ProfileEntity> emptyPage = new PageImpl<>(List.of());
         when(profileRepository.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(emptyPage);
 
@@ -340,8 +340,8 @@ class ProfileServiceTest {
         return request;
     }
 
-    private Profile buildProfile(Long id, String name) {
-        Profile profile = new Profile();
+    private ProfileEntity buildProfile(Long id, String name) {
+        ProfileEntity profile = new ProfileEntity();
         profile.setId(id);
         profile.setName(name);
         profile.setPassword("encoded-pass");

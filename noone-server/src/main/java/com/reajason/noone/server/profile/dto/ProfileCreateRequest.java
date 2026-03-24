@@ -1,8 +1,8 @@
 package com.reajason.noone.server.profile.dto;
 
-import com.reajason.noone.server.profile.config.IdentifierConfig;
-import com.reajason.noone.server.profile.config.ProtocolConfig;
-import com.reajason.noone.server.profile.config.ProtocolType;
+import com.reajason.noone.core.profile.config.IdentifierConfig;
+import com.reajason.noone.core.profile.config.ProtocolConfig;
+import com.reajason.noone.core.profile.config.ProtocolType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

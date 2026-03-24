@@ -30,13 +30,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation(project(":noone-core:java-core")){
+    implementation(project(":noone-core")){
         exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
     }
     implementation(libs.bundles.jjwt)
-    implementation(libs.memshell.party.generator){
+    implementation(libs.memshell.party.generator) {
         exclude(group = "commons-logging", module = "commons-logging")
         exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
+        exclude(group = "io.netty", module = "netty-transport-native-kqueue")
     }
     implementation(libs.memshell.party.common)
     implementation(libs.memshell.party.packer){
@@ -46,14 +47,7 @@ dependencies {
     implementation(libs.byte.buddy)
     implementation(libs.asm.commons)
     implementation(libs.commons.lang3)
-    implementation(libs.okhttp3)
     implementation(libs.fastjson2)
-    implementation(libs.dubbo) {
-        exclude(group = "org.springframework")
-        exclude(group = "org.springframework.boot")
-    }
-    implementation(libs.dubbo.rpc.hessian)
-    implementation(libs.dubbo.remoting.http)
     implementation(libs.reactor.netty.core)
     implementation(libs.javax.servlet.api)
     implementation(libs.javax.websocket.api)
@@ -72,7 +66,6 @@ dependencies {
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation(libs.okhttp3.mockwebserver)
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-starter-data-jpa-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

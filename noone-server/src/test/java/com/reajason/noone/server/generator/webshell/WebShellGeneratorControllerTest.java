@@ -2,12 +2,14 @@ package com.reajason.noone.server.generator.webshell;
 
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateRequest;
 import com.reajason.noone.server.generator.webshell.dto.WebShellGenerateResponse;
-import com.reajason.noone.server.profile.Profile;
+import com.reajason.noone.server.profile.ProfileEntity;
+import com.reajason.noone.server.profile.ProfileMapperImpl;
 import com.reajason.noone.server.profile.ProfileRepository;
-import com.reajason.noone.server.profile.config.HttpProtocolConfig;
-import com.reajason.noone.server.profile.config.HttpRequestBodyType;
-import com.reajason.noone.server.profile.config.HttpResponseBodyType;
+import com.reajason.noone.core.profile.config.HttpProtocolConfig;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.Optional;
 
@@ -19,11 +21,14 @@ import static org.mockito.Mockito.when;
 
 class WebShellGeneratorControllerTest {
 
+    private final ProfileMapperImpl profileMapper = new ProfileMapperImpl();
+
     @Test
     void shouldRejectInvalidLanguageFormatCombination() {
+
         ProfileRepository repository = mock(ProfileRepository.class);
         when(repository.findById(1L)).thenReturn(Optional.of(createProfile()));
-        WebShellGeneratorController controller = new WebShellGeneratorController(repository);
+        WebShellGeneratorController controller = new WebShellGeneratorController(repository, profileMapper);
 
         WebShellGenerateRequest request = new WebShellGenerateRequest();
         request.setProfileId(1L);
@@ -37,7 +42,7 @@ class WebShellGeneratorControllerTest {
     void shouldGenerateSoapWithSoapExtension() {
         ProfileRepository repository = mock(ProfileRepository.class);
         when(repository.findById(1L)).thenReturn(Optional.of(createProfile()));
-        WebShellGeneratorController controller = new WebShellGeneratorController(repository);
+        WebShellGeneratorController controller = new WebShellGeneratorController(repository, profileMapper);
 
         WebShellGenerateRequest request = new WebShellGenerateRequest();
         request.setProfileId(1L);
@@ -51,8 +56,8 @@ class WebShellGeneratorControllerTest {
         assertTrue(response.getContent().contains("SoapExtensionAttribute"));
     }
 
-    private static Profile createProfile() {
-        Profile profile = new Profile();
+    private static ProfileEntity createProfile() {
+        ProfileEntity profile = new ProfileEntity();
         profile.setName("demo");
         profile.setPassword("secret");
 
