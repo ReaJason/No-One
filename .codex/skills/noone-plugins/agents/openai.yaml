@@ -1,0 +1,4 @@
+interface:
+  display_name: "NoOne Plugins"
+  short_description: "Guide for NoOne multi-runtime plugin development"
+  default_prompt: "Use $noone-plugins to add, update, or debug a plugin in noone-plugins/ and keep tests, mappings, and release metadata aligned."
