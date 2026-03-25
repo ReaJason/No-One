@@ -1,0 +1,24 @@
+---
+title: Quick Start
+icon: Rocket
+---
+
+## Docker Compose
+
+当前项目正处于快速迭代过程中，仅有 nightly 尝鲜，在 https://github.com/ReaJason/No-One/actions/workflows/nightly.yml 中找到最新的 CI，在最下面的 Artifact 中下载 noone-nightly-deploy。
+
+```txt
+ .
+├──  compose.nightly.yml
+└──  deploy
+    └──  nginx
+        └── 󱁻 default.conf
+```
+
+使用 docker compose 命令运行 compose.nightly.yml 即可启动平台
+
+```bash
+docker compose -f compose.nightly.yml up -d
+```
+
+启动之后访问 http://localhost ，账号密码在 noone-server 会在容器日志中展示

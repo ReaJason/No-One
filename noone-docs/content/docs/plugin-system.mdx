@@ -1,0 +1,79 @@
+---
+title: Payload Plugin Design
+---
+
+## 背景
+
+noone 当前通过 `JavaManager` 与目标端的 `NoOneCore` 通信，实现“下发任意 payload 并展示响应”的能力。但随着 payload 类型增多（Java/Node.js/.NET），需要一个统一的插件系统：
+
+- 在平台侧（noone-server）可发现与管理插件元数据
+- 在 Shell Manager 页签中可选择插件、填写参数、执行并展示结果
+- 对 Java 目标端：通过下发 `.class` bytes 并在目标 JVM 里执行实现任意代码执行
+- Node.js/.NET 作为扩展方向，本期仅保留元数据与接口形状，不实现执行链路
+
+## 需求
+
+插件使用 json 进行上传/导出/分享管理
+
+### 1) 插件信息
+
+language 决定了 payload 中传入的是 base64 java code，还是 js function or base64 .net dll
+type 分为 Standard 和 Extension，内置标准插件则不需要定义 actions，比如基础信息/文件管理/命令执行/数据库管理等等
+Extension 则是扩展插件，actions 定义了插件支持的动作即可触发多种操作。
+argSchema 是需要前端进行渲染的表单页
+resultSchema 与 payload 中的返回值渲染有关，可以是 table/txt/json 等等
+
+```json
+{
+  "id": "PortScan",
+  "name": "端口扫描",
+  "version": "1.0.0",
+  "language": "java",
+  "type": "Extension",
+  "payload": "Base64_Encoded_Bytes_Of_PortScan_Class",
+  "actions": {
+    "scan": {
+      "name": "开始扫描",
+      "description": "扫描指定网段",
+      "argSchema": [
+        {
+          "type": "input",
+          "name": "target",
+          "label": "目标 IP",
+          "required": true
+        },
+        {
+          "type": "input",
+          "name": "ports",
+          "label": "端口",
+          "default": "80,443"
+        }
+      ],
+      "resultSchema": {
+        "type": "table",
+        "columns": [
+          {
+            "title": "IP",
+            "dataIndex": "ip"
+          },
+          {
+            "title": "Open Ports",
+            "dataIndex": "ports"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+### 2) 插件抽象：Load / Exec
+
+payload 插件在语义上分为两步：
+
+- `load(pluginId, payloadBytes)`：将 payload 载荷加载到目标端并缓存
+- `exec(pluginId, args)`：执行插件，传入运行参数并返回结果
+
+## 实现
+
+仅需要实现插件的添加功能和列表功能，相同的插件版本和插件名进行上传时将会直接进行覆盖升级

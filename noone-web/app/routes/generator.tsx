@@ -31,9 +31,9 @@ export default function GeneratorLayout() {
   };
 
   return (
-    <div className="container mx-auto max-w-7xl gap-6 p-6">
+    <div className="container mx-auto max-w-7xl">
       <Tabs value={currentTab} onValueChange={handleTabChange}>
-        <TabsList className={"mb-8"}>
+        <TabsList className="mb-2">
           <TabsTrigger value="memshell">MemShell</TabsTrigger>
           <TabsTrigger value="webshell">WebShell</TabsTrigger>
         </TabsList>

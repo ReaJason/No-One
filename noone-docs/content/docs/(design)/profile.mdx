@@ -1,0 +1,51 @@
+---
+title: Profile
+description: custom your own traffic template
+---
+
+通常加密通信为了两端能获取到指定数据，都会有一定的流量特征，profile 则是为了能有方式自定义流量特征。inspire by c2-profile and Godzilla c2-profile
+
+## 协议类型
+
+一般 webshell 都是基于 HTTP 协议，内存马的出现使得各种 WebSocket、RPC 协议的支持成为了可能。因此添加协议类型可以区分不同协议之间流量特征的细微配置
+
+## 密码
+
+用于生成加密流量载荷的密码
+
+## 流量标识
+
+相较于传统 c2 不一样，内存马有些为全流量内存马(所有流量都会经过)，为了确保不影响业务流量的前提下，仅让客户端发起的流量进入逻辑，因此需要设置流量标识，
+一般为 header 中包含某个字符串，扩展出来也可以 parameter 中包含某个字符串，不同协议类型不同，部分协议不需要此字段
+
+## 流量模板
+
+与哥斯拉一致，基于模板直接拆分成前置字符串和后置字符串，对流量进行分割从中获取我们需要的数据，因此也只支持单个地方存放 payload
+
+### HTTP 协议
+
+请求方式：支持 POST、PUT、DELETE、PATCH
+请求体类型：支持 JSON、XML、Multiple FormData、Form URL Encoded、Binary、TXT
+支持自定义请求头、自定义响应头、自定义响应状态码
+支持请求模板和响应模板
+
+### WebSock 协议与 Dubbo 协议
+
+支持请求模板和响应模板
+
+## 流量转换
+
+流量转换用于对请求和响应数据进行压缩、加密和编码处理。转换列表必须包含恰好 3 个元素，按顺序为：`[compress, encrypt, encode]`
+
+支持的算法：
+- 压缩: `Gzip`, `Deflate`, `LZ4`, `None`
+- 加密: `XOR`, `AES`, `TripleDES`, `None`
+- 编码: `Base64`, `Hex`, `BigInteger`, `None`
+
+示例：
+- `["Gzip", "None", "None"]` - 仅压缩
+- `["Gzip", "XOR", "None"]` - 压缩并加密
+- `["None", "AES", "Base64"]` - 加密并编码
+- `["None", "None", "None"]` - 无转换
+
+**重要：** 列表必须恰好包含 3 个元素，否则会抛出错误。不需要的转换使用 `None`。

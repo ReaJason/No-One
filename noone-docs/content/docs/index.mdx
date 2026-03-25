@@ -1,13 +1,49 @@
 ---
-title: Hello World
-description: Your first document
+title: What is NoOne
+description: Introducing NoOne, Website Manager
+icon: CircleQuestionMark
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+No One（无名）：Next Generation Polyglot Website Manager，打破语言边界，支持 Java、Node.js、.NET 等等，让我们一起如入无人之境。
+不仅支持单兵作战，也支持协同作战的能力。
 
-## What is Next?
+## 解决痛点
+
+1. 冰蝎每次发送攻击载荷都携带字节码，通信效率不高
+2. 哥斯拉 payload 过大，部分环境加载不上
+3. 老旧客户端年久失修，不满足合规性要求
+4. 如何拥抱 AI 开发网站连接管理项目
+
+## 主要功能
+
+- 支持 Stager/Stageless 模式，同时支持 Loader + Core 使用双 Profile 业务流量模拟
+- 不仅支持 Java 站点 同时支持 Node.js + ASP.NET 站点
+- 支持完善的审计、登录以及站点操作日志
+- 使用 RBAC 模型，不仅支持单兵作战也支持协同作战
+- 默认开启 2FA + 双 Token 刷新机制，且支持吊销 Token
+- 前端使用服务端渲染，后端无需开放端口也无需使用 Nginx 反代，大幅降低攻击面
+- 插件系统支持上传异步执行插件或定时任务插件，向站点发送插件包时对应的进行异步或定时任务执行
+- ......
+
+## 技术选型
+
+后端：JDK21 + Spring Boot V4 + Spring Data JPA + Spring Security
+
+前端：React 19、React Router V7 SSR、shadcn/ui
+
+数据库：PostgreSQL
+
+部署：Docker、NGINX
+
+## 核心设计
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+    <Card
+        href="/docs/core"
+        title="Core"
+    >通信协议</Card>
+    <Card
+        href="/docs/profile"
+        title="Profile"
+    >流量模板</Card>
 </Cards>
