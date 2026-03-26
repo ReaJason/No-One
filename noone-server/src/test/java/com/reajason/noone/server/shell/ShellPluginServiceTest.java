@@ -2,8 +2,8 @@ package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.Constants;
 import com.reajason.noone.core.ShellConnection;
-import com.reajason.noone.core.exception.RequestSendException;
-import com.reajason.noone.core.exception.ResponseDecodeException;
+import com.reajason.noone.core.client.RequestSendException;
+import com.reajason.noone.core.client.ResponseDecodeException;
 import com.reajason.noone.server.plugin.BuiltinPluginRegistryService;
 import com.reajason.noone.server.plugin.JavaPluginPayloadService;
 import com.reajason.noone.server.plugin.Plugin;

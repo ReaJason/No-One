@@ -1,19 +1,32 @@
 package com.reajason.noone.core;
 
 import com.reajason.noone.core.client.Client;
-import com.reajason.noone.core.exception.*;
+import com.reajason.noone.core.client.ResponseDecodeException;
+import com.reajason.noone.core.client.ShellCommunicationException;
+import com.reajason.noone.core.client.ShellRequestException;
+import com.reajason.noone.core.exception.RequestSerializeException;
+import com.reajason.noone.core.exception.ResponseBusinessException;
 import com.reajason.noone.core.normalizer.CommandExecuteNormalizer;
 import com.reajason.noone.core.normalizer.FileManagerNormalizer;
 import com.reajason.noone.core.normalizer.PluginNormalizerRegistry;
 import com.reajason.noone.core.profile.Profile;
+import com.reajason.noone.core.profile.config.HttpBodyTemplateEngine;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
+import com.reajason.noone.core.transform.TrafficTransformer;
+import com.reajason.noone.core.transform.TransformConfig;
 import lombok.Data;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Data
 public abstract class ShellConnection {
     protected Client coreClient;
+    protected TransformConfig coreTransform;
     protected Client loaderClient;
+    protected TransformConfig loaderTransform;
     protected String shellType;
     protected Profile coreProfile;
     private boolean coreInit = false;
@@ -21,76 +34,115 @@ public abstract class ShellConnection {
     private final PluginCache pluginCache = new PluginCache();
     protected PluginNormalizerRegistry normalizerRegistry;
 
-    public ShellConnection(ConnectionConfig connectionConfig) {
-        this.coreClient = connectionConfig.getCoreClient();
-        this.loaderClient = connectionConfig.getLoaderClient();
-        this.shellType = connectionConfig.getShellType();
-        this.coreProfile = connectionConfig.getCoreProfile();
+    public ShellConnection(Client coreClient, Profile coreProfile) {
+        this.coreClient = coreClient;
+        this.coreProfile = coreProfile;
+        this.coreTransform = TransformConfig.fromProfile(coreProfile);
         this.normalizerRegistry = new PluginNormalizerRegistry();
         this.normalizerRegistry.register("command-execute", new CommandExecuteNormalizer());
         this.normalizerRegistry.register("file-manager", new FileManagerNormalizer());
     }
 
-    /**
-     * 连接到服务器
-     *
-     * @return 是否连接成功
-     */
-    public boolean connect() {
-        return coreClient.connect();
+    public ShellConnection(Client coreClient, Profile coreProfile,
+                           Client loaderClient, Profile loaderProfile, String shellType) {
+        this(coreClient, coreProfile);
+        this.loaderClient = loaderClient;
+        this.loaderTransform = TransformConfig.fromProfile(loaderProfile);
+        this.shellType = shellType;
     }
 
-    /**
-     * 断开与服务器的连接
-     */
     public void disconnect() {
-        coreClient.disconnect();
+        if (coreClient != null) {
+            coreClient.disconnect();
+        }
+        if (loaderClient != null) {
+            loaderClient.disconnect();
+        }
     }
 
-    /**
-     * 检查是否已连接
-     *
-     * @return 是否已连接
-     */
-    public boolean isConnected() {
-        return coreClient.isConnected();
+    protected byte[] transformAndSend(Client client, TransformConfig tc, byte[] payload) {
+        byte[] outbound;
+        try {
+            outbound = TrafficTransformer.outbound(payload, tc.requestSpec(), tc.password());
+        } catch (RuntimeException e) {
+            throw new RequestSerializeException("Failed to transform outbound payload", e);
+        }
+
+        byte[] encoded;
+        try {
+            encoded = encodePayload(tc, outbound);
+        } catch (RuntimeException e) {
+            throw new RequestSerializeException("Failed to encode request payload", e);
+        }
+
+        byte[] response;
+        try {
+            response = client.send(encoded);
+        } catch (RuntimeException e) {
+            if (e instanceof ShellCommunicationException) throw e;
+            throw new ShellRequestException("Failed to send request", false, e);
+        }
+
+        if (response == null || response.length == 0) {
+            throw new ResponseDecodeException("Response payload is empty");
+        }
+
+        byte[] extracted;
+        try {
+            extracted = decodePayload(tc, response);
+        } catch (RuntimeException e) {
+            if (e instanceof ShellCommunicationException) throw e;
+            throw new ResponseDecodeException("Failed to extract response payload", e);
+        }
+
+        try {
+            byte[] inbound = TrafficTransformer.inbound(extracted, tc.responseSpec(), tc.password());
+            if (inbound == null) {
+                throw new ResponseDecodeException("Decoded response payload is null");
+            }
+            return inbound;
+        } catch (RuntimeException e) {
+            if (e instanceof ShellCommunicationException) throw e;
+            throw new ResponseDecodeException("Failed to transform inbound payload", e);
+        }
     }
 
-    /**
-     * 发送请求到服务器（通用方法）
-     *
-     * @param requestMap 请求参数
-     * @return 响应结果
-     */
+    private byte[] encodePayload(TransformConfig tc, byte[] payload) {
+        if (tc.requestBodyType() == null && tc.requestTemplate() == null) {
+            return payload;
+        }
+        HttpRequestBodyType bodyType = tc.requestBodyType() != null ? tc.requestBodyType() : HttpRequestBodyType.BINARY;
+        return HttpBodyTemplateEngine.encodeRequestBody(bodyType, tc.requestTemplate(), payload).bytes();
+    }
+
+    private byte[] decodePayload(TransformConfig tc, byte[] response) {
+        if (tc.responseBodyType() == null && tc.responseTemplate() == null) {
+            return response;
+        }
+        HttpResponseBodyType bodyType = tc.responseBodyType() != null ? tc.responseBodyType() : HttpResponseBodyType.BINARY;
+        byte[] extracted = HttpBodyTemplateEngine.extractResponsePayloadBytes(bodyType, tc.responseTemplate(), response);
+        if (extracted == null) {
+            throw new ResponseDecodeException("Failed to extract payload from response body");
+        }
+        return extracted;
+    }
+
     protected Map<String, Object> sendRequest(Map<String, Object> requestMap) {
         byte[] bytes;
         try {
             bytes = TlvCodec.serialize(requestMap);
-        } catch (ShellCommunicationException e) {
-            throw e;
         } catch (Exception e) {
+            if (e instanceof ShellCommunicationException) throw (ShellCommunicationException) e;
             throw new RequestSerializeException("Failed to serialize shell request", e);
         }
 
-        byte[] result;
-        try {
-            result = coreClient.send(bytes);
-        } catch (ShellCommunicationException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            throw new ShellRequestException("Failed to send shell request", false, e);
-        }
-
-        if (result == null || result.length == 0) {
-            throw new ResponseDecodeException("Shell response payload is empty");
-        }
+        byte[] result = transformAndSend(coreClient, coreTransform, bytes);
 
         Map<String, Object> response;
         try {
             response = TlvCodec.deserialize(result);
-        } catch (ShellCommunicationException e) {
-            throw e;
         } catch (Exception e) {
+            if (e instanceof ShellCommunicationException) throw (ShellCommunicationException) e;
             throw new ResponseDecodeException("Failed to deserialize shell response", e);
         }
         return response;
@@ -104,21 +156,10 @@ public abstract class ShellConnection {
         return true;
     }
 
-    protected abstract byte[] getCoreBytes(String shellType, Profile loaderProfile);
+    protected abstract byte[] getCoreBytes(String shellType, Profile coreProfile);
 
-    protected boolean loadCore(byte[] coreByes) {
-        byte[] result;
-        try {
-            result = loaderClient.send(coreByes);
-        } catch (ShellCommunicationException e) {
-            throw e;
-        } catch (RuntimeException e) {
-            throw new ShellRequestException("Failed to send shell loader request", false, e);
-        }
-
-        if (result == null || result.length == 0) {
-            throw new ResponseDecodeException("Shell loader response payload is empty");
-        }
+    protected boolean loadCore(byte[] coreBytes) {
+        byte[] result = transformAndSend(loaderClient, loaderTransform, coreBytes);
         coreInit = new String(result).equals("ok");
         return coreInit;
     }

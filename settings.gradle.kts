@@ -30,3 +30,6 @@ include("noone-plugins:plugin-tests")
 
 include("noone-vul:vul-webapp")
 include("noone-vul:vul-webapp-jakarta")
+
+include("noone-test:server-compatibility")
+include("noone-transport")

@@ -195,6 +195,9 @@ public class NoOneCore extends URLClassLoader {
         Map<String, Object> result = new HashMap<>();
         String plugin = (String) args.get(PLUGIN);
         Object pluginObj = loadedPluginCache.get(plugin);
+        if (pluginObj == null) {
+            throw new RuntimeException("plugin [" + plugin + "] not found");
+        }
         Map<String, Object> map = (Map<String, Object>) args.get(ARGS);
         if (map == null) {
             map = new HashMap<>();

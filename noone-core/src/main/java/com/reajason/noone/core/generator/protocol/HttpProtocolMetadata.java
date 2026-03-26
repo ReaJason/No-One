@@ -1,6 +1,6 @@
 package com.reajason.noone.core.generator.protocol;
 
-import com.reajason.noone.core.client.HttpBodyTemplateEngine;
+import com.reajason.noone.core.profile.config.HttpBodyTemplateEngine;
 import com.reajason.noone.core.profile.config.HttpRequestBodyType;
 import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 

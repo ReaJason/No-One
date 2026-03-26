@@ -1,9 +1,9 @@
 package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.Constants;
-import com.reajason.noone.core.exception.CommunicationPhase;
-import com.reajason.noone.core.exception.ResponseDecodeException;
-import com.reajason.noone.core.exception.ShellCommunicationException;
+import com.reajason.noone.core.client.CommunicationPhase;
+import com.reajason.noone.core.client.ResponseDecodeException;
+import com.reajason.noone.core.client.ShellCommunicationException;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;

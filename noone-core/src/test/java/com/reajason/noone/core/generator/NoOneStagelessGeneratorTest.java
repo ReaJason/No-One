@@ -4,6 +4,8 @@ import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.core.Constants;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
 import com.reajason.noone.core.shelltool.NoOneStagelessNettyHandler;

@@ -8,6 +8,7 @@ import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.core.adaptor.NettyHandlerAdaptor;
 import com.reajason.noone.core.adaptor.ReactorAdaptor;
 import com.reajason.noone.core.adaptor.ServletAdaptor;
+import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.profile.Profile;
 import lombok.SneakyThrows;
 import net.bytebuddy.ByteBuddy;
@@ -26,8 +27,13 @@ import static net.bytebuddy.matcher.ElementMatchers.named;
  */
 public class JavaConnection extends ShellConnection {
 
-    public JavaConnection(ConnectionConfig config) {
-        super(config);
+    public JavaConnection(Client coreClient, Profile coreProfile) {
+        super(coreClient, coreProfile);
+    }
+
+    public JavaConnection(Client coreClient, Profile coreProfile,
+                          Client loaderClient, Profile loaderProfile, String shellType) {
+        super(coreClient, coreProfile, loaderClient, loaderProfile, shellType);
     }
 
     @Override

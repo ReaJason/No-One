@@ -1,6 +1,8 @@
 package com.reajason.noone.core;
 
 import com.reajason.javaweb.memshell.ShellType;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import com.reajason.noone.core.generator.identifier.NettyHttpIdentifierVisitor;
 import com.reajason.noone.core.generator.identifier.ReactorIdentifierVisitor;
 import com.reajason.noone.core.generator.identifier.ServletIdentifierVisitor;

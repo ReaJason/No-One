@@ -1,11 +1,13 @@
 package com.reajason.noone.server.shell;
 
-import com.reajason.noone.core.*;
+import com.reajason.noone.core.DotNetConnection;
+import com.reajason.noone.core.JavaConnection;
+import com.reajason.noone.core.NodeJsConnection;
+import com.reajason.noone.core.ShellConnection;
 import com.reajason.noone.core.client.*;
-import com.reajason.noone.core.profile.config.HttpRequestBodyType;
-import com.reajason.noone.core.profile.config.HttpResponseBodyType;
-import com.reajason.noone.core.profile.config.IdentifierLocation;
-import com.reajason.noone.core.profile.config.ProtocolType;
+import com.reajason.noone.core.profile.Profile;
+import com.reajason.noone.core.profile.config.*;
+import com.reajason.noone.core.transform.TransformConfig;
 import com.reajason.noone.server.profile.ProfileEntity;
 import com.reajason.noone.server.profile.ProfileMapper;
 import com.reajason.noone.server.profile.ProfileRepository;
@@ -18,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -91,57 +94,72 @@ public class ShellConnectionPool {
     }
 
     private ShellConnection createConnection(Shell shell, ProfileEntity profile, ProfileEntity loaderProfile) {
-        ClientConfig config = buildClientConfig(shell, profile);
-        Client coreClient = null;
-        if (profile.getProtocolType() == ProtocolType.HTTP) {
-            coreClient = new HttpClient(shell.getUrl(), config);
-        } else if (profile.getProtocolType() == ProtocolType.WEBSOCKET) {
-            coreClient = new WebSocketClient(shell.getUrl(), config);
-        } else if (profile.getProtocolType() == ProtocolType.DUBBO) {
-            DubboClientConfig dubboConfig = buildDubboClientConfig(shell, profile);
-            coreClient = new DubboClient(shell.getUrl(), config, dubboConfig);
-        }
+        Profile coreProfile = profileMapper.toProfile(profile);
+        Client coreClient = buildClient(shell, profile, coreProfile);
 
         ShellLanguage language = effectiveLanguage(shell);
-        Client loaderClient = null;
+
+        ShellConnection conn;
         if (shell.getStaging()) {
-            ClientConfig loaderConfig = buildClientConfig(shell, loaderProfile);
-            if (loaderProfile.getProtocolType() == ProtocolType.HTTP) {
-                loaderClient = new HttpClient(shell.getUrl(), loaderConfig);
-            } else if (loaderProfile.getProtocolType() == ProtocolType.WEBSOCKET) {
-                loaderClient = new WebSocketClient(shell.getUrl(), loaderConfig);
-            } else if (loaderProfile.getProtocolType() == ProtocolType.DUBBO) {
-                DubboClientConfig dubboConfig = buildDubboClientConfig(shell, loaderProfile);
-                loaderClient = new DubboClient(shell.getUrl(), loaderConfig, dubboConfig);
-            }
+            Profile loaderProfileMapped = profileMapper.toProfile(loaderProfile);
+            Client loaderClient = buildClient(shell, loaderProfile, loaderProfileMapped);
+
+            conn = switch (language) {
+                case JAVA -> new JavaConnection(coreClient, coreProfile, loaderClient, loaderProfileMapped, shell.getShellType());
+                case NODEJS -> new NodeJsConnection(coreClient, coreProfile, loaderClient, loaderProfileMapped, shell.getShellType());
+                case DOTNET -> new DotNetConnection(coreClient, coreProfile, loaderClient, loaderProfileMapped, shell.getShellType());
+            };
+        } else {
+            conn = switch (language) {
+                case JAVA -> new JavaConnection(coreClient, coreProfile);
+                case NODEJS -> new NodeJsConnection(coreClient, coreProfile);
+                case DOTNET -> new DotNetConnection(coreClient, coreProfile);
+            };
         }
+        return conn;
+    }
 
-        ConnectionConfig connectionConfig = ConnectionConfig.builder()
-                .coreClient(coreClient)
-                .loaderClient(loaderClient)
-                .shellType(shell.getShellType())
-                .coreProfile(profileMapper.toProfile(profile))
-                .build();
-
-        return switch (language) {
-            case JAVA -> new JavaConnection(connectionConfig);
-            case NODEJS -> new NodeJsConnection(connectionConfig);
-            case DOTNET -> new DotNetConnection(connectionConfig);
-        };
+    private Client buildClient(Shell shell, ProfileEntity profile, Profile coreProfile) {
+        if (profile.getProtocolType() == ProtocolType.HTTP) {
+            TransformConfig tc = TransformConfig.fromProfile(coreProfile);
+            HttpClientConfig config = buildHttpClientConfig(shell, profile, tc);
+            return new HttpClient(shell.getUrl(), config);
+        } else if (profile.getProtocolType() == ProtocolType.WEBSOCKET) {
+            WebSocketClientConfig config = buildWebSocketClientConfig(shell, profile);
+            return new WebSocketClient(shell.getUrl(), config);
+        } else if (profile.getProtocolType() == ProtocolType.DUBBO) {
+            DubboClientConfig config = buildDubboClientConfig(shell, profile);
+            return new DubboClient(shell.getUrl(), config);
+        }
+        throw new IllegalArgumentException("Unsupported protocol type: " + profile.getProtocolType());
     }
 
     private ShellLanguage effectiveLanguage(Shell shell) {
         return shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
     }
 
-    private ClientConfig buildClientConfig(Shell shell, ProfileEntity profile) {
-        ClientConfig.ClientConfigBuilder builder = ClientConfig.builder();
-
+    private HttpClientConfig buildHttpClientConfig(Shell shell, ProfileEntity profile, TransformConfig tc) {
+        HttpClientConfig.HttpClientConfigBuilder builder = HttpClientConfig.builder();
         Map<String, String> requestHeaders = new HashMap<>();
         Map<String, String> requestParams = new HashMap<>();
         Map<String, String> requestCookies = new HashMap<>();
 
-        applyProfileConfig(builder, profile, requestHeaders, requestParams, requestCookies);
+        applyIdentifierConfig(profile.getIdentifier(), requestHeaders, requestParams, requestCookies);
+
+        ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        if (protocolConfig instanceof HttpProtocolConfig httpConfig) {
+            builder.requestMethod(httpConfig.getRequestMethod());
+            builder.expectedResponseStatusCode(httpConfig.getResponseStatusCode() > 0
+                    ? httpConfig.getResponseStatusCode()
+                    : null);
+            if (tc.contentType() != null) {
+                builder.contentType(tc.contentType());
+            }
+            if (httpConfig.getRequestHeaders() != null) {
+                requestHeaders.putAll(httpConfig.getRequestHeaders());
+            }
+        }
+
         applyShellOverrides(builder, shell, requestHeaders);
 
         if (!requestHeaders.isEmpty()) {
@@ -157,63 +175,70 @@ public class ShellConnectionPool {
         return builder.build();
     }
 
-    private void applyProfileConfig(
-            ClientConfig.ClientConfigBuilder builder,
-            ProfileEntity profile,
-            Map<String, String> requestHeaders,
-            Map<String, String> requestParams,
-            Map<String, String> requestCookies
-    ) {
-        builder.transformerPassword(profile.getPassword());
-        builder.requestTransformations(profile.getRequestTransformations());
-        builder.responseTransformations(profile.getResponseTransformations());
+    private WebSocketClientConfig buildWebSocketClientConfig(Shell shell, ProfileEntity profile) {
+        WebSocketClientConfig.WebSocketClientConfigBuilder builder = WebSocketClientConfig.builder();
+        Map<String, String> requestHeaders = new HashMap<>();
+        Map<String, String> requestParams = new HashMap<>();
+        Map<String, String> requestCookies = new HashMap<>();
 
         applyIdentifierConfig(profile.getIdentifier(), requestHeaders, requestParams, requestCookies);
 
-        com.reajason.noone.core.profile.config.ProtocolConfig protocolConfig = profile.getProtocolConfig();
-        if (protocolConfig == null) {
-            return;
-        }
-
-        if (protocolConfig instanceof com.reajason.noone.core.profile.config.HttpProtocolConfig httpConfig) {
-            builder.requestMethod(httpConfig.getRequestMethod());
-            builder.requestTemplate(httpConfig.getRequestTemplate());
-            builder.expectedResponseStatusCode(httpConfig.getResponseStatusCode() > 0
-                    ? httpConfig.getResponseStatusCode()
-                    : null);
-            builder.responseTemplate(httpConfig.getResponseTemplate());
-            if (httpConfig.getRequestBodyType() != null) {
-                builder.requestBodyType(HttpRequestBodyType.valueOf(httpConfig.getRequestBodyType().name()));
-            }
-            if (httpConfig.getResponseBodyType() != null) {
-                builder.responseBodyType(HttpResponseBodyType.valueOf(httpConfig.getResponseBodyType().name()));
-            }
-            if (httpConfig.getRequestHeaders() != null) {
-                requestHeaders.putAll(httpConfig.getRequestHeaders());
-            }
-        } else if (protocolConfig instanceof com.reajason.noone.core.profile.config.WebSocketProtocolConfig wsConfig) {
+        ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        if (protocolConfig instanceof WebSocketProtocolConfig wsConfig) {
             if (wsConfig.getHandshakeHeaders() != null) {
                 requestHeaders.putAll(wsConfig.getHandshakeHeaders());
             }
-            builder.requestTemplate(wsConfig.getMessageTemplate());
-            builder.responseTemplate(wsConfig.getResponseTemplate());
-            builder.responseBodyType(HttpResponseBodyType.BINARY);
-        } else if (protocolConfig instanceof com.reajason.noone.core.profile.config.DubboProtocolConfig dubboConfig) {
-            builder.requestTemplate(dubboConfig.getRequestTemplate());
-            builder.responseTemplate(dubboConfig.getResponseTemplate());
         }
+
+        if (shell.getCustomHeaders() != null && !shell.getCustomHeaders().isEmpty()) {
+            requestHeaders.putAll(shell.getCustomHeaders());
+        }
+
+        if (!requestHeaders.isEmpty()) {
+            builder.requestHeaders(requestHeaders);
+        }
+
+        if (shell.getProxyUrl() != null && !shell.getProxyUrl().isEmpty()) {
+            builder.proxy(parseProxyUrl(shell.getProxyUrl()));
+        }
+        if (shell.getConnectTimeoutMs() != null) {
+            builder.connectTimeoutMs(shell.getConnectTimeoutMs());
+        }
+        if (shell.getReadTimeoutMs() != null) {
+            builder.readTimeoutMs(shell.getReadTimeoutMs());
+        }
+        if (shell.getSkipSslVerify() != null) {
+            builder.skipSslVerify(shell.getSkipSslVerify());
+        }
+
+        return builder.build();
+    }
+
+    private DubboClientConfig buildDubboClientConfig(Shell shell, ProfileEntity profile) {
+        DubboClientConfig.DubboClientConfigBuilder builder = DubboClientConfig.builder();
+        builder.interfaceName(shell.getInterfaceName());
+        ProtocolConfig protocolConfig = profile.getProtocolConfig();
+        if (protocolConfig instanceof DubboProtocolConfig dubboProtoConfig) {
+            if (dubboProtoConfig.getMethodName() != null && !dubboProtoConfig.getMethodName().isEmpty()) {
+                builder.methodName(dubboProtoConfig.getMethodName());
+            }
+            if (dubboProtoConfig.getParameterTypes() != null && dubboProtoConfig.getParameterTypes().length > 0) {
+                builder.parameterTypes(dubboProtoConfig.getParameterTypes());
+            }
+        }
+        if (shell.getReadTimeoutMs() != null) {
+            builder.readTimeoutMs(shell.getReadTimeoutMs());
+        }
+        return builder.build();
     }
 
     private void applyShellOverrides(
-            ClientConfig.ClientConfigBuilder builder,
+            HttpClientConfig.HttpClientConfigBuilder builder,
             Shell shell,
             Map<String, String> requestHeaders
     ) {
         if (shell.getCustomHeaders() != null && !shell.getCustomHeaders().isEmpty()) {
-            Map<String, String> mergedHeaders = new HashMap<>(requestHeaders);
-            mergedHeaders.putAll(shell.getCustomHeaders());
-            requestHeaders.clear();
-            requestHeaders.putAll(mergedHeaders);
+            requestHeaders.putAll(shell.getCustomHeaders());
         }
 
         if (shell.getProxyUrl() != null && !shell.getProxyUrl().isEmpty()) {
@@ -240,7 +265,7 @@ public class ShellConnectionPool {
     }
 
     private void applyIdentifierConfig(
-            com.reajason.noone.core.profile.config.IdentifierConfig identifier,
+            IdentifierConfig identifier,
             Map<String, String> requestHeaders,
             Map<String, String> requestParams,
             Map<String, String> requestCookies
@@ -260,22 +285,7 @@ public class ShellConnectionPool {
         }
     }
 
-    private DubboClientConfig buildDubboClientConfig(Shell shell, ProfileEntity profile) {
-        DubboClientConfig.DubboClientConfigBuilder builder = DubboClientConfig.builder();
-        builder.interfaceName(shell.getInterfaceName());
-        com.reajason.noone.core.profile.config.ProtocolConfig protocolConfig = profile.getProtocolConfig();
-        if (protocolConfig instanceof com.reajason.noone.core.profile.config.DubboProtocolConfig dubboProtoConfig) {
-            if (dubboProtoConfig.getMethodName() != null && !dubboProtoConfig.getMethodName().isEmpty()) {
-                builder.methodName(dubboProtoConfig.getMethodName());
-            }
-            if (dubboProtoConfig.getParameterTypes() != null && dubboProtoConfig.getParameterTypes().length > 0) {
-                builder.parameterTypes(dubboProtoConfig.getParameterTypes());
-            }
-        }
-        return builder.build();
-    }
-
-    private ClientConfig.ProxyConfig parseProxyUrl(String proxyUrl) {
+    private ProxyConfig parseProxyUrl(String proxyUrl) {
         try {
             URI uri = new URI(proxyUrl);
             String type = uri.getScheme().toUpperCase();
@@ -292,7 +302,7 @@ public class ShellConnectionPool {
                 }
             }
 
-            return ClientConfig.ProxyConfig.builder()
+            return ProxyConfig.builder()
                     .type(type)
                     .host(host)
                     .port(port)
@@ -335,8 +345,7 @@ public class ShellConnectionPool {
         return headers.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(e -> e.getKey() + "=" + e.getValue())
-                .reduce((a, b) -> a + "&" + b)
-                .orElse("");
+                .collect(Collectors.joining("&"));
     }
 
     private String nullToEmpty(Object value) {

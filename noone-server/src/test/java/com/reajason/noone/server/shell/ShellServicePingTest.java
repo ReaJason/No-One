@@ -1,7 +1,7 @@
 package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.ShellConnection;
-import com.reajason.noone.core.exception.RequestSendException;
+import com.reajason.noone.core.client.RequestSendException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

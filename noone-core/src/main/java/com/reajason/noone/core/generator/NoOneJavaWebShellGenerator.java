@@ -3,6 +3,8 @@ package com.reajason.noone.core.generator;
 import com.reajason.javaweb.buddy.TargetJreVersionVisitorWrapper;
 import com.reajason.javaweb.utils.CommonUtil;
 import com.reajason.noone.core.NoOneCore;
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
 import com.reajason.noone.core.generator.protocol.HttpProtocolMetadata;

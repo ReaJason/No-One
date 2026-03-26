@@ -17,19 +17,13 @@ public enum EncodingAlgorithm {
             return NONE;
         }
         String upper = normalized.toUpperCase(Locale.ROOT);
-        if ("NONE".equals(upper)) {
-            return NONE;
-        }
-        if ("BASE64".equals(upper)) {
-            return BASE64;
-        }
-        if ("HEX".equals(upper)) {
-            return HEX;
-        }
-        if ("BIGINTEGER".equals(upper) || "BIG_INTEGER".equals(upper) || "BIGINT".equals(upper)) {
-            return BIG_INTEGER;
-        }
-        throw new IllegalArgumentException("Unsupported encoding: " + value);
+        return switch (upper) {
+            case "NONE" -> NONE;
+            case "BASE64" -> BASE64;
+            case "HEX" -> HEX;
+            case "BIGINTEGER", "BIG_INTEGER", "BIGINT" -> BIG_INTEGER;
+            default -> throw new IllegalArgumentException("Unsupported encoding: " + value);
+        };
     }
 }
 

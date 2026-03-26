@@ -282,13 +282,13 @@ public class NooneApplication {
             profile.setProtocolType(ProtocolType.HTTP);
             profile.setName("RuoYi（JSON）");
             profile.setPassword("secret");
-            com.reajason.noone.core.profile.config.IdentifierConfig identifierConfig = new com.reajason.noone.core.profile.config.IdentifierConfig();
+            IdentifierConfig identifierConfig = new IdentifierConfig();
             identifierConfig.setLocation(IdentifierLocation.HEADER);
             identifierConfig.setOperator(IdentifierOperator.CONTAINS);
             identifierConfig.setName("No-One-Version");
             identifierConfig.setValue("V1");
             profile.setIdentifier(identifierConfig);
-            com.reajason.noone.core.profile.config.HttpProtocolConfig httpProtocolConfig = new com.reajason.noone.core.profile.config.HttpProtocolConfig();
+            HttpProtocolConfig httpProtocolConfig = new HttpProtocolConfig();
             httpProtocolConfig.setRequestBodyType(HttpRequestBodyType.JSON);
             httpProtocolConfig.setResponseBodyType(HttpResponseBodyType.JSON);
             httpProtocolConfig.setRequestTemplate("{\"signature\": \"{{payload}}\", \"version\": \"v1\"}");

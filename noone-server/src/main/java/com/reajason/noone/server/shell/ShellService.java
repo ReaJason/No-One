@@ -1,6 +1,7 @@
 package com.reajason.noone.server.shell;
 
 import com.reajason.noone.core.ShellConnection;
+import com.reajason.noone.core.client.ShellCommunicationException;
 import com.reajason.noone.core.exception.*;
 import com.reajason.noone.server.audit.AuditAction;
 import com.reajason.noone.server.audit.AuditLog;

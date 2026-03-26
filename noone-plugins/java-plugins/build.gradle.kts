@@ -3,7 +3,7 @@ plugins {
     jacoco
 }
 
-group = "com.reajason.javaweb"
+group = "com.reajason.noone"
 version = "0.0.1-SNAPSHOT"
 
 java {

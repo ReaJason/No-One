@@ -1,7 +1,7 @@
 package com.reajason.noone.core.generator.protocol;
 
 import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.noone.core.client.HttpBodyTemplateEngine;
+import com.reajason.noone.core.profile.config.HttpBodyTemplateEngine;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
 import com.reajason.noone.core.profile.Profile;
@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.objectweb.asm.ClassReader;
 
-import javax.servlet.ReadListener;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -507,21 +506,6 @@ class NoOneStagelessGeneratorHttpProtocolConfigTest {
             @Override
             public int read(byte[] b, int off, int len) {
                 return in.read(b, off, len);
-            }
-
-            @Override
-            public boolean isFinished() {
-                return in.available() == 0;
-            }
-
-            @Override
-            public boolean isReady() {
-                return true;
-            }
-
-            @Override
-            public void setReadListener(ReadListener readListener) {
-                // These tests use the stream synchronously.
             }
         };
     }

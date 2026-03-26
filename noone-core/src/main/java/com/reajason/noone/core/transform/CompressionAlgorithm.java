@@ -17,19 +17,13 @@ public enum CompressionAlgorithm {
             return NONE;
         }
         String upper = normalized.toUpperCase(Locale.ROOT);
-        if ("NONE".equals(upper)) {
-            return NONE;
-        }
-        if ("GZIP".equals(upper)) {
-            return GZIP;
-        }
-        if ("DEFLATE".equals(upper)) {
-            return DEFLATE;
-        }
-        if ("LZ4".equals(upper)) {
-            return LZ4;
-        }
-        throw new IllegalArgumentException("Unsupported compression: " + value);
+        return switch (upper) {
+            case "NONE" -> NONE;
+            case "GZIP" -> GZIP;
+            case "DEFLATE" -> DEFLATE;
+            case "LZ4" -> LZ4;
+            default -> throw new IllegalArgumentException("Unsupported compression: " + value);
+        };
     }
 }
 

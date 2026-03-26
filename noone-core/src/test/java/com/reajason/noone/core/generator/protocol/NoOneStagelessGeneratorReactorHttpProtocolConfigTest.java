@@ -2,7 +2,7 @@ package com.reajason.noone.core.generator.protocol;
 
 import com.reajason.javaweb.memshell.ShellType;
 import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.noone.core.client.HttpBodyTemplateEngine;
+import com.reajason.noone.core.profile.config.HttpBodyTemplateEngine;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.generator.memshell.NoOneStagelessGenerator;
 import com.reajason.noone.core.profile.Profile;

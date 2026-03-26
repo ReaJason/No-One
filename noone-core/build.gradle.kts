@@ -36,21 +36,16 @@ configurations {
 }
 
 dependencies {
+    implementation(project(":noone-transport"))
     implementation(libs.byte.buddy)
     implementation(libs.asm.commons)
     implementation(libs.commons.lang3)
-    implementation(libs.okhttp3)
     implementation(libs.fastjson2)
-    implementation(libs.memshell.party.generator) {
+    api(libs.memshell.party.generator) {
         exclude(group = "io.netty", module = "netty-transport-native-kqueue")
     }
-    implementation(libs.memshell.party.common)
+    api(libs.memshell.party.common)
     implementation(libs.memshell.party.thirdparty.tomcat)
-    implementation(libs.dubbo) {
-        exclude(group = "io.netty", module = "netty-transport-native-kqueue")
-    }
-    implementation(libs.dubbo.rpc.hessian)
-    implementation(libs.dubbo.remoting.http)
     implementation(libs.reactor.netty.core)
     implementation(libs.spring.webflux)
     implementation(libs.spring.webmvc)
@@ -59,8 +54,6 @@ dependencies {
     implementation(libs.jetbrains.annotations)
     implementation(libs.slf4j.api)
     implementation("com.fasterxml.jackson.core:jackson-annotations:2.21")
-
-    testImplementation(libs.okhttp3.mockwebserver)
     testImplementation(libs.bundles.mockito)
     testImplementation(libs.junit.jupiter)
     testImplementation("org.springframework:spring-test:5.3.24")

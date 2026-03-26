@@ -16,7 +16,7 @@ java {
     }
 }
 
-tasks.processResources { filesMatching("**/application.yaml") { expand(project.properties) } }
+tasks.processResources { filesMatching("application*.yaml") { expand(project.properties) } }
 
 configurations {
     compileOnly {
@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":noone-core")){
         exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
     }
+    implementation(project(":noone-transport"))
     implementation(libs.bundles.jjwt)
     implementation(libs.memshell.party.generator) {
         exclude(group = "commons-logging", module = "commons-logging")

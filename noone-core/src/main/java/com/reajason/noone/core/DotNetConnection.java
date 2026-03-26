@@ -1,6 +1,6 @@
 package com.reajason.noone.core;
 
-
+import com.reajason.noone.core.client.Client;
 import com.reajason.noone.core.profile.Profile;
 
 import java.util.Map;
@@ -11,8 +11,13 @@ import java.util.Map;
  */
 public class DotNetConnection extends ShellConnection {
 
-    public DotNetConnection(ConnectionConfig config) {
-        super(config);
+    public DotNetConnection(Client coreClient, Profile coreProfile) {
+        super(coreClient, coreProfile);
+    }
+
+    public DotNetConnection(Client coreClient, Profile coreProfile,
+                            Client loaderClient, Profile loaderProfile, String shellType) {
+        super(coreClient, coreProfile, loaderClient, loaderProfile, shellType);
     }
 
     @Override

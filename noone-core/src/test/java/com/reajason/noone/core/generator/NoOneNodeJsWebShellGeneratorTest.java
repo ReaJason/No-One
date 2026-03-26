@@ -1,5 +1,7 @@
 package com.reajason.noone.core.generator;
 
+import com.reajason.noone.core.profile.config.HttpRequestBodyType;
+import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import com.reajason.noone.core.generator.config.NoOneConfig;
 import com.reajason.noone.core.profile.Profile;
 import com.reajason.noone.core.profile.config.*;

@@ -4,7 +4,7 @@ plugins {
     id("java")
 }
 
-group = "com.reajason.javaweb"
+group = "com.reajason.noone"
 version = rootProject.version
 
 java {

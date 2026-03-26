@@ -1,5 +1,6 @@
 package com.reajason.noone.core.generator.memshell;
 
+import com.reajason.javaweb.ClassBytesShrink;
 import com.reajason.javaweb.buddy.TargetJreVersionVisitorWrapper;
 import com.reajason.javaweb.memshell.config.ShellConfig;
 import com.reajason.javaweb.memshell.generator.ByteBuddyShellGenerator;
@@ -30,7 +31,8 @@ public class NoOneStagelessGenerator extends ByteBuddyShellGenerator<NoOneConfig
                 .name(shellToolConfig.getShellClassName() + "$1")
                 .visit(TargetJreVersionVisitorWrapper.DEFAULT)
                 .make()) {
-            String coreGzipBase64 = Base64.getEncoder().encodeToString(CommonUtil.gzipCompress(unloaded.getBytes()));
+            byte[] bytes = ClassBytesShrink.shrink(unloaded.getBytes(), shellConfig.isShrink());
+            String coreGzipBase64 = Base64.getEncoder().encodeToString(CommonUtil.gzipCompress(bytes));
             builder = builder.field(named("coreGzipBase64")).value(coreGzipBase64);
         }
 

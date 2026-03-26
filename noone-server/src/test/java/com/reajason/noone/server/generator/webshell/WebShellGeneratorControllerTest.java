@@ -9,7 +9,6 @@ import com.reajason.noone.core.profile.config.HttpProtocolConfig;
 import com.reajason.noone.core.profile.config.HttpRequestBodyType;
 import com.reajason.noone.core.profile.config.HttpResponseBodyType;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.Optional;
 
