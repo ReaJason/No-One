@@ -1,17 +1,29 @@
 services:
-  noone-server:
-    build:
-      context: .
-      dockerfile: noone-server/Dockerfile
+  postgres:
+    image: postgres:17.6
     environment:
-      SPRING_DATASOURCE_PASSWORD: secret
-      SPRING_DATASOURCE_URL: jdbc:postgresql://192.168.15.11:5432/mydb
-      SPRING_DATASOURCE_USERNAME: myuser
+      POSTGRES_DB: noone
+      POSTGRES_PASSWORD: noone
+      POSTGRES_USER: noone
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U noone -d noone" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  noone-server:
+    image: reajason/noone-server:nightly
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_PASSWORD: noone
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/noone
+      SPRING_DATASOURCE_USERNAME: noone
 
   noone-web:
-    build:
-      context: ./noone-web
-      dockerfile: Dockerfile
+    image: reajason/noone-web:nightly
     depends_on:
       - noone-server
     environment:

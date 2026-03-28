@@ -35,6 +35,7 @@ public abstract class ShellMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "staging", ignore = true)
     @Mapping(target = "language", ignore = true)
+    @Mapping(target = "clientConfig", ignore = true)
     public abstract Shell toEntity(ShellCreateRequest request);
 
     @AfterMapping
@@ -42,6 +43,16 @@ public abstract class ShellMapper {
         shell.setStaging(Boolean.TRUE.equals(request.getStaging()));
         shell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         shell.setStatus(ShellStatus.DISCONNECTED);
+        shell.setClientConfig(ShellClientConfigCompat.normalize(
+                request.getClientConfig(),
+                request.getProxyUrl(),
+                request.getCustomHeaders(),
+                request.getConnectTimeoutMs(),
+                request.getReadTimeoutMs(),
+                request.getSkipSslVerify(),
+                request.getMaxRetries(),
+                request.getRetryDelayMs()
+        ));
     }
 
     @Mapping(target = "id", ignore = true)
@@ -59,6 +70,7 @@ public abstract class ShellMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "language", ignore = true)
     @Mapping(target = "loaderProfileId", ignore = true)
+    @Mapping(target = "clientConfig", ignore = true)
     public abstract void updateEntity(@MappingTarget Shell shell, ShellUpdateRequest request);
 
     @AfterMapping
@@ -79,9 +91,27 @@ public abstract class ShellMapper {
         } else if (request.getLoaderProfileId() != null) {
             shell.setLoaderProfileId(request.getLoaderProfileId());
         }
+        shell.setClientConfig(ShellClientConfigCompat.merge(
+                shell.getClientConfig(),
+                request.getClientConfig(),
+                request.getProxyUrl(),
+                request.getCustomHeaders(),
+                request.getConnectTimeoutMs(),
+                request.getReadTimeoutMs(),
+                request.getSkipSslVerify(),
+                request.getMaxRetries(),
+                request.getRetryDelayMs()
+        ));
     }
 
     @Mapping(target = "profileName", ignore = true)
+    @Mapping(target = "proxyUrl", ignore = true)
+    @Mapping(target = "customHeaders", ignore = true)
+    @Mapping(target = "connectTimeoutMs", ignore = true)
+    @Mapping(target = "readTimeoutMs", ignore = true)
+    @Mapping(target = "skipSslVerify", ignore = true)
+    @Mapping(target = "maxRetries", ignore = true)
+    @Mapping(target = "retryDelayMs", ignore = true)
     public abstract ShellResponse toResponse(Shell shell);
 
     @AfterMapping
@@ -89,6 +119,7 @@ public abstract class ShellMapper {
         if (response.getLanguage() == null) {
             response.setLanguage(ShellLanguage.JAVA);
         }
+        ShellClientConfigCompat.populateLegacyFields(response, ShellClientConfigCompat.effectiveConfig(shell));
         if (shell.getProfileId() != null) {
             profileRepository.findById(shell.getProfileId())
                     .ifPresent(profile -> response.setProfileName(profile.getName()));

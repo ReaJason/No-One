@@ -40,6 +40,7 @@ public class ShellResponse {
     private Boolean skipSslVerify;
     private Integer maxRetries;
     private Long retryDelayMs;
+    private Map<String, Object> clientConfig;
 
     // Normalized system info
     private Map<String, Object> basicInfo;

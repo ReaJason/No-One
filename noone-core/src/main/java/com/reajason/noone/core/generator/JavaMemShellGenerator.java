@@ -18,7 +18,14 @@ import static com.reajason.javaweb.memshell.ShellType.*;
 
 public class JavaMemShellGenerator {
 
-    public void init() {
+    static {
+        init();
+    }
+
+    public JavaMemShellGenerator() {
+    }
+
+    private static void init() {
         ServerFactory.addToolMapping(ShellTool.Godzilla, ToolMapping.builder().build());
         ServerFactory.addToolMapping(ShellTool.Command, ToolMapping.builder().build());
         ServerFactory.addToolMapping(ShellTool.Suo5, ToolMapping.builder().build());

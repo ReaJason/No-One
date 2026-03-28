@@ -2,6 +2,7 @@ import type { AuthFetch } from "@/api/api.server";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type {
   ShellConnection,
+  ShellClientConfig,
   ShellConnectionSearchParams,
   ShellLanguage,
 } from "@/types/shell-connection";
@@ -20,13 +21,7 @@ export interface CreateShellConnectionRequest {
   projectId?: number;
   profileId: number;
   loaderProfileId?: number;
-  proxyUrl?: string;
-  customHeaders?: Record<string, string>;
-  connectTimeoutMs?: number;
-  readTimeoutMs?: number;
-  skipSslVerify?: boolean;
-  maxRetries?: number;
-  retryDelayMs?: number;
+  clientConfig?: ShellClientConfig;
 }
 
 export interface UpdateShellConnectionRequest {
@@ -40,13 +35,7 @@ export interface UpdateShellConnectionRequest {
   projectId?: number | null;
   profileId: number;
   loaderProfileId?: number | null;
-  proxyUrl?: string;
-  customHeaders?: Record<string, string>;
-  connectTimeoutMs?: number;
-  readTimeoutMs?: number;
-  skipSslVerify?: boolean;
-  maxRetries?: number;
-  retryDelayMs?: number;
+  clientConfig?: ShellClientConfig;
 }
 
 interface ShellConnectionRequestOptions {
@@ -140,13 +129,7 @@ export interface TestShellConfigRequest {
   language: ShellLanguage;
   profileId: number;
   loaderProfileId?: number;
-  proxyUrl?: string;
-  customHeaders?: Record<string, string>;
-  connectTimeoutMs?: number;
-  readTimeoutMs?: number;
-  skipSslVerify?: boolean;
-  maxRetries?: number;
-  retryDelayMs?: number;
+  clientConfig?: ShellClientConfig;
 }
 
 export interface TestShellConfigResponse {

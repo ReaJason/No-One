@@ -1,25 +1,33 @@
 package com.reajason.noone.core.client;
 
+import com.alibaba.dubbo.config.ApplicationConfig;
+import com.alibaba.dubbo.config.ReferenceConfig;
+import com.alibaba.dubbo.rpc.service.GenericService;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.rpc.service.GenericService;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Dubbo RPC client using GenericService for protocol-agnostic invocation.
- * Pure transport -- no traffic transformation logic.
+ * Alibaba Dubbo 2.x RPC client with proxy support.
+ * <p>
+ * Same functionality as {@link ApacheDubboClient} but uses {@code com.alibaba.dubbo.*} types
+ * for backward compatibility with Dubbo 2.x deployments.
+ * <p>
+ * Supports {@code dubbo://} and {@code hessian://} protocols.
+ * When a {@link ProxyConfig} is present in the config, proxy parameters are embedded into
+ * the Dubbo URL so that custom SPI extensions (ProxyNettyTransporter, ProxyHessianProtocol)
+ * can inject proxy-aware transport.
  *
  * @author ReaJason
  */
 @NoArgsConstructor
-public class DubboClient implements Client {
+public class AlibabaDubboClient implements Client {
 
     @Setter
     @Getter
@@ -34,7 +42,7 @@ public class DubboClient implements Client {
     private volatile boolean connected;
     private final Object sendLock = new Object();
 
-    public DubboClient(String url, DubboClientConfig config) {
+    public AlibabaDubboClient(String url, DubboClientConfig config) {
         this.url = url;
         this.config = config != null ? config : DubboClientConfig.builder().build();
     }
@@ -57,7 +65,7 @@ public class DubboClient implements Client {
             ref.setUrl(url);
             ref.setTimeout(config.getReadTimeoutMs());
             ref.setCheck(false);
-            ref.setParameters(Map.of("reconnect", "false"));
+            ref.setParameters(buildParameters());
 
             genericService = ref.get();
             referenceConfig = ref;
@@ -98,17 +106,38 @@ public class DubboClient implements Client {
         }
     }
 
+    Map<String, String> buildParameters() {
+        Map<String, String> params = new HashMap<>();
+        params.put("reconnect", "false");
+        ProxyConfig proxy = config.getProxy();
+        if (proxy != null) {
+            params.put("transporter", "proxy-netty");
+            params.put("proxy.type", proxy.getType());
+            params.put("proxy.host", proxy.getHost());
+            params.put("proxy.port", String.valueOf(proxy.getPort()));
+            if (proxy.hasAuth()) {
+                params.put("proxy.username", proxy.getUsername());
+                params.put("proxy.password", proxy.getPassword());
+            }
+        }
+        return params;
+    }
+
     private byte[] doSend(byte[] payload, boolean allowReconnect) {
         if (!connected || genericService == null) {
             connect();
         }
 
         Object result;
+        Object p = payload;
+        if (config.getParameterTypes()[0].equals(String.class.getName())) {
+            p = new String(payload, StandardCharsets.UTF_8);
+        }
         try {
             result = genericService.$invoke(
                     config.getMethodName(),
                     config.getParameterTypes(),
-                    new Object[]{payload}
+                    new Object[]{p}
             );
         } catch (Exception e) {
             if (isInterruptedFailure(e)) {

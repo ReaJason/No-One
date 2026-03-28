@@ -51,4 +51,6 @@ public class ShellCreateRequest {
     private Integer maxRetries;
 
     private Long retryDelayMs;
+
+    private Map<String, Object> clientConfig;
 }

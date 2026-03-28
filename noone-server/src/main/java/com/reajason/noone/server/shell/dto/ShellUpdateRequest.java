@@ -43,4 +43,6 @@ public class ShellUpdateRequest {
     private Integer maxRetries;
 
     private Long retryDelayMs;
+
+    private Map<String, Object> clientConfig;
 }

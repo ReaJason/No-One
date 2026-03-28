@@ -33,4 +33,6 @@ public class DubboClientConfig {
 
     @Builder.Default
     private int readTimeoutMs = 60000;
+
+    private ProxyConfig proxy;
 }

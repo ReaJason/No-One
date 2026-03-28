@@ -47,7 +47,7 @@ public class Shell {
     private String interfaceName;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "language")
+    @Column(name = "language", nullable = false)
     private ShellLanguage language = ShellLanguage.JAVA;
 
     @Enumerated(EnumType.STRING)
@@ -68,48 +68,60 @@ public class Shell {
     private Long loaderProfileId;
 
     /**
-     * Shell-level proxy configuration (overrides Profile default).
-     * Format: "http://host:port" or "socks5://user:pass@host:port".
+     * Legacy shell-level proxy configuration kept for backward-compatible reads.
      */
     @Column(name = "proxy_url", length = 500)
     private String proxyUrl;
 
     /**
-     * Shell-level custom headers (merged with Profile headers, Shell wins on conflict).
+     * Legacy shell-level custom headers kept for backward-compatible reads.
      */
     @Column(name = "custom_headers", columnDefinition = "jsonb")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> customHeaders;
 
     /**
-     * Connection timeout in milliseconds (overrides Profile default).
+     * Legacy connection timeout in milliseconds kept for backward-compatible reads.
      */
     @Column(name = "connect_timeout_ms")
     private Integer connectTimeoutMs;
 
     /**
-     * Read timeout in milliseconds (overrides Profile default).
+     * Legacy read timeout in milliseconds kept for backward-compatible reads.
      */
     @Column(name = "read_timeout_ms")
     private Integer readTimeoutMs;
 
     /**
-     * Whether to skip SSL certificate verification.
+     * Legacy SSL verification flag kept for backward-compatible reads.
      */
     @Column(name = "skip_ssl_verify")
     private Boolean skipSslVerify = false;
 
     /**
-     * Maximum number of retry attempts.
+     * Legacy retry count kept for backward-compatible reads.
      */
     @Column(name = "max_retries")
     private Integer maxRetries;
 
     /**
-     * Delay between retries in milliseconds.
+     * Legacy retry delay kept for backward-compatible reads.
      */
     @Column(name = "retry_delay_ms")
     private Long retryDelayMs;
+
+    /**
+     * Protocol-agnostic client configuration stored as JSONB.
+     * Supported keys vary by protocol type:
+     * <ul>
+     *   <li>HTTP: proxyUrl, customHeaders, connectTimeoutMs, readTimeoutMs, skipSslVerify, maxRetries, retryDelayMs</li>
+     *   <li>WebSocket: proxyUrl, customHeaders, connectTimeoutMs, readTimeoutMs, skipSslVerify</li>
+     *   <li>Dubbo: readTimeoutMs</li>
+     * </ul>
+     */
+    @Column(name = "client_config", columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, Object> clientConfig;
 
     /**
      * Normalized system info collected from the system-info plugin.

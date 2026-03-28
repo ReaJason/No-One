@@ -44,4 +44,6 @@ public class ShellTestConfigRequest {
     private Integer maxRetries;
 
     private Long retryDelayMs;
+
+    private Map<String, Object> clientConfig;
 }

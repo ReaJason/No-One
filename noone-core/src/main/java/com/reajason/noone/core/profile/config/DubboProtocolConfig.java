@@ -20,6 +20,12 @@ public class DubboProtocolConfig extends ProtocolConfig {
     }
 
     /**
+     * Which Dubbo client stack to use: "APACHE" (3.x) or "ALIBABA" (2.x).
+     * Defaults to APACHE if null or empty.
+     */
+    private String dubboStack;
+
+    /**
      * Remote method name to invoke via GenericService.$invoke.
      */
     private String methodName;

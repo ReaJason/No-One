@@ -34,7 +34,6 @@ public class MemShellGeneratorController {
 
     public MemShellGeneratorController(ProfileRepository profileRepository, ProfileMapper profileMapper) {
         this.javaMemShellGenerator = new JavaMemShellGenerator();
-        this.javaMemShellGenerator.init();
         this.profileRepository = profileRepository;
         this.profileMapper = profileMapper;
     }

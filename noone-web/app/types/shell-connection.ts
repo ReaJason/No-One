@@ -1,6 +1,16 @@
 export type ShellType = string;
 export type ShellStatus = "CONNECTED" | "DISCONNECTED" | "ERROR";
 export type ShellLanguage = "java" | "nodejs" | "dotnet";
+export interface ShellClientConfig {
+  proxyUrl?: string;
+  customHeaders?: Record<string, string>;
+  connectTimeoutMs?: number;
+  readTimeoutMs?: number;
+  skipSslVerify?: boolean;
+  maxRetries?: number;
+  retryDelayMs?: number;
+  [key: string]: unknown;
+}
 
 export interface ShellBasicInfo {
   os?:
@@ -41,6 +51,7 @@ export interface ShellConnection {
   profileName?: string;
 
   // Connection configuration
+  clientConfig?: ShellClientConfig;
   proxyUrl?: string;
   customHeaders?: Record<string, string>;
   connectTimeoutMs?: number;

@@ -267,13 +267,16 @@ public class ShellService {
         tempShell.setLanguage(request.getLanguage() != null ? request.getLanguage() : ShellLanguage.JAVA);
         tempShell.setProfileId(request.getProfileId());
         tempShell.setLoaderProfileId(request.getLoaderProfileId());
-        tempShell.setProxyUrl(request.getProxyUrl());
-        tempShell.setCustomHeaders(request.getCustomHeaders());
-        tempShell.setConnectTimeoutMs(request.getConnectTimeoutMs());
-        tempShell.setReadTimeoutMs(request.getReadTimeoutMs());
-        tempShell.setSkipSslVerify(request.getSkipSslVerify());
-        tempShell.setMaxRetries(request.getMaxRetries());
-        tempShell.setRetryDelayMs(request.getRetryDelayMs());
+        tempShell.setClientConfig(ShellClientConfigCompat.normalize(
+                request.getClientConfig(),
+                request.getProxyUrl(),
+                request.getCustomHeaders(),
+                request.getConnectTimeoutMs(),
+                request.getReadTimeoutMs(),
+                request.getSkipSslVerify(),
+                request.getMaxRetries(),
+                request.getRetryDelayMs()
+        ));
         try {
             ShellConnection connection = shellConnectionPool.createUncached(tempShell);
             connection.init();

@@ -3,7 +3,7 @@ import type {
   TestShellConfigRequest,
   UpdateShellConnectionRequest,
 } from "@/api/shell-connection-api";
-import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
+import type { ShellClientConfig, ShellConnection, ShellLanguage } from "@/types/shell-connection";
 
 import { z } from "zod";
 
@@ -99,6 +99,7 @@ export function getDefaultValues(
   prefill?: ShellFormPrefill,
 ): ShellFormValues {
   if (shell) {
+    const clientConfig = getClientConfig(shell);
     return {
       name: shell.name ?? "",
       url: shell.url ?? "",
@@ -109,13 +110,14 @@ export function getDefaultValues(
       profileId: String(shell.profileId),
       loaderProfileId: shell.loaderProfileId == null ? "" : String(shell.loaderProfileId),
       language: shell.language,
-      proxyUrl: shell.proxyUrl ?? "",
-      customHeaders: shell.customHeaders ? JSON.stringify(shell.customHeaders) : "",
-      connectTimeoutMs: shell.connectTimeoutMs == null ? "" : String(shell.connectTimeoutMs),
-      readTimeoutMs: shell.readTimeoutMs == null ? "" : String(shell.readTimeoutMs),
-      skipSslVerify: shell.skipSslVerify ?? false,
-      maxRetries: shell.maxRetries == null ? "" : String(shell.maxRetries),
-      retryDelayMs: shell.retryDelayMs == null ? "" : String(shell.retryDelayMs),
+      proxyUrl: clientConfig.proxyUrl ?? "",
+      customHeaders: clientConfig.customHeaders ? JSON.stringify(clientConfig.customHeaders) : "",
+      connectTimeoutMs:
+        clientConfig.connectTimeoutMs == null ? "" : String(clientConfig.connectTimeoutMs),
+      readTimeoutMs: clientConfig.readTimeoutMs == null ? "" : String(clientConfig.readTimeoutMs),
+      skipSslVerify: clientConfig.skipSslVerify ?? false,
+      maxRetries: clientConfig.maxRetries == null ? "" : String(clientConfig.maxRetries),
+      retryDelayMs: clientConfig.retryDelayMs == null ? "" : String(clientConfig.retryDelayMs),
     };
   }
 
@@ -167,13 +169,7 @@ export function buildCreatePayload(values: ShellFormValues): CreateShellConnecti
     projectId: parseFiniteNumber(values.projectId),
     profileId: parseFiniteNumber(values.profileId)!,
     loaderProfileId: values.staging ? parseFiniteNumber(values.loaderProfileId) : undefined,
-    proxyUrl: values.proxyUrl.trim() || undefined,
-    customHeaders: parseJsonOrUndefined(values.customHeaders),
-    connectTimeoutMs: parseFiniteNumber(values.connectTimeoutMs),
-    readTimeoutMs: parseFiniteNumber(values.readTimeoutMs),
-    skipSslVerify: values.skipSslVerify || undefined,
-    maxRetries: parseFiniteNumber(values.maxRetries),
-    retryDelayMs: parseFiniteNumber(values.retryDelayMs),
+    clientConfig: buildClientConfig(values),
   };
 }
 
@@ -188,13 +184,7 @@ export function buildUpdatePayload(values: ShellFormValues): UpdateShellConnecti
     projectId: values.projectId.trim() ? parseFiniteNumber(values.projectId) : null,
     profileId: parseFiniteNumber(values.profileId)!,
     loaderProfileId: values.staging ? (parseFiniteNumber(values.loaderProfileId) ?? null) : null,
-    proxyUrl: values.proxyUrl.trim() || undefined,
-    customHeaders: parseJsonOrUndefined(values.customHeaders),
-    connectTimeoutMs: parseFiniteNumber(values.connectTimeoutMs),
-    readTimeoutMs: parseFiniteNumber(values.readTimeoutMs),
-    skipSslVerify: values.skipSslVerify || undefined,
-    maxRetries: parseFiniteNumber(values.maxRetries),
-    retryDelayMs: parseFiniteNumber(values.retryDelayMs),
+    clientConfig: buildClientConfig(values),
   };
 }
 
@@ -207,13 +197,7 @@ export function buildTestConfigPayload(values: ShellFormValues): TestShellConfig
     language: values.language,
     profileId: parseFiniteNumber(values.profileId)!,
     loaderProfileId: values.staging ? parseFiniteNumber(values.loaderProfileId) : undefined,
-    proxyUrl: values.proxyUrl.trim() || undefined,
-    customHeaders: parseJsonOrUndefined(values.customHeaders),
-    connectTimeoutMs: parseFiniteNumber(values.connectTimeoutMs),
-    readTimeoutMs: parseFiniteNumber(values.readTimeoutMs),
-    skipSslVerify: values.skipSslVerify || undefined,
-    maxRetries: parseFiniteNumber(values.maxRetries),
-    retryDelayMs: parseFiniteNumber(values.retryDelayMs),
+    clientConfig: buildClientConfig(values),
   };
 }
 
@@ -320,4 +304,59 @@ function parseJsonOrUndefined(raw: string | undefined): Record<string, string> |
   } catch {
     return undefined;
   }
+}
+
+function buildClientConfig(values: ShellFormValues): ShellClientConfig | undefined {
+  const clientConfig: ShellClientConfig = {};
+
+  if (values.proxyUrl.trim()) {
+    clientConfig.proxyUrl = values.proxyUrl.trim();
+  }
+
+  const customHeaders = parseJsonOrUndefined(values.customHeaders);
+  if (customHeaders) {
+    clientConfig.customHeaders = customHeaders;
+  }
+
+  const connectTimeoutMs = parseFiniteNumber(values.connectTimeoutMs);
+  if (connectTimeoutMs != null) {
+    clientConfig.connectTimeoutMs = connectTimeoutMs;
+  }
+
+  const readTimeoutMs = parseFiniteNumber(values.readTimeoutMs);
+  if (readTimeoutMs != null) {
+    clientConfig.readTimeoutMs = readTimeoutMs;
+  }
+
+  if (values.skipSslVerify) {
+    clientConfig.skipSslVerify = true;
+  }
+
+  const maxRetries = parseFiniteNumber(values.maxRetries);
+  if (maxRetries != null) {
+    clientConfig.maxRetries = maxRetries;
+  }
+
+  const retryDelayMs = parseFiniteNumber(values.retryDelayMs);
+  if (retryDelayMs != null) {
+    clientConfig.retryDelayMs = retryDelayMs;
+  }
+
+  return Object.keys(clientConfig).length > 0 ? clientConfig : undefined;
+}
+
+function getClientConfig(shell: ShellConnection): ShellClientConfig {
+  if (shell.clientConfig) {
+    return shell.clientConfig;
+  }
+
+  const legacyConfig: ShellClientConfig = {};
+  if (shell.proxyUrl) legacyConfig.proxyUrl = shell.proxyUrl;
+  if (shell.customHeaders) legacyConfig.customHeaders = shell.customHeaders;
+  if (shell.connectTimeoutMs != null) legacyConfig.connectTimeoutMs = shell.connectTimeoutMs;
+  if (shell.readTimeoutMs != null) legacyConfig.readTimeoutMs = shell.readTimeoutMs;
+  if (shell.skipSslVerify != null) legacyConfig.skipSslVerify = shell.skipSslVerify;
+  if (shell.maxRetries != null) legacyConfig.maxRetries = shell.maxRetries;
+  if (shell.retryDelayMs != null) legacyConfig.retryDelayMs = shell.retryDelayMs;
+  return legacyConfig;
 }

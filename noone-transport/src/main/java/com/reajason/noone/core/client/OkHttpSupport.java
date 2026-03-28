@@ -89,7 +89,7 @@ public final class OkHttpSupport {
 
         StringJoiner joiner = new StringJoiner("; ");
         for (Map.Entry<String, String> cookie : cookies.entrySet()) {
-            if (cookie.getKey() == null || cookie.getKey().isBlank()) {
+            if (cookie.getKey() == null || cookie.getKey().isEmpty()) {
                 continue;
             }
             String value = cookie.getValue() != null ? cookie.getValue() : "";
@@ -110,7 +110,7 @@ public final class OkHttpSupport {
                 }
             }
         }
-        if (existingCookie != null && !existingCookie.isBlank()) {
+        if (existingCookie != null && !existingCookie.isEmpty()) {
             cookieHeaderValue = existingCookie + "; " + cookieHeaderValue;
         }
         requestBuilder.header("Cookie", cookieHeaderValue);

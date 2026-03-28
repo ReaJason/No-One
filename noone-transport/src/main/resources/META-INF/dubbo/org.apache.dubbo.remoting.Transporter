@@ -1,0 +1,1 @@
+proxy-netty=com.reajason.noone.core.client.dubbo.apache.ProxyNettyTransporter

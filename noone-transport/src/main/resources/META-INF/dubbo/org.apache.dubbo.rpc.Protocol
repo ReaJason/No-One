@@ -1,0 +1,2 @@
+hessian=com.reajason.noone.core.client.dubbo.apache.ProxyHessianProtocol
+http=com.reajason.noone.core.client.dubbo.apache.ProxyHttpProtocol
