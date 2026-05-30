@@ -52,7 +52,7 @@ class AlibabaDubboClientTest {
     }
 
     @Test
-    void buildParametersIncludesProxyWhenConfigured() {
+    void buildParametersIncludesNettyIsolationForDubboProxy() {
         ProxyConfig proxy = ProxyConfig.builder()
                 .type("SOCKS5").host("127.0.0.1").port(1080)
                 .username("user").password("pass").build();
@@ -60,7 +60,43 @@ class AlibabaDubboClientTest {
         AlibabaDubboClient client = new AlibabaDubboClient(
                 "dubbo://localhost:20880/com.example.TestService", config);
         java.util.Map<String, String> params = client.buildParameters();
+        assertEquals("1", params.get("connections"));
+        assertEquals("proxy-netty", params.get("client"));
         assertEquals("proxy-netty", params.get("transporter"));
+        assertProxyParams(params);
+    }
+
+    @Test
+    void buildParametersKeepsOnlyProxyParamsForHttpProxy() {
+        ProxyConfig proxy = ProxyConfig.builder()
+                .type("SOCKS5").host("127.0.0.1").port(1080)
+                .username("user").password("pass").build();
+        DubboClientConfig config = DubboClientConfig.builder().proxy(proxy).build();
+        AlibabaDubboClient client = new AlibabaDubboClient(
+                "http://localhost:8080/com.example.TestService", config);
+        java.util.Map<String, String> params = client.buildParameters();
+        assertNull(params.get("connections"));
+        assertNull(params.get("client"));
+        assertNull(params.get("transporter"));
+        assertProxyParams(params);
+    }
+
+    @Test
+    void buildParametersKeepsOnlyProxyParamsForHessianProxy() {
+        ProxyConfig proxy = ProxyConfig.builder()
+                .type("SOCKS5").host("127.0.0.1").port(1080)
+                .username("user").password("pass").build();
+        DubboClientConfig config = DubboClientConfig.builder().proxy(proxy).build();
+        AlibabaDubboClient client = new AlibabaDubboClient(
+                "hessian://localhost:28080/com.example.TestService", config);
+        java.util.Map<String, String> params = client.buildParameters();
+        assertNull(params.get("connections"));
+        assertNull(params.get("client"));
+        assertNull(params.get("transporter"));
+        assertProxyParams(params);
+    }
+
+    private void assertProxyParams(java.util.Map<String, String> params) {
         assertEquals("SOCKS5", params.get("proxy.type"));
         assertEquals("127.0.0.1", params.get("proxy.host"));
         assertEquals("1080", params.get("proxy.port"));
@@ -74,6 +110,8 @@ class AlibabaDubboClientTest {
         AlibabaDubboClient client = new AlibabaDubboClient(
                 "dubbo://localhost:20880/com.example.TestService", config);
         java.util.Map<String, String> params = client.buildParameters();
+        assertNull(params.get("connections"));
+        assertNull(params.get("client"));
         assertNull(params.get("transporter"));
         assertEquals("false", params.get("reconnect"));
     }

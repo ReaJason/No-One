@@ -16,7 +16,9 @@ public class ProxyConfig {
     private String password;
 
     public Proxy toJavaProxy() {
-        Proxy.Type proxyType = "SOCKS5".equalsIgnoreCase(type) || "SOCKS4".equalsIgnoreCase(type)
+        Proxy.Type proxyType = "SOCKS5".equalsIgnoreCase(type)
+                || "SOCKS4".equalsIgnoreCase(type)
+                || "SOCKS".equalsIgnoreCase(type)
                 ? Proxy.Type.SOCKS
                 : Proxy.Type.HTTP;
         return new Proxy(proxyType, new InetSocketAddress(host, port));

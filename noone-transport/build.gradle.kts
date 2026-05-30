@@ -1,11 +1,20 @@
 plugins {
     `java-library`
+    `maven-publish`
     jacoco
     alias(libs.plugins.lombok)
 }
 
 group = "com.reajason.noone"
 version = rootProject.version
+
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+        }
+    }
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8

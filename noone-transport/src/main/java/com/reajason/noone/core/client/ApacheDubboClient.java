@@ -108,7 +108,11 @@ public class ApacheDubboClient implements Client {
         params.put("reconnect", "false");
         ProxyConfig proxy = config.getProxy();
         if (proxy != null) {
-            params.put("transporter", "proxy-netty");
+            if (isNettyBasedProtocol()) {
+                params.put("connections", "1");
+                params.put("client", "proxy-netty");
+                params.put("transporter", "proxy-netty");
+            }
             params.put("proxy.type", proxy.getType());
             params.put("proxy.host", proxy.getHost());
             params.put("proxy.port", String.valueOf(proxy.getPort()));
@@ -118,6 +122,18 @@ public class ApacheDubboClient implements Client {
             }
         }
         return params;
+    }
+
+    private boolean isNettyBasedProtocol() {
+        if (url == null) {
+            return false;
+        }
+        try {
+            String scheme = URI.create(url).getScheme();
+            return "dubbo".equalsIgnoreCase(scheme) || "tri".equalsIgnoreCase(scheme);
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 
     private byte[] doSend(byte[] payload, boolean allowReconnect) {
