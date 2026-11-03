@@ -38,7 +38,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -184,6 +184,66 @@ class AuthControllerTest {
                                 "twoFactorCode", "123456"))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("INVALID_2FA_CHALLENGE"));
+    }
+
+    @Test
+    void activateShouldKeepTwoFactorDisabledWhenCodeIsNotProvided() throws Exception {
+        User user = userRepository.save(User.builder()
+                .username("setup-user")
+                .password(passwordEncoder.encode("initial-password"))
+                .email("setup-user@example.com")
+                .status(UserStatus.UNACTIVATED)
+                .mfaSecret("setup-mfa-secret")
+                .mustChangePassword(true)
+                .deleted(false)
+                .build());
+        String setupToken = jwtUtil.generateSetupToken(user.getUsername());
+
+        mockMvc.perform(post("/api/setup/activate")
+                        .header("Setup-Token", setupToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "newPassword", "new-password"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.user.mfaEnabled").value(false))
+                .andExpect(jsonPath("$.mfaRequired").value(false));
+
+        User activatedUser = userRepository.findByUsernameAndDeletedFalse(user.getUsername()).orElseThrow();
+        assertThat(activatedUser.getStatus()).isEqualTo(UserStatus.ENABLED);
+        assertThat(activatedUser.isMfaEnabled()).isFalse();
+        assertThat(activatedUser.getMfaBoundAt()).isNull();
+        assertThat(activatedUser.isMustChangePassword()).isFalse();
+        verifyNoInteractions(twoFactorAuthService);
+    }
+
+    @Test
+    void activateShouldEnableTwoFactorWhenValidCodeIsProvided() throws Exception {
+        User user = userRepository.save(User.builder()
+                .username("setup-mfa-user")
+                .password(passwordEncoder.encode("initial-password"))
+                .email("setup-mfa-user@example.com")
+                .status(UserStatus.UNACTIVATED)
+                .mfaSecret("setup-mfa-secret")
+                .mustChangePassword(true)
+                .deleted(false)
+                .build());
+        String setupToken = jwtUtil.generateSetupToken(user.getUsername());
+        when(twoFactorAuthService.isCodeValid("setup-mfa-secret", "123456")).thenReturn(true);
+
+        mockMvc.perform(post("/api/setup/activate")
+                        .header("Setup-Token", setupToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "newPassword", "new-password",
+                                "twoFactorCode", "123456"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user.mfaEnabled").value(true));
+
+        User activatedUser = userRepository.findByUsernameAndDeletedFalse(user.getUsername()).orElseThrow();
+        assertThat(activatedUser.isMfaEnabled()).isTrue();
+        assertThat(activatedUser.getMfaBoundAt()).isNotNull();
     }
 
 //    @Test

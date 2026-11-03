@@ -68,15 +68,17 @@ public class AuthSetupController {
         }
 
         User user = optionalUser.get();
-        if (!twoFactorAuthService.isCodeValid(user.getMfaSecret(), request.getTwoFactorCode())) {
+        String twoFactorCode = request.getTwoFactorCode();
+        boolean enableTwoFactor = twoFactorCode != null && !twoFactorCode.isBlank();
+        if (enableTwoFactor && !twoFactorAuthService.isCodeValid(user.getMfaSecret(), twoFactorCode)) {
             return ResponseEntity.badRequest().body("Invalid 2FA code");
         }
 
         UserResponse updated = userService.forceChangePassword(username, request.getNewPassword());
         User latestUser = userService.getByUsername(updated.getUsername());
         latestUser.setStatus(UserStatus.ENABLED);
-        latestUser.setMfaEnabled(true);
-        latestUser.setMfaBoundAt(LocalDateTime.now());
+        latestUser.setMfaEnabled(enableTwoFactor);
+        latestUser.setMfaBoundAt(enableTwoFactor ? LocalDateTime.now() : null);
         latestUser.setMustChangePassword(false);
         userRepository.save(latestUser);
 
