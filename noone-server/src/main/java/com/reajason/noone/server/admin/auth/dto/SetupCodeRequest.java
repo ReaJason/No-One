@@ -5,7 +5,6 @@ import lombok.Data;
 
 @Data
 public class SetupCodeRequest {
-    @NotBlank(message = "Two factor code is required")
     private String twoFactorCode;
 
     @NotBlank(message = "New password is required")
