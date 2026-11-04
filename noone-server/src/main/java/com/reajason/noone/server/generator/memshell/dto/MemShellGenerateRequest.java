@@ -2,7 +2,6 @@ package com.reajason.noone.server.generator.memshell.dto;
 
 import com.reajason.javaweb.memshell.config.InjectorConfig;
 import com.reajason.javaweb.memshell.config.ShellConfig;
-import com.reajason.javaweb.packer.Packers;
 import lombok.Data;
 
 /**
@@ -14,8 +13,7 @@ public class MemShellGenerateRequest {
     private ShellConfig shellConfig;
     private ShellToolConfigDTO shellToolConfig;
     private InjectorConfig injectorConfig;
-    private Packers packer;
-    private PackerRequestSpecDTO packerSpec;
+    private String packer;
 
     @Data
     public static class ShellToolConfigDTO {

@@ -24,7 +24,7 @@ public class NoOneStagelessGenerator extends ByteBuddyShellGenerator<NoOneConfig
 
     @Override
     protected DynamicType.Builder<?> getBuilder() {
-        DynamicType.Builder<?> builder = new ByteBuddy().redefine(shellToolConfig.getShellClass());
+        DynamicType.Builder<?> builder = redefineTemplate();
 
         try (DynamicType.Unloaded<NoOneCore> unloaded = new ByteBuddy()
                 .redefine(NoOneCore.class)

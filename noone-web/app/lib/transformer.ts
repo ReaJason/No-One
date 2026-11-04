@@ -18,14 +18,17 @@ export function transformToPostData(formValue: MemShellFormSchema) {
     byPassJavaModule: formValue.byPassJavaModule,
     shrink: formValue.shrink,
     lambdaSuffix: formValue.lambdaSuffix,
-    probe: formValue.probe,
+    probe: formValue.probe
+      ? {
+          probeMethod: formValue.probeMethod ?? "ResponseBody",
+          respHeaderName: toOptionalValue(formValue.respHeaderName),
+        }
+      : undefined,
+    obfuscation: formValue.obfuscationEnabled ? { enabled: true, options: {} } : undefined,
+    obfuscationScope: formValue.obfuscationScope ?? "ALL",
   };
   const shellToolConfig: ShellToolConfig = {
     shellClassName: formValue.shellClassName,
-    godzillaPass: formValue.godzillaPass,
-    godzillaKey: formValue.godzillaKey,
-    headerName: formValue.headerName,
-    headerValue: formValue.headerValue,
     coreProfileId: toOptionalValue(formValue.coreProfileId),
     staging: isStagingMode,
     loaderProfileId: isStagingMode ? toOptionalValue(formValue.loaderProfileId) : undefined,
@@ -40,9 +43,6 @@ export function transformToPostData(formValue: MemShellFormSchema) {
     shellConfig,
     shellToolConfig,
     injectorConfig,
-    packerSpec: {
-      name: formValue.packingMethod,
-      config: formValue.packerCustomConfig ?? {},
-    },
+    packer: formValue.packingMethod,
   };
 }

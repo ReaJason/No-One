@@ -27,9 +27,9 @@ const ShellResult = memo(function ShellResult({
   if (!generateResult) {
     return <></>;
   }
-  const hasHelper =
-    generateResult?.injectorHelperBytesBase64Str &&
-    generateResult?.injectorHelperBytesBase64Str !== "";
+  const hasHelper = Boolean(generateResult.helperBytesBase64Str);
+  const helperClassName =
+    generateResult.helperClassName ?? generateResult.injectorConfig.injectorHelperClassName;
 
   const height = 553;
 
@@ -39,7 +39,7 @@ const ShellResult = memo(function ShellResult({
         <TabsTrigger value="packResult">Generate Result</TabsTrigger>
         <TabsTrigger value="shell">ShellClass</TabsTrigger>
         <TabsTrigger value="injector">InjectorClass</TabsTrigger>
-        {hasHelper && <TabsTrigger value="injectorHelper">InjectorHelperClass</TabsTrigger>}
+        {hasHelper && <TabsTrigger value="injectorHelper">HelperClass</TabsTrigger>}
       </TabsList>
       <TabsContent value="packResult" className="space-y-2">
         <BasicInfo generateResult={generateResult} />
@@ -111,11 +111,7 @@ const ShellResult = memo(function ShellResult({
           <CodeViewer
             showLineNumbers={false}
             wrapLongLines={true}
-            header={
-              <div className="text-xs">
-                {generateResult?.injectorConfig.injectorHelperClassName}
-              </div>
-            }
+            header={<div className="text-xs">{helperClassName}</div>}
             button={
               <Button
                 variant="ghost"
@@ -123,21 +119,18 @@ const ShellResult = memo(function ShellResult({
                 type="button"
                 className="h-7 w-7 [&_svg]:h-4 [&_svg]:w-4"
                 onClick={() => {
-                  if (!generateResult?.injectorHelperBytesBase64Str) {
+                  if (!generateResult?.helperBytesBase64Str) {
                     toast.warning("Shell bytes is empty, please generate shell first");
                     return;
                   }
-                  downloadBytes(
-                    generateResult?.injectorHelperBytesBase64Str,
-                    generateResult?.injectorConfig.injectorHelperClassName,
-                  );
+                  downloadBytes(generateResult?.helperBytesBase64Str, helperClassName);
                 }}
               >
                 <DownloadIcon className="h-4 w-4" />
               </Button>
             }
             height={height}
-            code={generateResult?.injectorHelperBytesBase64Str ?? ""}
+            code={generateResult?.helperBytesBase64Str ?? ""}
             language="text"
           />
         </TabsContent>

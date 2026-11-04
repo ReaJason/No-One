@@ -58,28 +58,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 export async function action({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
-  // Extract custom packer config dynamically
-  const packerCustomConfig: Record<string, any> = {};
-  for (const [key, value] of formData.entries()) {
-    if (key.startsWith("packerCustomConfig.")) {
-      const configKey = key.replace("packerCustomConfig.", "");
-      if (typeof value === "string") {
-        if (value === "true") {
-          packerCustomConfig[configKey] = true;
-        } else if (value === "false") {
-          packerCustomConfig[configKey] = false;
-        } else {
-          const num = Number(value);
-          if (!Number.isNaN(num) && value !== "") {
-            packerCustomConfig[configKey] = num;
-          } else {
-            packerCustomConfig[configKey] = value;
-          }
-        }
-      }
-    }
-  }
-
   // Extract form data
   const data: MemShellFormSchema = {
     server: formData.get("server") as string,
@@ -91,15 +69,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
     shellTool: formData.get("shellTool") as string,
     shellType: formData.get("shellType") as string,
     urlPattern: formData.get("urlPattern") as string,
-    godzillaPass: formData.get("godzillaPass") as string,
-    godzillaKey: formData.get("godzillaKey") as string,
-    headerName: formData.get("headerName") as string,
-    headerValue: formData.get("headerValue") as string,
     injectorClassName: formData.get("injectorClassName") as string,
     packingMethod: formData.get("packingMethod") as string,
-    packerCustomConfig: Object.keys(packerCustomConfig).length > 0 ? packerCustomConfig : undefined,
     lambdaSuffix: formData.get("lambdaSuffix") === "true",
     probe: formData.get("probe") === "true",
+    probeMethod:
+      (formData.get("probeMethod") as MemShellFormSchema["probeMethod"]) ?? "ResponseBody",
+    respHeaderName: (formData.get("respHeaderName") as string | null) ?? undefined,
+    obfuscationEnabled: formData.get("obfuscationEnabled") === "true",
+    obfuscationScope:
+      (formData.get("obfuscationScope") as MemShellFormSchema["obfuscationScope"]) ?? "ALL",
     coreProfileId: (formData.get("coreProfileId") as string | null) ?? undefined,
     loaderProfileId: (formData.get("loaderProfileId") as string | null) ?? undefined,
     staging: formData.get("staging") === "true",
@@ -219,7 +198,8 @@ export default function MemShell() {
       loaderProfileId: isStaging ? (loaderProfileId ?? undefined) : undefined,
       shellType: result.shellConfig.shellType ?? undefined,
       staging: isStaging || undefined,
-      interfaceName: result.injectorConfig.injectorHelperClassName ?? undefined,
+      interfaceName:
+        result.helperClassName ?? result.injectorConfig.injectorHelperClassName ?? undefined,
     };
   }, [actionData, generateResult]);
 

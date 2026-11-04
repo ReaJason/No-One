@@ -504,7 +504,7 @@ class NoOneStagelessGeneratorReactorHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneStagelessWebFilter.class);
+        noOneConfig.setShellTemplateClassName(NoOneStagelessWebFilter.class.getName());
         noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneWebFilter");
         noOneConfig.setCoreProfile(profile);
 

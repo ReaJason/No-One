@@ -1,4 +1,5 @@
 import type {
+  LegacyPackerCategory,
   LegacyPackerGroup,
   PackerCategory,
   PackerConfig,
@@ -26,13 +27,23 @@ const isLegacyGroup = (value: unknown): value is LegacyPackerGroup => {
   );
 };
 
-const isPackerCategory = (value: unknown): value is PackerCategory => {
+const isPackerCategory = (value: unknown): value is LegacyPackerCategory => {
   return (
     typeof value === "object" &&
     value !== null &&
     "name" in value &&
     "packers" in value &&
     Array.isArray((value as { packers?: unknown[] }).packers)
+  );
+};
+
+const isModernPackerCategory = (value: unknown): value is PackerCategory => {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    "children" in value &&
+    Array.isArray((value as { children?: unknown[] }).children)
   );
 };
 
@@ -54,6 +65,13 @@ export function normalizePackerCategories(
             name,
             categoryAnchor: false,
           })),
+        };
+      }
+      if (isModernPackerCategory(item)) {
+        const names = item.children.length > 0 ? item.children : [item.name];
+        return {
+          name: item.name,
+          packers: names.map((name) => ({ name, categoryAnchor: false })),
         };
       }
       if (isPackerCategory(item)) {

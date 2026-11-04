@@ -506,7 +506,7 @@ class NoOneStagelessGeneratorNettyHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneStagelessNettyHandler.class);
+        noOneConfig.setShellTemplateClassName(NoOneStagelessNettyHandler.class.getName());
         noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneNettyHandler");
         noOneConfig.setCoreProfile(profile);
 

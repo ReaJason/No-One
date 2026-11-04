@@ -41,11 +41,12 @@ dependencies {
     implementation(libs.asm.commons)
     implementation(libs.commons.lang3)
     implementation(libs.fastjson2)
-    api(libs.memshell.party.generator) {
-        exclude(group = "io.netty", module = "netty-transport-native-kqueue")
-    }
+    api(platform(libs.memshell.party.bom))
+    api(libs.memshell.party.core)
     api(libs.memshell.party.common)
-    implementation(libs.memshell.party.thirdparty.tomcat)
+    api(platform(libs.memshell.party.server.all))
+    api(platform(libs.memshell.party.shelltool.all))
+    compileOnly(libs.memshell.party.stub.tomcat)
     implementation(libs.reactor.netty.core)
     implementation(libs.spring.webflux)
     implementation(libs.spring.webmvc)
