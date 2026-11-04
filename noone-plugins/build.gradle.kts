@@ -12,7 +12,6 @@ buildscript {
         maven("https://central.sonatype.com/repository/maven-snapshots")
     }
     dependencies {
-        classpath(libs.memshell.party.generator)
         classpath(libs.memshell.party.common)
         classpath(libs.fastjson2)
     }

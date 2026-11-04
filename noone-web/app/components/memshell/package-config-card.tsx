@@ -1,19 +1,13 @@
 import type { PackerConfig } from "@/types/memshell";
 
 import { PackageIcon } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 
 import { PackerCombobox } from "@/components/packer/packer-combobox";
-import { PackerCustomConfigFields } from "@/components/packer/packer-custom-config-fields";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  findPackerEntry,
-  getPackerDefaultConfig,
-  getPackerSchemaFields,
-  normalizePackerCategories,
-} from "@/lib/packer-schema";
+import { normalizePackerCategories } from "@/lib/packer-schema";
 
 interface PackageConfigCardProps {
   packerConfig: PackerConfig | undefined;
@@ -35,7 +29,6 @@ const PackageConfigCard = memo(function PackageConfigCard({
   server,
 }: Readonly<PackageConfigCardProps>) {
   const [packingMethod, setPackingMethod] = useState("");
-  const [packerCustomConfig, setPackerCustomConfig] = useState<Record<string, any>>({});
 
   const categories = useMemo(() => normalizePackerCategories(packerConfig), [packerConfig]);
 
@@ -48,16 +41,17 @@ const PackageConfigCard = memo(function PackageConfigCard({
             return false;
           }
           const name = packer.name;
+          const isAgentPacker = name.startsWith("Agent") || name === "FilelessAgent";
           if (!shellType || shellType === " ") {
             return true;
           }
           if (shellType.startsWith("Agent")) {
-            return name.startsWith("Agent");
+            return isAgentPacker;
           }
           if ((server ?? "").startsWith("XXL")) {
-            return !name.startsWith("Agent");
+            return !isAgentPacker;
           }
-          return !name.startsWith("Agent") && !name.toLowerCase().startsWith("xxl");
+          return !isAgentPacker && !name.toLowerCase().startsWith("xxl");
         }),
       }))
       .filter((group) => group.packers.length > 0);
@@ -68,18 +62,6 @@ const PackageConfigCard = memo(function PackageConfigCard({
     [filteredCategories],
   );
 
-  const selectedPackerEntry = useMemo(
-    () =>
-      findPackerEntry(filteredCategories, packingMethod) ??
-      findPackerEntry(categories, packingMethod),
-    [categories, filteredCategories, packingMethod],
-  );
-
-  const selectedSchemaFields = useMemo(
-    () => getPackerSchemaFields(selectedPackerEntry),
-    [selectedPackerEntry],
-  );
-
   // set default packing method
   useEffect(() => {
     if (allOptionNames.length > 0) {
@@ -88,20 +70,6 @@ const PackageConfigCard = memo(function PackageConfigCard({
       }
     }
   }, [allOptionNames, packingMethod]);
-
-  // set default packer config only when packer name changes, protecting against Loader reference refreshes
-  const lastPackerNameRef = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    const name = selectedPackerEntry?.name;
-    if (name && name !== lastPackerNameRef.current) {
-      setPackerCustomConfig(getPackerDefaultConfig(selectedPackerEntry) as any);
-      lastPackerNameRef.current = name;
-    }
-  }, [selectedPackerEntry]);
-
-  const handleConfigChange = (key: string, value: any) => {
-    setPackerCustomConfig((prev) => ({ ...prev, [key]: value }));
-  };
 
   return (
     <Card className="w-full">
@@ -123,11 +91,6 @@ const PackageConfigCard = memo(function PackageConfigCard({
                 placeholder="Select packer"
               />
             </Field>
-            <PackerCustomConfigFields
-              fields={selectedSchemaFields}
-              values={packerCustomConfig}
-              onValueChange={handleConfigChange}
-            />
           </>
         ) : (
           <LoadingSpinner />

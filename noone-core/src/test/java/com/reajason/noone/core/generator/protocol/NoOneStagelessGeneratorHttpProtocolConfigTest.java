@@ -470,7 +470,7 @@ class NoOneStagelessGeneratorHttpProtocolConfigTest {
         profile.setProtocolConfig(http);
 
         NoOneConfig noOneConfig = new NoOneConfig();
-        noOneConfig.setShellClass(NoOneStagelessServlet.class);
+        noOneConfig.setShellTemplateClassName(NoOneStagelessServlet.class.getName());
         noOneConfig.setShellClassName("com.reajason.noone.test.GeneratedNoOneServlet");
         noOneConfig.setCoreProfile(profile);
 

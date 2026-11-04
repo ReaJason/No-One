@@ -47,7 +47,7 @@ class NoOneStagelessGeneratorTest {
         profile.setRequestTransformations(List.of("Gzip", "AES", "Base64"));
         profile.setResponseTransformations(List.of("Gzip", "AES", "Base64"));
 
-        noOneConfig.setShellClass(NoOneStagelessNettyHandler.class);
+        noOneConfig.setShellTemplateClassName(NoOneStagelessNettyHandler.class.getName());
         noOneConfig.setCoreProfile(profile);
         ShellConfig shellConfig = ShellConfig.builder()
                 .shellType(ShellType.NETTY_HANDLER)

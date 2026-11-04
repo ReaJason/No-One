@@ -52,7 +52,7 @@ export function ResultComponent({
         type: "application/octet-stream",
       });
       return downloadContent(content, fileName, ".data");
-    } else if (packMethod === "Base64") {
+    } else if (packMethod === "DefaultBase64" || packMethod === "Base64") {
       return downloadBytes(packResult as string, shellClassName);
     }
   }, [packMethod, packResult, shellClassName]);
@@ -70,6 +70,7 @@ export function ResultComponent({
       }
       button={
         packMethod.includes("JSP") ||
+        packMethod === "DefaultBase64" ||
         packMethod === "Base64" ||
         packMethod.includes("JavaCommons") ||
         packMethod.includes("Hessian") ? (

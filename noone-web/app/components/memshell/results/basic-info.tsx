@@ -8,6 +8,8 @@ import { CopyableField } from "../copyable-field";
 
 export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShellResult }>) {
   const isDubbo = generateResult?.shellConfig.server === "Dubbo";
+  const helperClassName =
+    generateResult?.helperClassName ?? generateResult?.injectorConfig.injectorHelperClassName;
   return (
     <Card>
       <CardHeader>
@@ -41,11 +43,26 @@ export function BasicInfo({ generateResult }: Readonly<{ generateResult?: MemShe
               />
               <CopyableField
                 label={"interfaceName"}
-                value={generateResult?.injectorConfig.injectorHelperClassName}
-                text={`${generateResult?.injectorConfig.injectorHelperClassName}`}
+                value={helperClassName}
+                text={`${helperClassName}`}
               />
             </>
           )}
+          {!isDubbo && helperClassName && (
+            <CopyableField
+              label={"helperClassName"}
+              value={helperClassName}
+              text={`${helperClassName} (${generateResult?.helperSize ?? 0} bytes)`}
+            />
+          )}
+          {generateResult?.shellConfig.probe?.probeMethod === "ResponseHeader" &&
+            generateResult.shellConfig.probe.respHeaderName && (
+              <CopyableField
+                label={"responseHeaderName"}
+                value={generateResult.shellConfig.probe.respHeaderName}
+                text={generateResult.shellConfig.probe.respHeaderName}
+              />
+            )}
         </div>
       </CardContent>
     </Card>

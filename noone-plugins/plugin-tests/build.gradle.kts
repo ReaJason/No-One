@@ -15,7 +15,6 @@ java {
 dependencies {
     // Depend on java-plugins for PluginRunner + compiled plugin bytecodes
     implementation(project(":noone-plugins:java-plugins"))
-    implementation(libs.memshell.party.generator)
     implementation(libs.memshell.party.common)
 
     testImplementation(libs.fastjson2)

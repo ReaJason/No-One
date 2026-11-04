@@ -13,13 +13,11 @@ java {
 
 buildscript {
     dependencies {
-        classpath(libs.memshell.party.generator)
         classpath(libs.memshell.party.common)
     }
 }
 
 dependencies {
-    implementation(libs.memshell.party.generator)
     implementation(libs.memshell.party.common)
     testImplementation(libs.fastjson2)
     testImplementation(libs.junit.jupiter)

@@ -22,6 +22,10 @@ configurations {
     compileOnly {
         extendsFrom(configurations.annotationProcessor.get())
     }
+    implementation {
+        // Signature stubs are needed to read/generate templates, but must not shadow embedded Tomcat.
+        exclude(group = "io.github.reajason", module = "memshell-party-stub-tomcat")
+    }
 }
 
 dependencies {
@@ -30,18 +34,14 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation(project(":noone-core")){
-        exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
-    }
+    implementation(project(":noone-core"))
     implementation(project(":noone-transport"))
     implementation(libs.bundles.jjwt)
-    implementation(libs.memshell.party.generator) {
-        exclude(group = "commons-logging", module = "commons-logging")
-        exclude(group = "io.github.reajason", module = "thirdparty-tomcat")
-        exclude(group = "io.netty", module = "netty-transport-native-kqueue")
-    }
-    implementation(libs.memshell.party.common)
-    implementation(libs.memshell.party.packer){
+    implementation(platform(libs.memshell.party.bom))
+    implementation(platform(libs.memshell.party.server.all))
+    implementation(platform(libs.memshell.party.shelltool.all))
+    implementation(libs.memshell.party.core)
+    implementation(libs.memshell.party.packer) {
         exclude(group = "commons-logging", module = "commons-logging")
     }
     runtimeOnly("org.postgresql:postgresql")

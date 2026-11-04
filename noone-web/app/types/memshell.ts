@@ -1,5 +1,26 @@
 import type { Profile } from "@/types/profile";
 
+export type ObfuscationScope = "ALL" | "MEMSHELL_INJECTOR" | "INJECTOR" | "MEMSHELL";
+export type ProbeMethod = "ResponseBody" | "ResponseHeader";
+
+export interface ObfuscationConfig {
+  enabled: boolean;
+  options?: Record<string, unknown>;
+}
+
+export interface ProbeConfig {
+  probeMethod: ProbeMethod;
+  respHeaderName?: string;
+}
+
+export interface ObfuscationInfo {
+  enabled: boolean;
+  originalShellSize?: number;
+  obfuscatedShellSize?: number;
+  originalInjectorSize?: number;
+  obfuscatedInjectorSize?: number;
+}
+
 export interface ShellConfig {
   server: string;
   serverVersion: string;
@@ -8,18 +29,15 @@ export interface ShellConfig {
   targetJreVersion?: string;
   debug?: boolean;
   byPassJavaModule?: boolean;
-  obfuscate?: boolean;
+  obfuscation?: ObfuscationConfig;
+  obfuscationScope?: ObfuscationScope;
   shrink?: boolean;
-  probe?: boolean;
+  probe?: ProbeConfig;
   lambdaSuffix?: boolean;
 }
 
 export interface ShellToolConfig {
   shellClassName?: string;
-  godzillaPass?: string;
-  godzillaKey?: string;
-  headerName?: string;
-  headerValue?: string;
   coreProfileId?: string;
   loaderProfileId?: string;
   staging?: boolean;
@@ -42,7 +60,6 @@ export interface NoOneShellToolConfig {
 export interface InjectorConfig {
   injectorClassName?: string;
   injectorHelperClassName?: string;
-  classInheritance?: string;
   urlPattern?: string;
   staticInitialize?: boolean;
 }
@@ -67,23 +84,22 @@ export interface MemShellGenerateRequest {
   shellToolConfig: ShellToolConfig;
   injectorConfig: InjectorConfig;
   packer?: string;
-  packerSpec?: {
-    name: string;
-    config: Record<string, unknown>;
-  };
 }
 
 export interface MemShellResult {
   shellClassName: string;
   shellSize: number;
   shellBytesBase64Str: string;
+  helperClassName?: string;
+  helperSize?: number;
+  helperBytesBase64Str?: string;
   injectorClassName: string;
   injectorSize: number;
   injectorBytesBase64Str: string;
-  injectorHelperBytesBase64Str: string;
   shellConfig: ShellConfig;
   shellToolConfig: NoOneShellToolConfig;
   injectorConfig: InjectorConfig;
+  obfuscationInfo?: ObfuscationInfo;
 }
 
 export enum ShellToolType {
@@ -124,7 +140,14 @@ export interface PackerEntry {
 
 export interface PackerCategory {
   name: string;
+  children: string[];
+}
+
+export interface LegacyPackerCategory {
+  name: string;
   packers: PackerEntry[];
 }
 
-export type PackerConfig = Array<LegacyPackerGroup | PackerCategory | string>;
+export type PackerConfig = Array<
+  LegacyPackerGroup | LegacyPackerCategory | PackerCategory | string
+>;

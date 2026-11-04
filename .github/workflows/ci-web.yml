@@ -35,7 +35,7 @@ jobs:
           bun-version: 1.3.10
 
       - name: Cache Bun
-        uses: actions/setup-java@v5
+        uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('noone-web/bun.lock') }}

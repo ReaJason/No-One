@@ -7,6 +7,7 @@ import { NoOneTabContent } from "@/components/memshell/tabs/noone-tab";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -18,7 +19,13 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tabs } from "@/components/ui/tabs";
-import { type MainConfig, type ServerConfig, ShellToolType } from "@/types/memshell";
+import {
+  type MainConfig,
+  type ObfuscationScope,
+  type ProbeMethod,
+  type ServerConfig,
+  ShellToolType,
+} from "@/types/memshell";
 
 import { JREVersionFormField } from "./jreversion-field";
 import { ServerVersionFormField } from "./serverversion-field";
@@ -53,8 +60,12 @@ const MainConfigCard = memo(function MainConfigCard({
   const shellTool = ShellToolType.NoOne;
   const [debug, setDebug] = useState(false);
   const [probe, setProbe] = useState(false);
+  const [probeMethod, setProbeMethod] = useState<ProbeMethod>("ResponseBody");
+  const [respHeaderName, setRespHeaderName] = useState("");
   const [byPassJavaModule, setByPassJavaModule] = useState(false);
   const [lambdaSuffix, setLambdaSuffix] = useState(false);
+  const [obfuscationEnabled, setObfuscationEnabled] = useState(false);
+  const [obfuscationScope, setObfuscationScope] = useState<ObfuscationScope>("ALL");
 
   // Optimize: Use primitive dependencies (rerender-dependencies)
   const serverToolMap = useMemo(() => {
@@ -102,7 +113,7 @@ const MainConfigCard = memo(function MainConfigCard({
               variant={"outline"}
               className="bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
             >
-              MemShellParty v2.7.0-SNAPSHOT
+              MemShellParty v3.1.0-SNAPSHOT
             </Badge>
           </CardTitle>
         </CardHeader>
@@ -181,7 +192,83 @@ const MainConfigCard = memo(function MainConfigCard({
                     LambdaSuffix
                   </Label>
                 </div>
+
+                <input
+                  type="hidden"
+                  name="obfuscationEnabled"
+                  value={obfuscationEnabled.toString()}
+                />
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="obfuscationEnabled"
+                    checked={obfuscationEnabled}
+                    onCheckedChange={setObfuscationEnabled}
+                  />
+                  <Label htmlFor="obfuscationEnabled" className="cursor-pointer">
+                    Obfuscation
+                  </Label>
+                </div>
               </div>
+
+              {probe && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field>
+                    <FieldContent>
+                      <FieldLabel htmlFor="probeMethod">Probe Method</FieldLabel>
+                      <Select
+                        name="probeMethod"
+                        value={probeMethod}
+                        onValueChange={(value) => setProbeMethod(value as ProbeMethod)}
+                      >
+                        <SelectTrigger className="w-full" id="probeMethod">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ResponseBody">ResponseBody</SelectItem>
+                          <SelectItem value="ResponseHeader">ResponseHeader</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FieldContent>
+                  </Field>
+                  {probeMethod === "ResponseHeader" && (
+                    <Field>
+                      <FieldContent>
+                        <FieldLabel htmlFor="respHeaderName">Response Header Name</FieldLabel>
+                        <Input
+                          id="respHeaderName"
+                          name="respHeaderName"
+                          value={respHeaderName}
+                          onChange={(event) => setRespHeaderName(event.target.value)}
+                          placeholder="Random X-* header when empty"
+                        />
+                      </FieldContent>
+                    </Field>
+                  )}
+                </div>
+              )}
+
+              {obfuscationEnabled && (
+                <Field>
+                  <FieldContent>
+                    <FieldLabel htmlFor="obfuscationScope">Obfuscation Scope</FieldLabel>
+                    <Select
+                      name="obfuscationScope"
+                      value={obfuscationScope}
+                      onValueChange={(value) => setObfuscationScope(value as ObfuscationScope)}
+                    >
+                      <SelectTrigger className="w-full" id="obfuscationScope">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All generated classes</SelectItem>
+                        <SelectItem value="MEMSHELL_INJECTOR">MemShell + Injector</SelectItem>
+                        <SelectItem value="INJECTOR">Injector only</SelectItem>
+                        <SelectItem value="MEMSHELL">MemShell only</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FieldContent>
+                </Field>
+              )}
             </div>
           )}
         </CardContent>
