@@ -76,7 +76,7 @@ public class Shell {
     /**
      * Legacy shell-level custom headers kept for backward-compatible reads.
      */
-    @Column(name = "custom_headers", columnDefinition = "jsonb")
+    @Column(name = "custom_headers")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, String> customHeaders;
 
@@ -111,7 +111,7 @@ public class Shell {
     private Long retryDelayMs;
 
     /**
-     * Protocol-agnostic client configuration stored as JSONB.
+     * Protocol-agnostic client configuration stored as JSON.
      * Supported keys vary by protocol type:
      * <ul>
      *   <li>HTTP: proxyUrl, customHeaders, connectTimeoutMs, readTimeoutMs, skipSslVerify, maxRetries, retryDelayMs</li>
@@ -119,7 +119,7 @@ public class Shell {
      *   <li>Dubbo: readTimeoutMs</li>
      * </ul>
      */
-    @Column(name = "client_config", columnDefinition = "jsonb")
+    @Column(name = "client_config")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> clientConfig;
 
@@ -127,7 +127,7 @@ public class Shell {
      * Normalized system info collected from the system-info plugin.
      * Keys: os, arch, runtimeType, runtimeVersion.
      */
-    @Column(name = "basic_info", columnDefinition = "jsonb")
+    @Column(name = "basic_info")
     @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Object> basicInfo;
 

@@ -1,0 +1,9 @@
+spring:
+  jpa:
+    database-platform: com.reajason.noone.server.config.NoOneSQLiteDialect
+  datasource:
+    driver-class-name: org.sqlite.JDBC
+    url: "jdbc:sqlite:./noone.db?busy_timeout=5000&journal_mode=WAL&foreign_keys=true"
+    hikari:
+      data-source-properties:
+        transaction_mode: IMMEDIATE

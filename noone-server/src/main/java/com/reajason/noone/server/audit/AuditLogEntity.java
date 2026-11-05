@@ -70,7 +70,7 @@ public class AuditLogEntity {
     private String requestUri;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column
     private Map<String, Object> details;
 
     @CreatedDate

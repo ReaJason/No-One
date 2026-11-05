@@ -45,7 +45,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Import(TestPGContainerConfiguration.class)
-@ActiveProfiles("test")
+@ActiveProfiles({"test", "postgresql"})
 @Transactional
 class ProfileControllerTest {
 

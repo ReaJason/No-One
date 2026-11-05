@@ -8,7 +8,9 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.context.expression.MethodBasedEvaluationContext;
 import org.springframework.core.DefaultParameterNameDiscoverer;
+import org.springframework.core.Ordered;
 import org.springframework.core.ParameterNameDiscoverer;
+import org.springframework.core.annotation.Order;
 import org.springframework.expression.EvaluationContext;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -19,6 +21,8 @@ import java.lang.reflect.Method;
 @Slf4j
 @Aspect
 @Component
+// Finish the business transaction before starting the independent audit transaction.
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 public class AuditLogAspect {
 
@@ -26,8 +30,8 @@ public class AuditLogAspect {
     private final ExpressionParser parser = new SpelExpressionParser();
     private final ParameterNameDiscoverer parameterNameDiscoverer = new DefaultParameterNameDiscoverer();
 
-    @Around("@annotation(auditLog)")
-    public Object around(ProceedingJoinPoint joinPoint, AuditLog auditLog) throws Throwable {
+    @Around("@annotation(com.reajason.noone.server.audit.AuditLog)")
+    public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
         long start = System.currentTimeMillis();
         Object result = null;
         boolean success = true;
@@ -44,6 +48,7 @@ public class AuditLogAspect {
             long durationMs = System.currentTimeMillis() - start;
             try {
                 Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
+                AuditLog auditLog = method.getAnnotation(AuditLog.class);
                 EvaluationContext context = new MethodBasedEvaluationContext(
                         joinPoint.getTarget(), method, joinPoint.getArgs(), parameterNameDiscoverer);
                 if (result != null) {

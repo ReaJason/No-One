@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-noone}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noone}
+      POSTGRES_USER: ${POSTGRES_USER:-noone}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noone} -d ${POSTGRES_DB:-noone}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    volumes:
+      - postgres-data-prod:/var/lib/postgresql/data
+
+  noone-server:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgresql
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-noone}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-noone}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-noone}
+
+volumes:
+  postgres-data-prod:
