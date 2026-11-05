@@ -1,28 +1,10 @@
 services:
-  postgres:
-    image: postgres:17.6
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-noone}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noone}
-      POSTGRES_USER: ${POSTGRES_USER:-noone}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-noone} -d ${POSTGRES_DB:-noone}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    volumes:
-      - postgres-data-prod:/var/lib/postgresql/data
-
   noone-server:
     image: ghcr.io/${GHCR_OWNER:-reajason}/noone-server:${NOONE_SERVER_TAG:-latest}
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-noone}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-noone}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-noone}
+      SPRING_DATASOURCE_URL: "jdbc:sqlite:/app/data/noone.db?busy_timeout=5000&journal_mode=WAL&foreign_keys=true"
+    volumes:
+      - sqlite-data:/app/data
     restart: unless-stopped
 
   noone-web:
@@ -49,4 +31,4 @@ services:
       - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
 volumes:
-  postgres-data-prod:
+  sqlite-data:

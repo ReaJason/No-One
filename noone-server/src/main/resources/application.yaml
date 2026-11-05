@@ -1,6 +1,8 @@
 server:
   port: 8888
 spring:
+  profiles:
+    default: sqlite
   application:
     name: noone-server
     version: ${version}
@@ -12,11 +14,6 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/noone
-    username: noone
-    password: noone
   threads:
     virtual:
       enabled: true

@@ -58,11 +58,11 @@ public class Plugin {
     private String payload;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column
     private Map<String, Object> actions;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+    @Column
     private Map<String, Object> meta;
 
     @CreatedDate

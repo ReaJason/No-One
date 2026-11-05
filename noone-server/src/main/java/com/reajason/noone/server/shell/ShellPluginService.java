@@ -15,6 +15,7 @@ import com.reajason.noone.server.shell.oplog.ShellOperationType;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
@@ -47,7 +48,9 @@ public class ShellPluginService {
 
     private static final String TASK_MANAGER_PLUGIN_ID = "task-manager";
 
+    // Keep remote calls outside database transactions; status and metadata writes use short transactions.
     @ShellOpLog(operation = ShellOperationType.DISPATCH, shellId = "#shellId", pluginId = "#pluginId")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<String, Object> dispatchPlugin(Long shellId, String pluginId, Map<String, Object> args) {
         Shell shell = shellLookupHelper.requireById(shellId);
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
@@ -80,7 +83,6 @@ public class ShellPluginService {
             Map<String, Object> result = connection.runPlugin(pluginId, args);
             Map<String, Object> response = shellResponseHelper.handleShellConnectionResult(result);
             if (shellResponseHelper.isSuccess(response.get(Constants.CODE))) {
-                shellStatusUpdater.markConnected(shellId);
                 if ("system-info".equals(pluginId)) {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> data = (Map<String, Object>) response.get("data");
@@ -103,6 +105,7 @@ public class ShellPluginService {
 
                     shellRepository.save(shell);
                 }
+                shellStatusUpdater.markConnected(shellId);
             }
 
             return response;
@@ -116,7 +119,7 @@ public class ShellPluginService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ShellPluginStatusResponse getPluginStatus(Long shellId, String pluginId) {
         Shell shell = shellLookupHelper.requireById(shellId);
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
@@ -126,6 +129,7 @@ public class ShellPluginService {
         return toPluginStatus(plugin, connection);
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ShellPluginStatusResponse updatePlugin(Long shellId, String pluginId) {
         Shell shell = shellLookupHelper.requireById(shellId);
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
@@ -136,7 +140,7 @@ public class ShellPluginService {
         return toPluginStatus(plugin, connection);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<String, ShellPluginStatusResponse> getAllPluginStatuses(Long shellId) {
         Shell shell = shellLookupHelper.requireById(shellId);
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
@@ -151,6 +155,7 @@ public class ShellPluginService {
 
     @ShellOpLog(operation = ShellOperationType.LOAD_PLUGIN, shellId = "#shellId", pluginId = "#plugin.pluginId",
             action = "#forceRefresh ? 'refresh' : 'load'")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage,
                            boolean forceRefresh, Long shellId) {
         doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);

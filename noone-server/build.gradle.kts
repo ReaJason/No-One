@@ -44,7 +44,9 @@ dependencies {
     implementation(libs.memshell.party.packer) {
         exclude(group = "commons-logging", module = "commons-logging")
     }
+    implementation("org.hibernate.orm:hibernate-community-dialects")
     runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly("org.xerial:sqlite-jdbc")
     implementation(libs.byte.buddy)
     implementation(libs.asm.commons)
     implementation(libs.commons.lang3)

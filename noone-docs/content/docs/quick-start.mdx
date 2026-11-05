@@ -10,15 +10,34 @@ icon: Rocket
 ```txt
  .
 ├──  compose.nightly.yml
+├──  compose.postgres.yml
 └──  deploy
     └──  nginx
         └── 󱁻 default.conf
 ```
 
-使用 docker compose 命令运行 compose.nightly.yml 即可启动平台
+### SQLite（默认）
+
+使用 docker compose 命令运行 compose.nightly.yml 即可启动平台，无需单独部署数据库：
 
 ```bash
 docker compose -f compose.nightly.yml up -d
 ```
 
-启动之后访问 http://localhost ，账号密码在 noone-server 会在容器日志中展示
+SQLite 数据库保存在 `sqlite-data` Docker 数据卷中，重建容器不会丢失数据。启动之后访问 http://localhost ，账号密码会在 noone-server 容器日志中展示。
+
+### PostgreSQL（可选）
+
+需要 PostgreSQL 时，额外加载 `compose.postgres.yml`：
+
+```bash
+POSTGRES_PASSWORD=your-strong-password docker compose \
+  -f compose.nightly.yml \
+  -f compose.postgres.yml \
+  up -d
+```
+
+可通过 `POSTGRES_DB`、`POSTGRES_USER` 和 `POSTGRES_PASSWORD` 配置数据库。直接运行 JAR 时，默认数据库文件为工作目录下的 `noone.db`；设置 `SPRING_PROFILES_ACTIVE=postgresql`，并按需设置 `SPRING_DATASOURCE_URL`、`SPRING_DATASOURCE_USERNAME` 和 `SPRING_DATASOURCE_PASSWORD` 即可使用 PostgreSQL。
+
+> [!NOTE]
+> 切换数据库类型不会自动迁移已有数据。SQLite 适用于单实例部署；请定期备份数据库文件或 Docker 数据卷。

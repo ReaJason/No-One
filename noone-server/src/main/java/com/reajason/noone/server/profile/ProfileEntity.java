@@ -38,22 +38,22 @@ public class ProfileEntity {
     @Column(name = "protocol_type", nullable = false)
     private ProtocolType protocolType = ProtocolType.HTTP;
 
-    @Column(name = "identifier", columnDefinition = "jsonb")
+    @Column(name = "identifier")
     @JdbcTypeCode(SqlTypes.JSON)
     private IdentifierConfig identifier;
 
-    @Column(name = "protocol_config", columnDefinition = "jsonb")
+    @Column(name = "protocol_config")
     @JdbcTypeCode(SqlTypes.JSON)
     private ProtocolConfig protocolConfig;
 
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "request_transformations", columnDefinition = "jsonb")
+    @Column(name = "request_transformations")
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> requestTransformations;
 
-    @Column(name = "response_transformations", columnDefinition = "jsonb")
+    @Column(name = "response_transformations")
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> responseTransformations;
 

@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -139,6 +140,7 @@ public class ShellService {
      * Test shell connection
      */
     @ShellOpLog(operation = ShellOperationType.TEST, shellId = "#id")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public boolean testConnection(Long id) {
         Shell shell = shellLookupHelper.requireById(id);
 
@@ -165,6 +167,7 @@ public class ShellService {
         }
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<String, Object> initCore(Long id) {
         Shell shell = shellLookupHelper.requireById(id);
 
@@ -194,6 +197,7 @@ public class ShellService {
     }
 
     @ShellOpLog(operation = ShellOperationType.TEST, shellId = "#id", action = "'ping'")
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<String, Object> ping(Long id) {
         Shell shell = shellLookupHelper.requireById(id);
 
@@ -257,6 +261,7 @@ public class ShellService {
      * Test shell configuration without saving to database.
      * Used by create/edit pages to validate connection before saving.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public Map<String, Object> testConfig(ShellTestConfigRequest request) {
         validateRuntimeConfig(request.getStaging(), request.getLoaderProfileId());
         Shell tempShell = new Shell();

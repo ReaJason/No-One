@@ -40,3 +40,6 @@ bin/
 .DS_Store
 
 **/application-dev.yaml
+
+# Default local SQLite database and its journal/WAL files
+**/noone.db*
