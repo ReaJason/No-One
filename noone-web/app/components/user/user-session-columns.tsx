@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { UserSession } from "@/types/admin";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { CalendarIcon, Loader, Shield, Text } from "lucide-react";
 import { useFetcher } from "react-router";

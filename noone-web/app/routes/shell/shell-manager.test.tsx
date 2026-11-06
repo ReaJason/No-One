@@ -4,7 +4,7 @@ import { ShellManagerSkeleton, ShellSectionSkeleton } from "@/components/shell/s
 import {
   getActiveShellSectionPath,
   getPendingShellSectionPath,
-  loader,
+  clientLoader as loader,
   shouldRevalidate,
   shouldRevalidateShellManagerLoader,
 } from "@/routes/shell/shell-manager";
@@ -13,7 +13,7 @@ const createAuthFetchMock = vi.fn();
 const getShellConnectionByIdMock = vi.fn();
 const getPluginsMock = vi.fn();
 
-vi.mock("@/api/api.server", () => ({
+vi.mock("@/api/api", () => ({
   createAuthFetch: (...args: unknown[]) => createAuthFetchMock(...args),
 }));
 

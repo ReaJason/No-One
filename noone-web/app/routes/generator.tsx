@@ -3,7 +3,7 @@ import type { LoaderFunctionArgs } from "react-router";
 
 import { Outlet, useLoaderData, useLocation, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllProfiles } from "@/api/profile-api";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
@@ -14,13 +14,13 @@ export const handle = createBreadcrumb(() => ({
   to: "/generator",
 }));
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const authFetch = createAuthFetch(request, context);
   return { profiles: getAllProfiles(authFetch) };
 }
 
 export default function GeneratorLayout() {
-  const { profiles } = useLoaderData<typeof loader>();
+  const { profiles } = useLoaderData<typeof clientLoader>();
   const location = useLocation();
   const navigate = useNavigate();
 

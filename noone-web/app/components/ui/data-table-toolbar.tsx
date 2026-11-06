@@ -1,4 +1,4 @@
-import type { Column } from "@tanstack/react-table";
+import type { Column } from "@/lib/react-table";
 import type * as React from "react";
 
 import { X } from "lucide-react";

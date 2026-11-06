@@ -1,4 +1,16 @@
 import {
+  type Parser,
+  parseAsArrayOf,
+  parseAsInteger,
+  parseAsString,
+  type UseQueryStateOptions,
+  useQueryState,
+  useQueryStates,
+} from "nuqs";
+import * as React from "react";
+
+import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+import {
   type ColumnFiltersState,
   getCoreRowModel,
   getFacetedMinMaxValues,
@@ -15,19 +27,7 @@ import {
   type Updater,
   useReactTable,
   type VisibilityState,
-} from "@tanstack/react-table";
-import {
-  type Parser,
-  parseAsArrayOf,
-  parseAsInteger,
-  parseAsString,
-  type UseQueryStateOptions,
-  useQueryState,
-  useQueryStates,
-} from "nuqs";
-import * as React from "react";
-
-import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
+} from "@/lib/react-table";
 
 const PAGE_KEY = "page";
 const PER_PAGE_KEY = "perPage";

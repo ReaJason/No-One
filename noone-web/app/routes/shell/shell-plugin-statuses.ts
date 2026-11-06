@@ -1,10 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllPluginStatuses, updatePlugin } from "@/api/shell-api";
-import { parseShellIdParam, shellRouteError, shellRouteSuccess } from "@/lib/shell-route.server";
+import { parseShellIdParam, shellRouteError, shellRouteSuccess } from "@/lib/shell-route";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const requestId = new URL(request.url).searchParams.get("requestId")?.trim() || undefined;
   try {
     const shellId = parseShellIdParam(params.shellId);
@@ -23,7 +23,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ context, params, request }: ActionFunctionArgs) {
+export async function clientAction({ context, params, request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const requestId = String(formData.get("requestId") ?? "").trim() || undefined;
   try {

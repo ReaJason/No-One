@@ -8,7 +8,7 @@ import React from "react";
 import { data, Link, type LoaderFunctionArgs, Outlet } from "react-router";
 import { Toaster } from "sonner";
 
-import { getSession } from "@/api/sessions.server";
+import { getSession } from "@/api/session";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Icons } from "@/components/icons";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -24,11 +24,11 @@ import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { buildAuthState } from "@/lib/authz";
 import { useBreadcrumbs } from "@/lib/breadcrumb-utils";
-import { authMiddleware } from "@/middleware/auth.server";
+import { authMiddleware } from "@/middleware/auth.client";
 
-export const middleware: Route.MiddlewareFunction[] = [authMiddleware];
+export const clientMiddleware: Route.ClientMiddlewareFunction[] = [authMiddleware];
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function clientLoader({ request }: LoaderFunctionArgs) {
   const session = await getSession(request.headers.get("Cookie"));
   const user = (session.get("user") as User | null | undefined) ?? null;
 

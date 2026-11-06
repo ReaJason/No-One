@@ -89,7 +89,7 @@ type OperationStatus = "running" | "success" | "error" | "cancelled";
 
 interface FileManagerProps {
   initialState: FileManagerInitialState;
-  initialDirectory: Record<string, unknown>;
+  initialDirectory: Record<string, unknown> | null;
   dataPath: string;
 }
 
@@ -711,7 +711,7 @@ export default function FileManager({
   const osFamily = initialState.osFamily;
   const locations: FileManagerLocation[] = initialState.locations;
   const initialDirectoryState = useMemo(
-    () => parseDirectoryListingResult(initialDirectory, initialState.cwd, osFamily),
+    () => parseDirectoryListingResult(initialDirectory ?? {}, initialState.cwd, osFamily),
     [initialDirectory, initialState.cwd, osFamily],
   );
   const [entries, setEntries] = useState<FileNode[]>(initialDirectoryState.entries);
@@ -725,7 +725,7 @@ export default function FileManager({
   );
   const [openedFilePath, setOpenedFilePath] = useState<string | null>(null);
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialDirectory == null);
   const [loadingFile, setLoadingFile] = useState(false);
   const [isEditorMounted, setIsEditorMounted] = useState(false);
   const [selection, setSelection] = useState<FileSelectionState>(EMPTY_SELECTION);
@@ -1210,9 +1210,20 @@ export default function FileManager({
     setSelection(EMPTY_SELECTION);
     setContextMenuTargetPath(null);
     setNameFilter("");
-    setLoading(false);
+    if (initialDirectory == null) {
+      void navigateToDirectory(initialState.cwd);
+    } else {
+      setLoading(false);
+    }
     setListVersion((prev) => prev + 1);
-  }, [initialDirectoryState.entries, initialDirectoryState.path, initialState.activeLocationId]);
+  }, [
+    initialDirectory,
+    initialDirectoryState.entries,
+    initialDirectoryState.path,
+    initialState.activeLocationId,
+    initialState.cwd,
+    navigateToDirectory,
+  ]);
 
   useLayoutEffect(() => {
     if (listVersion <= 0) {

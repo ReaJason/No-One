@@ -6,6 +6,13 @@ import { useLoaderData, useLocation } from "react-router";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
 import {
+  dispatchShellPluginFromRoute,
+  parseShellIdParam,
+  parseShellRouteFormData,
+  shellRouteError,
+  shellRouteSuccess,
+} from "@/lib/shell-route";
+import {
   clearShellNavigationTrace,
   createShellRouteTraceId,
   getShellNavigationDurationMs,
@@ -13,13 +20,6 @@ import {
   logShellRouteDebug,
   readShellNavigationTrace,
 } from "@/lib/shell-route-debug";
-import {
-  dispatchShellPluginFromRoute,
-  parseShellIdParam,
-  parseShellRouteFormData,
-  shellRouteError,
-  shellRouteSuccess,
-} from "@/lib/shell-route.server";
 
 import { useShellManagerContext } from "./shell-manager-context";
 
@@ -36,7 +36,7 @@ const HttpRepeater = lazy(async () => {
 type ShellRepeaterRouteData = Record<string, never>;
 type ShellRepeaterLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
 
-export function loader({ context, params, request }: LoaderFunctionArgs) {
+export function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const traceId = createShellRouteTraceId();
   const url = new URL(request.url);
   logShellRouteDebug("shell-repeater", "loader start", {
@@ -73,7 +73,7 @@ async function loadShellRepeaterRouteData(
   return {};
 }
 
-export async function action({ context, params, request }: ActionFunctionArgs) {
+export async function clientAction({ context, params, request }: ActionFunctionArgs) {
   let requestId: string | undefined;
   try {
     const shellId = parseShellIdParam(params.shellId);

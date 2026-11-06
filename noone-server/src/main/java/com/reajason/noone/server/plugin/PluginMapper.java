@@ -16,6 +16,7 @@ public interface PluginMapper {
     @Mapping(target = "source", ignore = true)
     Plugin toEntity(PluginCreateRequest request);
 
+    @Mapping(target = "databaseId", source = "id")
     @Mapping(target = "id", source = "pluginId")
     @Mapping(target = "source", expression = "java(plugin.getSource() != null ? plugin.getSource().name() : null)")
     PluginResponse toResponse(Plugin plugin);

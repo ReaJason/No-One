@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api/api.server";
+import type { AuthFetch } from "@/api/api";
 import type { LoginLog, LoginLogStatus, User, UserSession, UserStatus } from "@/types/admin";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 
@@ -101,7 +101,6 @@ export interface CreateUserRequest {
   username: string;
   password: string;
   email: string;
-  status?: UserStatus;
   roleIds: number[];
 }
 

@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { Permission, Role } from "@/types/admin";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { Edit, Key, Loader, MoreHorizontal, Text, Trash2 } from "lucide-react";
 import { useState } from "react";

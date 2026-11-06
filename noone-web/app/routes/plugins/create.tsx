@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "react-router";
 
 import { redirect, useActionData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { createPlugin } from "@/api/plugin-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { PluginUploadForm } from "@/components/plugin/plugin-upload-form";
@@ -12,7 +12,7 @@ import {
   type PluginActionData,
 } from "@/routes/plugins/plugin-form.shared";
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const parsed = parsePluginFormData(await request.formData());
   if ("errors" in parsed) {
     return {

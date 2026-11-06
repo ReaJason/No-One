@@ -91,7 +91,6 @@ export function parseUserFormData(
         username: values.username,
         password: values.password,
         email: values.email,
-        status: values.status,
         roleIds: values.roleIds,
       },
       roleIds: values.roleIds,

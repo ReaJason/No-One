@@ -5,9 +5,9 @@ import {
   parseShellIdParam,
   shellRouteError,
   shellRouteSuccess,
-} from "@/lib/shell-route.server";
+} from "@/lib/shell-route";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const requestId = new URL(request.url).searchParams.get("requestId")?.trim() || undefined;
 
   try {

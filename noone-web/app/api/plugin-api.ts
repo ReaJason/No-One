@@ -1,4 +1,4 @@
-import type { AuthFetch } from "@/api/api.server";
+import type { AuthFetch } from "@/api/api";
 import type { PaginatedResponse, ServerPaginatedResponse } from "@/types/api";
 import type { CatalogResponse, Plugin } from "@/types/plugin";
 

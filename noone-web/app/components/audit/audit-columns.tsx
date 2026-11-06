@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { AuditLog } from "@/types/audit";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { CalendarIcon, Eye, Shield, Text } from "lucide-react";
 import React, { useState } from "react";

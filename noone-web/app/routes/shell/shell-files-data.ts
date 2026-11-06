@@ -6,7 +6,7 @@ import {
   parseShellRouteFormData,
   shellRouteError,
   shellRouteSuccess,
-} from "@/lib/shell-route.server";
+} from "@/lib/shell-route";
 
 function getNumberParam(value: string | null): number | undefined {
   if (value == null || value.trim() === "") {
@@ -16,7 +16,7 @@ function getNumberParam(value: string | null): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const requestId = new URL(request.url).searchParams.get("requestId")?.trim() || undefined;
 
   try {
@@ -54,7 +54,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   }
 }
 
-export async function action({ context, params, request }: ActionFunctionArgs) {
+export async function clientAction({ context, params, request }: ActionFunctionArgs) {
   try {
     const shellId = parseShellIdParam(params.shellId);
     const { payload, requestId } = await parseShellRouteFormData<Record<string, unknown>>(request);

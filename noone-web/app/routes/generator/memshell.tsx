@@ -6,7 +6,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { Form, useActionData, useLoaderData, useNavigation } from "react-router";
 import { toast } from "sonner";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { generate, getMainConfig, getPackers, getServers } from "@/api/memshell-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import MainConfigCard from "@/components/memshell/main-config-card";
@@ -45,7 +45,7 @@ const urlPatternIsNeeded = (shellType: string) => {
 const isInvalidUrl = (urlPattern: string | undefined) =>
   urlPattern === "/" || urlPattern === "/*" || !urlPattern?.startsWith("/") || !urlPattern;
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const authFetch = createAuthFetch(request, context);
 
   return {
@@ -55,7 +55,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   // Extract form data
@@ -146,7 +146,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 export default function MemShell() {
   const { serverConfig, mainConfig, packerConfig } = useLoaderData() as MemShellLoaderData;
   const { profiles } = useGeneratorContext();
-  const actionData = useActionData<typeof action>();
+  const actionData = useActionData<typeof clientAction>();
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";
 

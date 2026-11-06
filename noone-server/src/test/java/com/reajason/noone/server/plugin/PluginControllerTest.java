@@ -46,6 +46,7 @@ class PluginControllerTest {
 
         mockMvc.perform(get("/api/plugins/{id}", plugin.getId()))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.databaseId").value(plugin.getId()))
                 .andExpect(jsonPath("$.id").value("test-id"))
                 .andExpect(jsonPath("$.name").value("test-plugin"))
                 .andExpect(jsonPath("$.language").value("java"))

@@ -13,7 +13,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { createProfile, getProfileById, updateProfile } from "@/api/profile-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
@@ -29,7 +29,7 @@ type LoaderData = {
   profile?: Profile;
 };
 
-export async function loader({
+export async function clientLoader({
   context,
   params,
   request,
@@ -44,7 +44,7 @@ export async function loader({
   return { profile };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const mode = params.profileId ? "edit" : "create";
   const parsed = parseProfileFormData(await request.formData(), { mode });
   if ("errors" in parsed) {

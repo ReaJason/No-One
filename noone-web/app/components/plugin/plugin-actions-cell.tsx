@@ -73,7 +73,7 @@ export const PluginActionsCell = React.memo(function PluginActionsCell({
         <DropdownMenuContent align="end">
           <DropdownMenuGroup>
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigate(`/plugins/edit/${plugin.id}`)}>
+            <DropdownMenuItem onClick={() => navigate(`/plugins/edit/${plugin.databaseId}`)}>
               <Edit className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
@@ -98,7 +98,7 @@ export const PluginActionsCell = React.memo(function PluginActionsCell({
         <AlertDialogContent>
           <deleteFetcher.Form method="post" action="/plugins">
             <input type="hidden" name="intent" value="delete" />
-            <input type="hidden" name="pluginDbId" value={String(plugin.id)} />
+            <input type="hidden" name="pluginDbId" value={String(plugin.databaseId)} />
             <AlertDialogHeader>
               <AlertDialogTitle>Are you sure you want to delete this plugin?</AlertDialogTitle>
               <AlertDialogDescription>

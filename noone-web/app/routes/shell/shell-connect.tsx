@@ -17,7 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useFetcher, useLoaderData, useNavigate } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getShellConnectionById, initShellCore, pingShell } from "@/api/shell-connection-api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { Badge } from "@/components/ui/badge";
@@ -126,7 +126,7 @@ function logColorClassName(level: ConnectLog["level"]): string {
   }
 }
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;
   if (!shellId) {
     throw new Response("Invalid shell ID", { status: 400 });
@@ -141,7 +141,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
   return { shell };
 }
 
-export async function action({ context, params, request }: ActionFunctionArgs) {
+export async function clientAction({ context, params, request }: ActionFunctionArgs) {
   const shellId = Number(params.shellId);
   if (!Number.isInteger(shellId) || shellId <= 0) {
     return { success: false, error: "Invalid shell ID", intent: null };

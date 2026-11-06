@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { Profile } from "@/types/profile";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { Edit, Loader, MoreHorizontal, Trash2 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";

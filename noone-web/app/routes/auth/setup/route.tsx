@@ -4,8 +4,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
 
-import { createPublicApi } from "@/api/api.server";
-import { commitSession, getSession } from "@/api/sessions.server";
+import { createPublicApi } from "@/api/api";
+import { commitSession, getSession } from "@/api/session";
 import {
   authInputClassName,
   authLabelClassName,
@@ -37,7 +37,7 @@ function getFormString(formData: FormData, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function clientLoader({ request }: LoaderFunctionArgs) {
   const token = new URL(request.url).searchParams.get("token");
 
   if (!token) {
@@ -47,7 +47,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return { token };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function clientAction({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const setupToken = getFormString(formData, "token") ?? "";
   const newPassword = getFormString(formData, "newPassword") ?? "";
@@ -81,11 +81,8 @@ export async function action({ request }: ActionFunctionArgs) {
     session.set("refreshToken", response.refreshToken);
     session.set("user", response.user);
 
-    return redirect("/", {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+    commitSession(session);
+    return redirect("/");
   } catch (error: any) {
     console.error("Setup activation error:", error);
     return {

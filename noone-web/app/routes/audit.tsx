@@ -5,7 +5,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import React, { use } from "react";
 import { useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAuditLogs, loadAuditSearchParams } from "@/api/audit-api";
 import { auditColumns } from "@/components/audit/audit-columns";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
@@ -14,7 +14,7 @@ import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { useDataTable } from "@/hooks/use-data-table";
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const { module, action, username, success, page, perPage, sortBy, sortOrder } =
     loadAuditSearchParams(request);
   const authFetch = createAuthFetch(request, context);

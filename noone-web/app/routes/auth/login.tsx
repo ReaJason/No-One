@@ -14,8 +14,8 @@ import {
   useNavigation,
 } from "react-router";
 
-import { createPublicApi } from "@/api/api.server";
-import { commitSession, getSession } from "@/api/sessions.server";
+import { createPublicApi } from "@/api/api";
+import { commitSession, getSession } from "@/api/session";
 import {
   authInputClassName,
   authLabelClassName,
@@ -76,7 +76,7 @@ function getFormString(formData: FormData, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function clientLoader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const returnTo = normalizeReturnTo(url.searchParams.get("returnTo"));
   const session = await getSession(request.headers.get("Cookie"));
@@ -90,7 +90,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return data({ error, returnTo });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function clientAction({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const username = (getFormString(formData, "username") ?? "").trim();
   const password = getFormString(formData, "password") ?? "";
@@ -128,11 +128,8 @@ export async function action({ request }: ActionFunctionArgs) {
       session.unset("user");
       session.set("pending2faActionToken", response.actionToken);
       session.set("pending2faReturnTo", returnTo);
-      return redirect("/auth/verify-2fa", {
-        headers: {
-          "Set-Cookie": await commitSession(session),
-        },
-      });
+      commitSession(session);
+      return redirect("/auth/verify-2fa");
     }
 
     if (!isLoginApiSuccess(response)) {
@@ -148,11 +145,8 @@ export async function action({ request }: ActionFunctionArgs) {
     session.set("user", response.user);
     session.unset("pending2faActionToken");
     session.unset("pending2faReturnTo");
-    return redirect(returnTo, {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+    commitSession(session);
+    return redirect(returnTo);
   } catch (error: any) {
     const detailMessage =
       error?.details?.message ?? error?.details?.error ?? error?.message ?? "Login failed";
@@ -187,7 +181,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 function LoginForm({ className, ...props }: ComponentProps<"div">) {
-  const { returnTo } = useLoaderData<typeof loader>();
+  const { returnTo } = useLoaderData<typeof clientLoader>();
   const actionData = useActionData() as LoginActionData | undefined;
   const navigation = useNavigation();
   const isSubmitting = navigation.state === "submitting";

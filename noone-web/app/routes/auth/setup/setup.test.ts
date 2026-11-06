@@ -6,16 +6,19 @@ const { createPublicApiMock, getSessionMock, commitSessionMock } = vi.hoisted(()
   commitSessionMock: vi.fn(),
 }));
 
-vi.mock("@/api/api.server", () => ({
+vi.mock("@/api/api", () => ({
   createPublicApi: createPublicApiMock,
 }));
 
-vi.mock("@/api/sessions.server", () => ({
+vi.mock("@/api/session", () => ({
   getSession: getSessionMock,
   commitSession: commitSessionMock,
 }));
 
-import { action as setupAction, loader as setupLoader } from "@/routes/auth/setup/route";
+import {
+  clientAction as setupAction,
+  clientLoader as setupLoader,
+} from "@/routes/auth/setup/route";
 
 describe("auth setup flow", () => {
   beforeEach(() => {

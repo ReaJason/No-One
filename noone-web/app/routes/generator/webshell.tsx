@@ -6,7 +6,7 @@ import { Suspense, use, useCallback, useEffect, useMemo, useRef, useState } from
 import { Form, useActionData, useNavigation } from "react-router";
 import { toast } from "sonner";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import {
   generateWebShell,
   type WebShellFormat,
@@ -107,7 +107,7 @@ function getCodeViewerLanguage(format: string) {
   return "java";
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
 
   const body: WebShellGenerateRequest = {
@@ -141,7 +141,7 @@ export default function WebShell() {
 
 function DeferredWebShellContent({ profilesPromise }: { profilesPromise: Promise<Profile[]> }) {
   const profiles = use(profilesPromise);
-  const actionData = useActionData<typeof action>();
+  const actionData = useActionData<typeof clientAction>();
   const navigation = useNavigation();
   const isGenerating = navigation.state === "submitting";
   const [selectedProfileId, setSelectedProfileId] = useState<string>(profiles[0]?.id ?? "");

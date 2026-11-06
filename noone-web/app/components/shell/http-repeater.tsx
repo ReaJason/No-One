@@ -61,11 +61,11 @@ interface HttpRepeaterProps {
 }
 
 function createPair(): KeyValuePair {
-  return { id: crypto.randomUUID(), key: "", value: "" };
+  return { id: createShellRouteRequestId(), key: "", value: "" };
 }
 
 function createFormEntry(): FormDataEntry {
-  return { id: crypto.randomUUID(), key: "", value: "", type: "text" };
+  return { id: createShellRouteRequestId(), key: "", value: "", type: "text" };
 }
 
 function getStatusColor(code: number): string {

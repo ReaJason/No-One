@@ -1,7 +1,7 @@
 "use client";
 
+import type { Column } from "@/lib/react-table";
 import type { ExtendedColumnFilter } from "@/types/data-table";
-import type { Column } from "@tanstack/react-table";
 
 import * as React from "react";
 

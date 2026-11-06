@@ -1,96 +1,25 @@
-import { lazy, Suspense, use, useState } from "react";
-import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router";
+import { lazy, Suspense } from "react";
 
-import { createAuthFetch } from "@/api/api.server";
-import * as shellApi from "@/api/shell-api";
-import * as opLogApi from "@/api/shell-operation-log-api";
 import PluginRuntimeStatusCard from "@/components/shell/plugin-runtime-status";
 import { ShellSectionSkeleton } from "@/components/shell/shell-route-loading";
-import { parseShellIdParam } from "@/lib/shell-route.server";
+import { useShellPluginSnapshot } from "@/hooks/use-shell-plugin-snapshot";
+
+import { useShellManagerContext } from "./shell-manager-context";
 
 const ProcessMonitor = lazy(() => import("@/components/shell/process-monitor"));
 
-type ShellProcessesRouteData = {
-  processData: unknown;
-  error: string | null;
-};
-type ShellProcessesLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
-
-export function loader({ context, params, request }: LoaderFunctionArgs) {
-  return {
-    routeData: loadShellProcessesRouteData({ context, params, request }),
-  };
-}
-
-const DISPATCH_TIMEOUT_MS = 20_000;
-
-async function loadShellProcessesRouteData({
-  context,
-  params,
-  request,
-}: ShellProcessesLoaderArgs): Promise<ShellProcessesRouteData> {
-  const shellId = parseShellIdParam(params.shellId);
-  const url = new URL(request.url);
-  const forceRefresh = url.searchParams.has("forceRefresh");
-  const authFetch = createAuthFetch(request, context);
-  const cachedResult = forceRefresh
-    ? null
-    : await opLogApi
-        .getLatestShellOperation(shellId, "process-monitor", authFetch)
-        .catch(() => null);
-
-  try {
-    if (cachedResult?.result) {
-      return { processData: cachedResult.result, error: null };
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), DISPATCH_TIMEOUT_MS);
-    try {
-      const data = await shellApi.dispatchPlugin(
-        { id: shellId, pluginId: "process-monitor" },
-        authFetch,
-        { signal: controller.signal },
-      );
-      return { processData: data, error: null };
-    } finally {
-      clearTimeout(timeout);
-    }
-  } catch (err: any) {
-    const message =
-      err.name === "AbortError"
-        ? "Request timed out — the remote shell may be unresponsive"
-        : err.message || "Unknown error";
-    return {
-      processData: null,
-      error: `Failed to load process data: ${message}`,
-    };
-  }
-}
-
 export default function ShellProcessesRoute() {
-  const { routeData } = useLoaderData() as {
-    routeData: Promise<ShellProcessesRouteData>;
-  };
-  return (
-    <Suspense fallback={<ShellSectionSkeleton variant="list" />}>
-      <ShellProcessesContent routeData={routeData} />
-    </Suspense>
-  );
-}
-
-function ShellProcessesContent({ routeData }: { routeData: Promise<ShellProcessesRouteData> }) {
-  const { processData, error } = use(routeData);
-  const navigate = useNavigate();
-
-  const [refreshing, setRefreshing] = useState(false);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    navigate(`?forceRefresh=${Date.now()}`, { replace: true });
-    setTimeout(() => setRefreshing(false), 500);
-  };
-
+  const { shell } = useShellManagerContext();
+  const {
+    data: processData,
+    error,
+    loading,
+    refresh,
+  } = useShellPluginSnapshot({
+    shellId: shell.id,
+    pluginId: "process-monitor",
+    errorPrefix: "Failed to load process data",
+  });
   const data = (processData as any)?.data;
 
   return (
@@ -101,6 +30,7 @@ function ShellProcessesContent({ routeData }: { routeData: Promise<ShellProcesse
           {error}
         </div>
       )}
+      {loading && !data && <ShellSectionSkeleton variant="list" showStatusCard={false} />}
       {data && (
         <div className="min-h-0 flex-1 overflow-hidden">
           <Suspense
@@ -112,7 +42,7 @@ function ShellProcessesContent({ routeData }: { routeData: Promise<ShellProcesse
               />
             }
           >
-            <ProcessMonitor data={data} onRefresh={handleRefresh} refreshing={refreshing} />
+            <ProcessMonitor data={data} onRefresh={() => void refresh()} refreshing={loading} />
           </Suspense>
         </div>
       )}

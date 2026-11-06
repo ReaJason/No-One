@@ -36,6 +36,7 @@ export type TaskStatus =
   | "CANCELLED";
 
 export interface Plugin {
+  databaseId: number;
   id: string;
   name: string;
   version: string;

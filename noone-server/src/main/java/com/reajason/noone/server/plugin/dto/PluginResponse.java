@@ -7,6 +7,7 @@ import java.util.Map;
 
 @Data
 public class PluginResponse {
+    private Long databaseId;
     private String id;
     private String name;
     private String version;

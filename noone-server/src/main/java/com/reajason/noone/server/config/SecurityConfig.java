@@ -49,11 +49,13 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/login",
                                 "/api/auth/verify-2fa",
+                                "/api/auth/password/change-required",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
                                 "/api/setup/**"
                         ).permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().permitAll()
                 )
                 .addFilterAfter(jwtAuthenticationFilter, LogoutFilter.class);
 

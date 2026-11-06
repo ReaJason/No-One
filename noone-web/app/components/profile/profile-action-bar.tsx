@@ -1,5 +1,5 @@
+import type { Table } from "@/lib/react-table";
 import type { Profile } from "@/types/profile";
-import type { Table } from "@tanstack/react-table";
 
 import { Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";

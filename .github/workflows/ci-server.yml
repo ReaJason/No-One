@@ -10,6 +10,7 @@ on:
       - "gradlew"
       - "gradlew.bat"
       - "noone-core/**"
+      - "noone-web/**"
       - "noone-server/**"
   push:
     branches:
@@ -22,6 +23,7 @@ on:
       - "gradlew"
       - "gradlew.bat"
       - "noone-core/**"
+      - "noone-web/**"
       - "noone-server/**"
 
 concurrency:
@@ -50,6 +52,11 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5

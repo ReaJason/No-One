@@ -6,7 +6,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { deletePermission, getPermissions, loadPermissionSearchParams } from "@/api/permission-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
@@ -17,7 +17,7 @@ import { permissionColumns } from "@/components/permission/permission-columns";
 import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const { name, page, perPage, sortBy, sortOrder } = loadPermissionSearchParams(request);
   const authFetch = createAuthFetch(request, context);
   const permissionResponse = getPermissions(
@@ -36,7 +36,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   if (formData.get("intent") !== "delete") {
     return { errors: { general: "Unsupported action" } };
