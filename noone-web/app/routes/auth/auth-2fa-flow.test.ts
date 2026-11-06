@@ -6,19 +6,19 @@ const { createPublicApiMock, getSessionMock, commitSessionMock } = vi.hoisted(()
   commitSessionMock: vi.fn(),
 }));
 
-vi.mock("@/api/api.server", () => ({
+vi.mock("@/api/api", () => ({
   createPublicApi: createPublicApiMock,
 }));
 
-vi.mock("@/api/sessions.server", () => ({
+vi.mock("@/api/session", () => ({
   getSession: getSessionMock,
   commitSession: commitSessionMock,
 }));
 
-import { action as loginAction } from "@/routes/auth/login";
+import { clientAction as loginAction } from "@/routes/auth/login";
 import {
-  action as verifyTwoFactorAction,
-  loader as verifyTwoFactorLoader,
+  clientAction as verifyTwoFactorAction,
+  clientLoader as verifyTwoFactorLoader,
 } from "@/routes/auth/verify-2fa";
 
 type SessionStore = {

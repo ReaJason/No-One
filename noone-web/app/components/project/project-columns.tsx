@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { Project } from "@/types/project";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { CalendarIcon, Edit, Loader, MoreHorizontal, Terminal, Trash2 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";

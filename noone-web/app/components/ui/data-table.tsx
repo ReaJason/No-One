@@ -1,15 +1,3 @@
-import {
-  type ColumnDef,
-  type ColumnFiltersState,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  type SortingState,
-  useReactTable,
-  type VisibilityState,
-} from "@tanstack/react-table";
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
 
@@ -30,8 +18,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  type ColumnDef,
+  type ColumnFiltersState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type RowData,
+  type SortingState,
+  useReactTable,
+  type VisibilityState,
+} from "@/lib/react-table";
 
-interface DataTableProps<TData, TValue> {
+interface DataTableProps<TData extends RowData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   searchKey?: string;
@@ -40,7 +41,7 @@ interface DataTableProps<TData, TValue> {
   loading?: boolean;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   searchKey,
@@ -53,9 +54,9 @@ export function DataTable<TData, TValue>({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
-  const table = useReactTable({
+  const table = useReactTable<TData>({
     data,
-    columns,
+    columns: columns as ColumnDef<TData, unknown>[],
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),

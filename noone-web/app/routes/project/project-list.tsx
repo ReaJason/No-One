@@ -6,7 +6,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { deleteProject, getProjects, loadProjectSearchParams } from "@/api/project-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useDataTable } from "@/hooks/use-data-table";
 import { createBreadcrumb } from "@/lib/breadcrumb-utils";
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const { name, status, page, perPage, sortBy, sortOrder } = loadProjectSearchParams(request);
   const authFetch = createAuthFetch(request, context);
   const projectResponse = getProjects(
@@ -31,7 +31,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   if (formData.get("intent") !== "delete") {
     return { errors: { general: "Unsupported action" } };

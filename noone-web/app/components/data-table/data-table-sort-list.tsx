@@ -1,6 +1,6 @@
 "use client";
 
-import type { ColumnSort, Table } from "@tanstack/react-table";
+import type { ColumnSort, Table } from "@/lib/react-table";
 
 import { ArrowDownUp, ChevronsUpDown, GripVertical, Trash2 } from "lucide-react";
 import * as React from "react";

@@ -7,7 +7,7 @@ interface ServerErrorBoundaryProps {
   onRetry?: () => void;
   /** Pass the error object to show stack trace in dev mode */
   error?: Error | null;
-  /** Override dev mode detection (defaults to process.env.NODE_ENV === "development") */
+  /** Override dev mode detection (defaults to import.meta.env.DEV) */
   devMode?: boolean;
 }
 
@@ -17,7 +17,7 @@ export function ServerErrorBoundary({
   showRetry = true,
   onRetry,
   error,
-  devMode = process.env.NODE_ENV === "development",
+  devMode = import.meta.env.DEV,
 }: ServerErrorBoundaryProps) {
   const devError = devMode ? (error ?? undefined) : undefined;
   const stackTrace = devError?.stack;

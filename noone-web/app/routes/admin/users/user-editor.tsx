@@ -12,7 +12,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllRoles } from "@/api/role-api";
 import { createUser, getUserById, syncUserRoles, updateUser } from "@/api/user-api";
 import { FormPageShell } from "@/components/form-page-shell";
@@ -31,7 +31,7 @@ type LoaderData = {
   user?: UserType;
 };
 
-export async function loader({
+export async function clientLoader({
   request,
   context,
   params,
@@ -57,7 +57,7 @@ export async function loader({
   };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const userId = params.userId;
   const formData = await request.formData();
   const mode = userId ? "edit" : "create";

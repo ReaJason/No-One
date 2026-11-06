@@ -1,19 +1,10 @@
-import type { RouterContextProvider } from "react-router";
-
 import { type FetchOptions, type IFetchError, ofetch } from "ofetch";
 
-import {
-  getAuthRefreshPromise,
-  getRefreshedAccessToken,
-  setAuthRefreshPromise,
-  setRefreshedAccessToken,
-} from "@/api/auth-context.server";
-import { pendingCookieContext } from "@/api/context.server";
-import { commitSession, getSession } from "@/api/sessions.server";
+import { commitSession, getSession } from "@/api/session";
 import { AuthRedirectError } from "@/lib/auth-redirect-error";
 import { ApiClientError, type LoginResponse } from "@/types/api";
 
-const BASE_URL = process.env.INTERNAL_API_BASE_URL ?? import.meta.env.INTERNAL_API_BASE_URL;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const BACKEND_UNAVAILABLE_MESSAGE = "Backend service is unavailable";
 const BACKEND_UNAVAILABLE_PATTERNS = [
   "no response",
@@ -33,6 +24,8 @@ const BACKEND_UNAVAILABLE_PATTERNS = [
   "bad gateway",
   "upstream connect error",
 ];
+
+let authRefreshPromise: Promise<LoginResponse | null> | null = null;
 
 function isBackendUnavailableMessage(message?: string): boolean {
   if (!message) {
@@ -118,13 +111,10 @@ async function refreshTokens(refreshToken: string): Promise<LoginResponse | null
 
 export type AuthFetch = <T>(endpoint: string, options?: FetchOptions<"json", any>) => Promise<T>;
 
-export function createAuthFetch(
-  request: Request,
-  context: Readonly<RouterContextProvider>,
-): AuthFetch {
+export function createAuthFetch(_request: Request, _context?: unknown): AuthFetch {
   return async <T>(endpoint: string, options: FetchOptions<"json", any> = {}): Promise<T> => {
-    const session = await getSession(request.headers.get("Cookie"));
-    let accessToken = getRefreshedAccessToken() ?? session.get("accessToken");
+    const session = getSession();
+    const accessToken = session.get("accessToken");
     const refreshToken = session.get("refreshToken");
 
     if (!accessToken || !refreshToken) {
@@ -135,17 +125,13 @@ export function createAuthFetch(
         ...options,
         async onRequest({ options }) {
           const headers = new Headers(options.headers);
-          const forwardedHeaders = pickForwardHeaders(request);
-          for (const [key, value] of Object.entries(forwardedHeaders)) {
-            headers.set(key, value);
-          }
           headers.set("Authorization", `Bearer ${token}`);
           options.headers = headers;
         },
         async onRequestError({ error }: any) {
           sanitizeRequestError(error);
         },
-        async onResponseError({ r, response }: any) {
+        async onResponseError({ response }: any) {
           const error = createApiClientErrorFromResponse(response);
           if (response.status === 404) {
             throw new Response("Resource not found", {
@@ -165,76 +151,36 @@ export function createAuthFetch(
         throw error;
       }
 
-      let refreshPromise = getAuthRefreshPromise<LoginResponse | null>();
-      if (!refreshPromise) {
-        refreshPromise = refreshTokens(refreshToken);
-        setAuthRefreshPromise(refreshPromise);
+      if (!authRefreshPromise) {
+        authRefreshPromise = refreshTokens(refreshToken);
       }
+      const refreshPromise = authRefreshPromise;
       const newTokens = await refreshPromise.finally(() => {
-        if (getAuthRefreshPromise() === refreshPromise) {
-          setAuthRefreshPromise(null);
+        if (authRefreshPromise === refreshPromise) {
+          authRefreshPromise = null;
         }
       });
       if (!newTokens) {
         throw new AuthRedirectError("refresh-failed");
       }
 
-      setRefreshedAccessToken(newTokens.token);
       session.set("accessToken", newTokens.token);
       session.set("refreshToken", newTokens.refreshToken);
       session.set("user", newTokens.user);
-      context.set(pendingCookieContext, await commitSession(session));
+      commitSession(session);
       return await doRequest(newTokens.token);
     }
   };
 }
 
-export function createPublicApi(request: Request) {
+export function createPublicApi(_request: Request) {
   return ofetch.create({
     baseURL: BASE_URL,
-    async onRequest({ options }) {
-      const headers = new Headers(options.headers);
-      const forwardedHeaders = pickForwardHeaders(request);
-      for (const [key, value] of Object.entries(forwardedHeaders)) {
-        headers.set(key, value);
-      }
-      options.headers = headers;
-    },
     async onRequestError({ error }: any) {
       sanitizeRequestError(error);
     },
-    async onResponseError({ request, response }: any) {
+    async onResponseError({ response }: any) {
       throw createApiClientErrorFromResponse(response);
     },
   });
-}
-
-export const FORWARD_HEADERS = [
-  "cookie",
-  "authorization",
-  "accept-language",
-  "x-request-id",
-  "x-trace-id",
-  "x-forwarded-for",
-  "x-real-ip",
-  "x-forwarded-proto",
-  "x-forwarded-host",
-] as const;
-export function pickForwardHeaders(requestOrHeaders: Request | Headers): Record<string, string> {
-  const headers = requestOrHeaders instanceof Request ? requestOrHeaders.headers : requestOrHeaders;
-
-  const result: Record<string, string> = {};
-  for (const key of FORWARD_HEADERS) {
-    const value = headers.get(key);
-    if (value) {
-      result[key] = value;
-    }
-  }
-  const ua = headers.get("user-agent");
-  if (ua) {
-    result["user-agent"] = ua;
-    result["x-forwarded-by"] = "ssr-node";
-  }
-
-  return result;
 }

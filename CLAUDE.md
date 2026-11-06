@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Polyglot web shell manager with a multi-language plugin system (Java, Node.js, .NET). Gradle monorepo for Java modules; `noone-web` (Bun) and `noone-docs` (NPM) are separate, not part of Gradle.
+Polyglot web shell manager with a multi-language plugin system (Java, Node.js, .NET). Gradle monorepo for Java modules; `noone-web` (Bun) remains a separate frontend project, and the server Gradle build packages its SPA output into the boot JAR. `noone-docs` (NPM) is separate, not part of Gradle.
 
 ## Build & Test Commands
 

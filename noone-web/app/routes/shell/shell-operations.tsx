@@ -5,7 +5,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import React, { use, useMemo } from "react";
 import { useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getShellOperationLogs } from "@/api/shell-operation-log-api";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableSkeleton } from "@/components/data-table/data-table-skeleton";
@@ -14,7 +14,7 @@ import { getShellManagerOperationColumns } from "@/components/shell/shell-operat
 import { useDataTable } from "@/hooks/use-data-table";
 import { loadShellManagerOperationSearchParams } from "@/lib/shell-operation-search-param";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string;
   const { pluginId, operation, success, page, perPage, sortBy, sortOrder } =
     loadShellManagerOperationSearchParams(request);

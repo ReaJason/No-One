@@ -1,5 +1,5 @@
+import type { Table } from "@/lib/react-table";
 import type { Plugin } from "@/types/plugin";
-import type { Table } from "@tanstack/react-table";
 
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";

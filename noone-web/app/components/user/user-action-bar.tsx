@@ -1,5 +1,5 @@
+import type { Table } from "@/lib/react-table";
 import type { User } from "@/types/admin";
-import type { Table } from "@tanstack/react-table";
 
 import { ArrowUp, CheckCircle2, Download, Trash2, X } from "lucide-react";
 import React from "react";

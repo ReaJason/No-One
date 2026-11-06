@@ -45,8 +45,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -93,6 +96,20 @@ class SQLiteIntegrationTest {
 
     @MockitoBean
     private ShellConnectionPool shellConnectionPool;
+
+    @Test
+    void servesSpaIndexForClientSideRoutesWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("index.html"));
+
+        for (String path : List.of("/auth/login", "/shells/42/files")) {
+            mockMvc.perform(get(path))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                    .andExpect(content().string(containsString("\"isSpaMode\":true")));
+        }
+    }
 
     @Test
     void startsWithSqliteAndPersistsEntities() throws Exception {
@@ -206,6 +223,15 @@ class SQLiteIntegrationTest {
         assertThat(dispatchedShell.getStatus()).isEqualTo(ShellStatus.CONNECTED);
         assertThat(dispatchedShell.getOs()).isEqualTo("linux");
         assertThat(dispatchedShell.getArch()).isEqualTo("amd64");
+    }
+
+    @Test
+    void requiredPasswordChangeEndpointReachesControllerWithoutAuthentication() throws Exception {
+        mockMvc.perform(post("/api/auth/password/change-required")
+                        .header("Password-Change-Token", createAccessToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newPassword\":\"NewPass1!\"}"))
+                .andExpect(status().isForbidden());
     }
 
     private String createAccessToken() {

@@ -14,7 +14,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { createProject, getProjectById, updateProject } from "@/api/project-api";
 import { getAllUsers } from "@/api/user-api";
 import { FormPageShell } from "@/components/form-page-shell";
@@ -32,7 +32,7 @@ type LoaderData = {
   users: User[];
 };
 
-export async function loader({
+export async function clientLoader({
   context,
   params,
   request,
@@ -53,7 +53,7 @@ export async function loader({
   return { project, users };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const mode = params.projectId ? "edit" : "create";
   const parsed = parseProjectFormData(await request.formData(), { mode });
   if ("errors" in parsed) {

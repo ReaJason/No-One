@@ -1,4 +1,4 @@
-import type { Table } from "@tanstack/react-table";
+import type { Table } from "@/lib/react-table";
 
 import { Loader, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";

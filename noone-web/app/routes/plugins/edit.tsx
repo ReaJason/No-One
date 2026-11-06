@@ -11,7 +11,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getPlugin, updatePlugin } from "@/api/plugin-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
@@ -26,7 +26,7 @@ type LoaderData = {
   plugin: Plugin;
 };
 
-export async function loader({
+export async function clientLoader({
   context,
   params,
   request,
@@ -52,7 +52,7 @@ export async function loader({
   }
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const pluginId = params.pluginId;
   if (!pluginId) {
     throw new Response("Plugin ID is required", { status: 400 });

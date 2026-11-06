@@ -12,7 +12,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllPermissions } from "@/api/permission-api";
 import { createRole, getRoleById, syncRolePermissions, updateRole } from "@/api/role-api";
 import { FormPageShell } from "@/components/form-page-shell";
@@ -30,7 +30,7 @@ type LoaderData = {
   role?: Role;
 };
 
-export async function loader({
+export async function clientLoader({
   context,
   params,
   request,
@@ -54,7 +54,7 @@ export async function loader({
   return { role, permissions };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const parsed = parseRoleFormData(await request.formData());
   if (parsed.errors) {
     return {

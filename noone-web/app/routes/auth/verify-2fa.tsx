@@ -4,8 +4,8 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Form, redirect, useActionData, useNavigation } from "react-router";
 
-import { createPublicApi } from "@/api/api.server";
-import { commitSession, getSession } from "@/api/sessions.server";
+import { createPublicApi } from "@/api/api";
+import { commitSession, getSession } from "@/api/session";
 import {
   authInputClassName,
   authLabelClassName,
@@ -65,14 +65,11 @@ async function redirectToLoginAndClearPendingSession(request: Request) {
   const session = await getSession(request.headers.get("Cookie"));
   session.unset("pending2faActionToken");
   session.unset("pending2faReturnTo");
-  return redirect("/auth/login", {
-    headers: {
-      "Set-Cookie": await commitSession(session),
-    },
-  });
+  commitSession(session);
+  return redirect("/auth/login");
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function clientLoader({ request }: LoaderFunctionArgs) {
   const session = await getSession(request.headers.get("Cookie"));
 
   if (session.get("accessToken")) {
@@ -87,7 +84,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return null;
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function clientAction({ request }: ActionFunctionArgs) {
   const formData = await request.formData();
   const twoFactorCode = (getFormString(formData, "twoFactorCode") ?? "").trim();
   const session = await getSession(request.headers.get("Cookie"));
@@ -128,11 +125,8 @@ export async function action({ request }: ActionFunctionArgs) {
     session.unset("pending2faActionToken");
     session.unset("pending2faReturnTo");
 
-    return redirect(returnTo, {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
+    commitSession(session);
+    return redirect(returnTo);
   } catch (error: any) {
     const detailCode = error?.details?.code;
     const detailMessage =
@@ -149,11 +143,8 @@ export async function action({ request }: ActionFunctionArgs) {
       if (passwordChangeToken) {
         changePasswordUrl += `?token=${encodeURIComponent(passwordChangeToken)}`;
       }
-      return redirect(changePasswordUrl, {
-        headers: {
-          "Set-Cookie": await commitSession(session),
-        },
-      });
+      commitSession(session);
+      return redirect(changePasswordUrl);
     }
 
     if (detailCode === "INVALID_2FA_CHALLENGE") {

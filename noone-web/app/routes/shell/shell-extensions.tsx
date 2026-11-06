@@ -10,7 +10,7 @@ import {
   useSearchParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import { usePluginStatusContext } from "@/components/shell/plugin-status-context";
@@ -24,7 +24,7 @@ import {
   parseShellRouteFormData,
   shellRouteError,
   shellRouteSuccess,
-} from "@/lib/shell-route.server";
+} from "@/lib/shell-route";
 
 import { useShellManagerContext } from "./shell-manager-context";
 
@@ -35,7 +35,7 @@ type ShellExtensionsRouteData = {
 };
 type ShellExtensionsLoaderArgs = Pick<LoaderFunctionArgs, "context" | "params" | "request">;
 
-export function loader({ context, params, request }: LoaderFunctionArgs) {
+export function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   return {
     routeData: loadShellExtensionsRouteData({ context, params, request }),
   };
@@ -59,7 +59,7 @@ async function loadShellExtensionsRouteData({
   return { extensionPlugins: result.content };
 }
 
-export async function action({ context, params, request }: ActionFunctionArgs) {
+export async function clientAction({ context, params, request }: ActionFunctionArgs) {
   try {
     const shellId = parseShellIdParam(params.shellId);
     const { intent, payload, requestId } = await parseShellRouteFormData<{

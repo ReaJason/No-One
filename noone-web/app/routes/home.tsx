@@ -140,7 +140,7 @@ export default function HomePage() {
           <CardContent>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {projects.slice(0, 4).map((project) => (
-                <Link key={project.id} to={`/projects/${project.id}/shells`}>
+                <Link key={project.id} to={`/shells?projectId=${project.id}`}>
                   <Card className="cursor-pointer transition-shadow hover:shadow-md">
                     <CardContent className="p-4">
                       <div className="mb-2 flex items-center justify-between">

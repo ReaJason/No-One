@@ -16,7 +16,43 @@ java {
     }
 }
 
-tasks.processResources { filesMatching("application*.yaml") { expand(project.properties) } }
+val webDir = rootProject.layout.projectDirectory.dir("noone-web")
+val webBuildDir = webDir.dir("build/client")
+
+val webInstall = tasks.register<Exec>("webInstall") {
+    group = "frontend"
+    description = "Installs frontend dependencies with Bun"
+    workingDir = webDir.asFile
+    commandLine("bun", "install", "--frozen-lockfile")
+    inputs.files(webDir.files("package.json", "bun.lock"))
+    outputs.dir(webDir.dir("node_modules"))
+}
+
+val webBuild = tasks.register<Exec>("webBuild") {
+    group = "frontend"
+    description = "Builds the React Router SPA"
+    dependsOn(webInstall)
+    workingDir = webDir.asFile
+    commandLine("bun", "run", "build")
+    inputs.files(
+        webDir.files(
+            "package.json",
+            "bun.lock",
+            "react-router.config.ts",
+            "tsconfig.json",
+            "vite.config.ts"
+        )
+    )
+    inputs.dir(webDir.dir("app"))
+    inputs.dir(webDir.dir("public"))
+    outputs.dir(webBuildDir)
+}
+
+tasks.processResources {
+    dependsOn(webBuild)
+    from(webBuildDir) { into("static") }
+    filesMatching("application*.yaml") { expand(project.properties) }
+}
 
 configurations {
     compileOnly {

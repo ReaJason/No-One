@@ -7,7 +7,7 @@ import * as React from "react";
 import { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllRoles } from "@/api/role-api";
 import { deleteUser, getUsers, loadUserSearchParams } from "@/api/user-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
@@ -26,7 +26,7 @@ export const handle = createBreadcrumb(() => ({
   to: "/admin/users",
 }));
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const {
     username,
     roleId: explicitRoleId,
@@ -63,7 +63,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   if (formData.get("intent") !== "delete") {
     return { errors: { general: "Unsupported action" } };

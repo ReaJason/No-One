@@ -306,6 +306,58 @@ class ShellPluginServiceTest {
     }
 
     @Test
+    void shouldSynchronizeRemotePluginCacheBeforeReadingSingleStatus() {
+        Long shellId = 13L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        AtomicReference<String> shellVersion = new AtomicReference<>();
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenReturn(false);
+        when(connection.test()).thenAnswer(invocation -> {
+            shellVersion.set("0.0.1");
+            return true;
+        });
+        when(connection.getLoadedPluginVersion("http-repeater")).thenAnswer(invocation -> shellVersion.get());
+        when(connection.needLoadPlugin("http-repeater")).thenAnswer(invocation -> shellVersion.get() == null);
+        when(builtinPluginRegistryService.findOrRegister("http-repeater", "java"))
+                .thenReturn(Optional.of(plugin("http-repeater", "plugin-bytes")));
+
+        ShellPluginStatusResponse response = shellPluginService.getPluginStatus(shellId, "http-repeater");
+
+        assertTrue(response.isLoaded());
+        assertEquals("0.0.1", response.getShellVersion());
+        verify(shellCoreInitHelper).initCoreIfNeeded(connection, shellId);
+        verify(connection).test();
+    }
+
+    @Test
+    void shouldSynchronizeRemotePluginCacheBeforeReadingAllStatuses() {
+        Long shellId = 13L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        AtomicReference<String> shellVersion = new AtomicReference<>();
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenReturn(false);
+        when(connection.test()).thenAnswer(invocation -> {
+            shellVersion.set("0.0.1");
+            return true;
+        });
+        when(connection.getLoadedPluginVersion("http-repeater")).thenAnswer(invocation -> shellVersion.get());
+        when(connection.needLoadPlugin("http-repeater")).thenAnswer(invocation -> shellVersion.get() == null);
+        when(pluginRepository.findAllByLanguage("java"))
+                .thenReturn(List.of(plugin("http-repeater", "plugin-bytes")));
+
+        Map<String, ShellPluginStatusResponse> responses = shellPluginService.getAllPluginStatuses(shellId);
+
+        assertTrue(responses.get("http-repeater").isLoaded());
+        assertEquals("0.0.1", responses.get("http-repeater").getShellVersion());
+        verify(shellCoreInitHelper).initCoreIfNeeded(connection, shellId);
+        verify(connection).test();
+    }
+
+    @Test
     void shouldReturnPluginStatusForShell() {
         Long shellId = 13L;
         Shell shell = shell(shellId);

@@ -1,22 +1,19 @@
 import { redirect } from "react-router";
 
-import { destroySession, getSession } from "@/api/sessions.server";
+import { destroySession, getSession } from "@/api/session";
 
 async function performLogout(request: Request) {
   const session = await getSession(request.headers.get("Cookie"));
   const url = new URL(request.url);
-  return redirect("/auth/login?" + url.searchParams, {
-    headers: {
-      "Set-Cookie": await destroySession(session),
-    },
-  });
+  destroySession(session);
+  return redirect("/auth/login?" + url.searchParams);
 }
 
-export async function loader({ request }: { request: Request }) {
+export async function clientLoader({ request }: { request: Request }) {
   return performLogout(request);
 }
 
-export async function action({ request }: { request: Request }) {
+export async function clientAction({ request }: { request: Request }) {
   return performLogout(request);
 }
 

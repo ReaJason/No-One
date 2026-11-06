@@ -1,6 +1,6 @@
 import type { PingShellResponse } from "@/api/shell-connection-api";
+import type { ColumnDef } from "@/lib/react-table";
 import type { ShellConnection, ShellLanguage, ShellStatus } from "@/types/shell-connection";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import {
   AlertCircle,

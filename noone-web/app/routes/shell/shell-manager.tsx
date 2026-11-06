@@ -26,7 +26,7 @@ import {
 } from "react-router";
 import { Toaster } from "sonner";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import * as pluginApi from "@/api/plugin-api";
 import { getShellConnectionById } from "@/api/shell-connection-api";
 import { Icons } from "@/components/icons";
@@ -60,7 +60,7 @@ import {
   readShellNavigationTrace,
 } from "@/lib/shell-route-debug";
 
-export async function loader({ context, params, request }: LoaderFunctionArgs) {
+export async function clientLoader({ context, params, request }: LoaderFunctionArgs) {
   const shellId = params.shellId as string | undefined;
   if (!shellId) {
     throw new Response("Invalid shell ID", { status: 400 });
@@ -288,6 +288,7 @@ function ShellManagerSidebar({
                             to={url}
                             viewTransition
                             discover="render"
+                            prefetch={item.id === "extensions" ? undefined : "intent"}
                             onClick={() => {
                               const trace = markShellNavigationTrace({
                                 from: location.pathname,

@@ -32,9 +32,8 @@ export function parsePermissionFormData(formData: FormData) {
 
   if (!values.code) {
     errors.code = "Permission code is required";
-  } else if (!/^[a-zA-Z0-9:_-]+$/.test(values.code)) {
-    errors.code =
-      "Permission code can only contain letters, numbers, colons, underscores, and hyphens";
+  } else if (!/^[a-zA-Z][a-zA-Z0-9]*:[a-zA-Z][a-zA-Z0-9]*$/.test(values.code)) {
+    errors.code = "Permission code must use the module:action format with letters and numbers";
   }
 
   return {

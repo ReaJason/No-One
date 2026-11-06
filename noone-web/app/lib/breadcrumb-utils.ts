@@ -83,7 +83,7 @@ export function useBreadcrumbs(): BreadcrumbDescriptor[] {
     const crumbDefinitions = asArray(
       typeof handle?.crumb === "function"
         ? handle.crumb({
-            data: match.data,
+            data: match.loaderData,
             params: match.params,
             pathname: match.pathname,
           })

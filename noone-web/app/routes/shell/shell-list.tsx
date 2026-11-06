@@ -7,7 +7,7 @@ import { Download, Plus } from "lucide-react";
 import React, { use, useMemo } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { deleteShellConnection, getShellConnections, pingShell } from "@/api/shell-connection-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
@@ -38,7 +38,7 @@ async function getAllProject(authFetch: ReturnType<typeof createAuthFetch>) {
   }.content;
 }
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const params = await loadShellConnectionSearchParams(request);
   const authFetch = createAuthFetch(request, context);
 
@@ -48,7 +48,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   if (intent !== "delete" && intent !== "ping") {
@@ -169,7 +169,7 @@ export function ShellConnectionTable({
         pageIndex: shellConnectionResponseData.page - 1,
         pageSize: shellConnectionResponseData.pageSize,
       },
-      columnPinning: { right: ["actions"] },
+      columnPinning: { start: [], end: ["actions"] },
     },
     shallow: false,
     clearOnDefault: true,

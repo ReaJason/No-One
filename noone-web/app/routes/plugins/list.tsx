@@ -3,12 +3,12 @@ import type { CatalogResponse, Plugin } from "@/types/plugin";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 
 import { Download, Plus } from "lucide-react";
-import { parseAsString, useQueryState } from "nuqs";
+import { parseAsInteger, parseAsString, useQueryStates } from "nuqs";
 import * as React from "react";
 import { use } from "react";
 import { Link, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import {
   deletePlugin,
   getPlugins,
@@ -35,7 +35,7 @@ const LANGUAGE_TABS = [
   { value: "dotnet", label: ".NET" },
 ] as const;
 
-export async function loader({ request, context }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context }: LoaderFunctionArgs) {
   const { name, language, type, page, perPage, sortBy, sortOrder } =
     loadPluginSearchParams(request);
   const authFetch = createAuthFetch(request, context);
@@ -65,7 +65,7 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function clientAction({ request, context }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = String(formData.get("intent") ?? "");
   const authFetch = createAuthFetch(request, context);
@@ -107,10 +107,10 @@ export default function Plugins() {
     pluginResponse: Promise<PaginatedResponse<Plugin>>;
     catalogResponse: Promise<CatalogResponse>;
   };
-  const [language, setLanguage] = useQueryState(
-    "language",
-    parseAsString.withOptions({ shallow: false, clearOnDefault: true }),
-  );
+  const [{ language }, setPluginQuery] = useQueryStates({
+    language: parseAsString.withOptions({ shallow: false, clearOnDefault: true }),
+    page: parseAsInteger.withOptions({ shallow: false, clearOnDefault: true }),
+  });
   const [activeTab, setActiveTab] = React.useState("installed");
 
   return (
@@ -145,7 +145,7 @@ export default function Plugins() {
             value={language ?? "all"}
             onValueChange={(v: string | number | null) => {
               const val = String(v);
-              void setLanguage(val === "all" ? null : val);
+              void setPluginQuery({ language: val === "all" ? null : val, page: null });
             }}
           >
             <TabsList className="mb-4">

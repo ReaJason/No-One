@@ -1,6 +1,6 @@
 "use client";
 
-import type { Column } from "@tanstack/react-table";
+import type { Column } from "@/lib/react-table";
 import type { DateRange } from "react-day-picker";
 
 import { CalendarIcon, XCircle } from "lucide-react";

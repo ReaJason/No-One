@@ -5,7 +5,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import React, { use } from "react";
 import { isRouteErrorResponse, redirect, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import {
   getUserById,
   getUserSessions,
@@ -30,7 +30,7 @@ type LoaderData = {
   sessionResponse: Promise<PaginatedResponse<UserSession>>;
 };
 
-export async function loader({
+export async function clientLoader({
   request,
   context,
   params,
@@ -56,7 +56,7 @@ export async function loader({
   };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const userId = Number(params.userId);
   if (!Number.isFinite(userId)) {
     throw new Response("User not found", { status: 404 });

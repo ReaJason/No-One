@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { Plugin, PluginSource } from "@/types/plugin";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import { CalendarIcon } from "lucide-react";
 

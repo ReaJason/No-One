@@ -12,7 +12,7 @@ import {
   useParams,
 } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { createPermission, getPermissionById, updatePermission } from "@/api/permission-api";
 import { FormPageShell } from "@/components/form-page-shell";
 import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
@@ -28,7 +28,7 @@ type LoaderData = {
   permission?: Permission;
 };
 
-export async function loader({
+export async function clientLoader({
   context,
   params,
   request,
@@ -47,7 +47,7 @@ export async function loader({
   return { permission };
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const permissionId = params.permissionId;
   const parsed = parsePermissionFormData(await request.formData());
   if (parsed.errors) {

@@ -126,6 +126,7 @@ public class ShellPluginService {
         Plugin plugin = findPlugin(pluginId, shellLanguage)
                 .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + pluginId));
         ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+        ensurePluginCacheSnapshot(connection, shellId);
         return toPluginStatus(plugin, connection);
     }
 
@@ -146,6 +147,7 @@ public class ShellPluginService {
         ShellLanguage shellLanguage = shell.getLanguage() != null ? shell.getLanguage() : ShellLanguage.JAVA;
         List<Plugin> plugins = pluginRepository.findAllByLanguage(shellLanguage.getValue());
         ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
+        ensurePluginCacheSnapshot(connection, shellId);
         Map<String, ShellPluginStatusResponse> result = new LinkedHashMap<>();
         for (Plugin plugin : plugins) {
             result.put(plugin.getPluginId(), toPluginStatus(plugin, connection));

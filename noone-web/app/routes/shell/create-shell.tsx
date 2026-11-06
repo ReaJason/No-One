@@ -6,7 +6,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useMemo } from "react";
 import { redirect, useLoaderData, useNavigate, useParams } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getAllProfiles } from "@/api/profile-api";
 import { getAllProjects } from "@/api/project-api";
 import {
@@ -38,7 +38,7 @@ function isShellLanguage(value: string): value is ShellLanguage {
   return value === "java" || value === "nodejs" || value === "dotnet";
 }
 
-export async function loader({ request, context, params }: LoaderFunctionArgs) {
+export async function clientLoader({ request, context, params }: LoaderFunctionArgs) {
   const shellId = params.shellId;
   const authFetch = createAuthFetch(request, context);
   const [projects, profiles] = await Promise.all([
@@ -85,7 +85,7 @@ export async function loader({ request, context, params }: LoaderFunctionArgs) {
   return { projects, profiles, prefill } satisfies LoaderData;
 }
 
-export async function action({ request, context, params }: ActionFunctionArgs) {
+export async function clientAction({ request, context, params }: ActionFunctionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
   const authFetch = createAuthFetch(request, context);

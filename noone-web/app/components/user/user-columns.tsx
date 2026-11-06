@@ -1,5 +1,5 @@
+import type { ColumnDef } from "@/lib/react-table";
 import type { Role, User, UserStatus } from "@/types/admin";
-import type { ColumnDef } from "@tanstack/react-table";
 
 import {
   CalendarIcon,

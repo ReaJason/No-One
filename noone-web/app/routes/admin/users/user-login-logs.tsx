@@ -5,7 +5,7 @@ import type { LoaderFunctionArgs } from "react-router";
 import React, { use } from "react";
 import { isRouteErrorResponse, useLoaderData } from "react-router";
 
-import { createAuthFetch } from "@/api/api.server";
+import { createAuthFetch } from "@/api/api";
 import { getUserById, getUserLoginLogs, loadUserLoginLogSearchParams } from "@/api/user-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
 import { DataTable } from "@/components/data-table/data-table";
@@ -22,7 +22,7 @@ type LoaderData = {
   loginLogResponse: Promise<PaginatedResponse<LoginLog>>;
 };
 
-export async function loader({
+export async function clientLoader({
   request,
   context,
   params,

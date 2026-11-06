@@ -1,15 +1,20 @@
 import type { DataTableConfig } from "@/config/data-table";
 import type { FilterItemSchema } from "@/lib/parsers";
-import type { Row, RowData } from "@tanstack/react-table";
+import type { Row, RowData } from "@/lib/react-table";
+import type { CellData, TableFeatures } from "@tanstack/table-core";
 
-declare module "@tanstack/react-table" {
+declare module "@tanstack/table-core" {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface TableMeta<TData extends RowData> {
+  interface TableMeta<TFeatures extends TableFeatures, TData extends RowData> {
     queryKeys?: QueryKeys;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  interface ColumnMeta<TData extends RowData, TValue> {
+  interface ColumnMeta<
+    TFeatures extends TableFeatures,
+    TData extends RowData,
+    TValue extends CellData,
+  > {
     id?: string;
     label?: string;
     placeholder?: string;
