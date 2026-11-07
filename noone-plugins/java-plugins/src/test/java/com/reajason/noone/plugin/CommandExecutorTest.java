@@ -1,6 +1,8 @@
 package com.reajason.noone.plugin;
 
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -83,6 +85,31 @@ class CommandExecutorTest {
         assertEquals(0, ((Number) result.get("exitCode")).intValue());
         assertEquals(workingDir.toFile().getCanonicalPath(), result.get("cwd"));
         assertNotNull(result.get("charsetUsed"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @Timeout(30)
+    void shouldNotDeadlockWhenOutputExceedsPipeBuffer() throws Exception {
+        Assumptions.assumeFalse(
+                System.getProperty("os.name", "").toLowerCase().contains("win"),
+                "requires a POSIX shell");
+        CommandExecutor executor = new CommandExecutor();
+        Path workingDir = Files.createTempDirectory("command-executor-large-output");
+
+        Map<String, Object> ctx = new HashMap<String, Object>();
+        ctx.put("op", "exec");
+        ctx.put("executable", "/bin/sh");
+        ctx.put("argv", new String[]{"-c", "yes x | head -c 2097152"});
+        ctx.put("cwd", workingDir.toString());
+
+        executor.equals(ctx);
+
+        Map<String, Object> result = (Map<String, Object>) ctx.get("result");
+        assertNotNull(result);
+        assertNull(result.get("error"));
+        assertEquals(0, ((Number) result.get("exitCode")).intValue());
+        assertEquals(2097152, String.valueOf(result.get("stdout")).length());
     }
 
     private String javaExecutable() {

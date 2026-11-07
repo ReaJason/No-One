@@ -137,7 +137,14 @@ public class ShellPluginService {
         Plugin plugin = findPlugin(pluginId, shellLanguage)
                 .orElseThrow(() -> new IllegalArgumentException("Plugin not found: " + pluginId));
         ShellConnection connection = shellConnectionPool.getOrCreateCached(shell);
-        loadPlugin(connection, plugin, shellLanguage, true, shellId);
+        ensurePluginCacheSnapshot(connection, shellId);
+        // Only re-define the remote plugin class when it is actually outdated.
+        // Re-loading an already current plugin (for example when the auto-load
+        // and a command dispatch overlap) forces a duplicate class definition.
+        String shellVersion = connection.getLoadedPluginVersion(plugin.getPluginId());
+        boolean needsUpdate = shellVersion != null
+                && compareVersions(plugin.getVersion(), shellVersion) > 0;
+        loadPlugin(connection, plugin, shellLanguage, needsUpdate, shellId);
         return toPluginStatus(plugin, connection);
     }
 
@@ -160,7 +167,15 @@ public class ShellPluginService {
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void loadPlugin(ShellConnection connection, Plugin plugin, ShellLanguage shellLanguage,
                            boolean forceRefresh, Long shellId) {
-        doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);
+        // Concurrent first-visit requests (status card auto-load and command/file
+        // dispatch) can both decide the plugin is missing. Serialize the decision
+        // and the load so only one payload upload reaches the remote shell.
+        synchronized (connection) {
+            if (!forceRefresh && !connection.needLoadPlugin(plugin.getPluginId())) {
+                return;
+            }
+            doLoadPlugin(connection, plugin, shellLanguage, forceRefresh);
+        }
     }
 
     private Map<String, Object> executeViaTaskManager(ShellConnection connection, ShellLanguage shellLanguage,
@@ -229,7 +244,17 @@ public class ShellPluginService {
     }
 
     private void ensurePluginCacheSnapshot(ShellConnection connection, Long shellId) {
-        if (!connection.isPluginCacheInitialized()) {
+        if (connection.isPluginCacheInitialized()) {
+            return;
+        }
+        // Guard the check-and-initialize with the connection lock: entering a shell
+        // fires status/auto-load/dispatch requests concurrently, and re-injecting
+        // the core while another request is already doing so is both slow and
+        // unsafe for staging shells.
+        synchronized (connection) {
+            if (connection.isPluginCacheInitialized()) {
+                return;
+            }
             shellCoreInitHelper.initCoreIfNeeded(connection, shellId);
             connection.test();
         }
@@ -294,9 +319,14 @@ public class ShellPluginService {
         return "sync";
     }
 
+    private boolean isPluginLoaded(Plugin plugin, ShellConnection connection) {
+        return connection.getLoadedPluginVersion(plugin.getPluginId()) != null
+                || !connection.needLoadPlugin(plugin.getPluginId());
+    }
+
     private ShellPluginStatusResponse toPluginStatus(Plugin plugin, ShellConnection connection) {
         String shellVersion = connection.getLoadedPluginVersion(plugin.getPluginId());
-        boolean loaded = shellVersion != null || !connection.needLoadPlugin(plugin.getPluginId());
+        boolean loaded = isPluginLoaded(plugin, connection);
         boolean needsUpdate = shellVersion != null && compareVersions(plugin.getVersion(), shellVersion) > 0;
         return ShellPluginStatusResponse.builder()
                 .pluginId(plugin.getPluginId())

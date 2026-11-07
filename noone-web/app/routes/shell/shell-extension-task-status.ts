@@ -32,7 +32,10 @@ export async function clientLoader({ context, params, request }: LoaderFunctionA
   } catch (error) {
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+      return Response.json(
+        { ok: false, error: message, requestId },
+        { status: error.status || 400 },
+      );
     }
     return shellRouteError(error, "Failed to load task status", requestId);
   }

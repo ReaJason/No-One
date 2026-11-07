@@ -18,6 +18,7 @@ vi.mock("@/hooks/use-shell-route-fetcher", () => ({
 }));
 
 vi.mock("@/components/shell/plugin-status-context", () => ({
+  usePluginAutoLoad: () => false,
   usePluginStatusContext: () => ({
     statuses: {},
     updatingIds: new Set<string>(),

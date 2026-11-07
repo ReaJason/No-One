@@ -60,13 +60,16 @@ async function loadShellExtensionsRouteData({
 }
 
 export async function clientAction({ context, params, request }: ActionFunctionArgs) {
+  let requestId: string | undefined;
   try {
     const shellId = parseShellIdParam(params.shellId);
-    const { intent, payload, requestId } = await parseShellRouteFormData<{
+    const parsed = await parseShellRouteFormData<{
       pluginId?: string;
       action?: string;
       args?: Record<string, unknown>;
     }>(request);
+    requestId = parsed.requestId;
+    const { intent, payload } = parsed;
     if (intent !== "execute-plugin" && intent !== "cancel-plugin" && intent !== "update-plugin") {
       return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
     }
@@ -89,11 +92,11 @@ export async function clientAction({ context, params, request }: ActionFunctionA
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
       return Response.json(
-        { ok: false, error: message, requestId: undefined },
+        { ok: false, error: message, requestId },
         { status: error.status || 400 },
       );
     }
-    return shellRouteError(error, "Plugin execution failed");
+    return shellRouteError(error, "Plugin execution failed", requestId);
   }
 }
 
