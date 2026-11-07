@@ -14,29 +14,6 @@ permissions:
   packages: write
 
 jobs:
-  test-server:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.4.4
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
-
-      - name: Test
-        run: ./gradlew --no-daemon :noone-server:test
-
   test-web:
     runs-on: ubuntu-latest
     defaults:
@@ -71,8 +48,11 @@ jobs:
       - name: Unit test
         run: bun run test:run
 
-  publish-image:
-    needs: [test-server, test-web]
+  # Test, build, and publish in one job: the boot jar is produced once and reused
+  # for both the CI artifact and the Docker image, instead of rebuilding it in a
+  # separate job after the tests already compiled everything.
+  publish:
+    needs: [test-web]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -92,8 +72,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Build server boot jar
-        run: ./gradlew --no-daemon :noone-server:bootJar -x test
+      - name: Test and build server boot jar
+        run: ./gradlew --no-daemon :noone-server:test :noone-server:bootJar
+
+      - name: Upload server jar
+        uses: actions/upload-artifact@v7
+        with:
+          name: noone-server-jar
+          path: noone-server/build/libs/*.jar
+          compression-level: 0  # the jar is already compressed
+          retention-days: 7
 
       - name: Prepare metadata
         id: vars
@@ -129,13 +117,6 @@ jobs:
           tags: |
             docker.io/${{ vars.DOCKERHUB_USERNAME }}/noone-server:nightly
             ghcr.io/${{ steps.vars.outputs.owner }}/noone-server:nightly
-
-  upload-deploy-bundle:
-    needs: [publish-image]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
 
       - name: Package deploy bundle
         run: zip -r noone-nightly-deploy.zip compose.nightly.yml compose.postgres.yml
