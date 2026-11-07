@@ -243,6 +243,20 @@ describe("ProfileForm", () => {
     });
   });
 
+  it("preserves in-progress edits when revalidation re-sends identical seed values", () => {
+    const initialValues = buildInitialValues({ name: "Alpha Profile" });
+    const { rerenderWith } = renderProfileForm({ initialValues });
+
+    const nameInput = screen.getByPlaceholderText("Profile unique name");
+    fireEvent.change(nameInput, { target: { value: "Unsaved edit" } });
+    expect(nameInput).toHaveValue("Unsaved edit");
+
+    // A loader revalidation returns an equal profile in a freshly allocated object.
+    rerenderWith({ initialValues: buildInitialValues({ name: "Alpha Profile" }) });
+
+    expect(screen.getByPlaceholderText("Profile unique name")).toHaveValue("Unsaved edit");
+  });
+
   it("replaces request and response templates when the existing value is blank or still the previous default", async () => {
     const initialValues = buildInitialValues({
       requestBodyType: "JSON",

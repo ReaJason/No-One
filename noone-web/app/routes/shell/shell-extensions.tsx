@@ -122,11 +122,15 @@ function ShellExtensionsContent({ routeData }: { routeData: Promise<ShellExtensi
   const [search, setSearch] = useState("");
   const [pluginStates, setPluginStates] = useState<Record<string, PluginTabState>>({});
 
+  const hasInitialPlugin = Boolean(
+    initialPluginId && extensionPlugins.some((p) => p.id === initialPluginId),
+  );
+
   useEffect(() => {
-    if (initialPluginId && extensionPlugins.some((p) => p.id === initialPluginId)) {
+    if (hasInitialPlugin && initialPluginId) {
       setSelectedPluginId(initialPluginId);
     }
-  }, [initialPluginId, extensionPlugins]);
+  }, [hasInitialPlugin, initialPluginId]);
 
   const filteredPlugins = useMemo(() => {
     if (!search.trim()) return extensionPlugins;

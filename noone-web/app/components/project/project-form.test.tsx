@@ -291,6 +291,20 @@ describe("ProjectForm", () => {
     });
   });
 
+  it("preserves in-progress edits when revalidation re-sends identical seed values", () => {
+    const initialValues = buildInitialValues({ name: "Alpha Project" });
+    const { rerenderWith } = renderProjectForm({ initialValues });
+
+    const nameInput = screen.getByPlaceholderText("Internal Sandbox");
+    fireEvent.change(nameInput, { target: { value: "Unsaved edit" } });
+    expect(nameInput).toHaveValue("Unsaved edit");
+
+    // A loader revalidation returns an equal project in a freshly allocated object.
+    rerenderWith({ initialValues: buildInitialValues({ name: "Alpha Project" }) });
+
+    expect(screen.getByPlaceholderText("Internal Sandbox")).toHaveValue("Unsaved edit");
+  });
+
   it("validates required fields and end date ordering before submit", async () => {
     renderProjectForm({
       initialValues: buildInitialValues({

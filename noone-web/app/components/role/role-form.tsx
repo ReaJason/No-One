@@ -2,7 +2,7 @@ import type { Permission } from "@/types/admin";
 import type { LucideIcon } from "lucide-react";
 
 import { Search } from "lucide-react";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { Form } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSeedSync } from "@/hooks/use-seed-sync";
 import {
   buildPermissionCategoryGroups,
   type RoleFormSeed,
@@ -52,10 +53,10 @@ export function RoleForm({
     () => new Set(initialValues.permissionIds),
   );
 
-  useEffect(() => {
+  useSeedSync(initialValues, (values) => {
     setQuery("");
-    setSelectedPermissionIds(new Set(initialValues.permissionIds));
-  }, [initialValues]);
+    setSelectedPermissionIds(new Set(values.permissionIds));
+  });
 
   const groups = useMemo(() => buildPermissionCategoryGroups(permissions), [permissions]);
 

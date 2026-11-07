@@ -2,7 +2,6 @@ import type { Plugin } from "@/types/plugin";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader, Save } from "lucide-react";
-import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useFetcher } from "react-router";
 
@@ -20,6 +19,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useSeedSync } from "@/hooks/use-seed-sync";
 import {
   type PluginEditActionData,
   type PluginEditFormValues,
@@ -32,6 +32,13 @@ type PluginEditFormProps = {
 };
 
 export function PluginEditForm({ plugin, onCancel }: PluginEditFormProps) {
+  const initialValues: PluginEditFormValues = {
+    name: plugin.name ?? "",
+    description: plugin.description ?? "",
+    author: plugin.author ?? "",
+    type: plugin.type ?? "",
+    runMode: plugin.runMode ?? "",
+  };
   const {
     control,
     formState: { errors: formErrors },
@@ -39,28 +46,14 @@ export function PluginEditForm({ plugin, onCancel }: PluginEditFormProps) {
     reset,
   } = useForm<PluginEditFormValues>({
     resolver: zodResolver(pluginEditSchema),
-    defaultValues: {
-      name: plugin.name ?? "",
-      description: plugin.description ?? "",
-      author: plugin.author ?? "",
-      type: plugin.type ?? "",
-      runMode: plugin.runMode ?? "",
-    },
+    defaultValues: initialValues,
   });
 
   const fetcher = useFetcher<PluginEditActionData>();
   const isSubmitting = fetcher.state === "submitting";
   const serverErrors = fetcher.data?.errors;
 
-  useEffect(() => {
-    reset({
-      name: plugin.name ?? "",
-      description: plugin.description ?? "",
-      author: plugin.author ?? "",
-      type: plugin.type ?? "",
-      runMode: plugin.runMode ?? "",
-    });
-  }, [plugin, reset]);
+  useSeedSync(initialValues, reset);
 
   const fieldError = (name: keyof PluginEditFormValues) =>
     formErrors[name]?.message ?? serverErrors?.[name];

@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
-import CreateOrEditShell from "@/routes/shell/create-shell";
+import CreateOrEditShell, { shouldRevalidate } from "@/routes/shell/create-shell";
 
 const navigateMock = vi.fn();
 const useLoaderDataMock = vi.fn();
@@ -286,5 +286,51 @@ describe("CreateOrEditShell", () => {
     const shellTypeInput = screen.getByLabelText("Shell Type");
     expect(shellTypeInput).toBeDisabled();
     expect(shellTypeInput).toHaveValue("Listener");
+  });
+
+  it("preserves typed input when loader data is revalidated with an equal prefill", () => {
+    const buildLoaderData = () => ({
+      projects: [{ id: "7", name: "Alpha" }],
+      profiles: [{ id: "1", name: "HTTP", protocolType: "HTTP" }],
+      prefill: {
+        url: "http://127.0.0.1:8082/app/b64asdfasdf",
+        shellType: "Listener",
+        staging: false,
+        loaderProfileId: "1",
+        firstProfileId: "1",
+        firstProjectId: "7",
+      },
+    });
+
+    useLoaderDataMock.mockReturnValue(buildLoaderData());
+    const { rerender } = render(<CreateOrEditShell />);
+
+    const nameInput = screen.getByLabelText("Name *");
+    fireEvent.change(nameInput, { target: { value: "typed shell name" } });
+    expect(nameInput).toHaveValue("typed shell name");
+
+    // Simulate the loader revalidation that follows the "Test Connection" action:
+    // the same values arrive in freshly allocated objects.
+    useLoaderDataMock.mockReturnValue(buildLoaderData());
+    rerender(<CreateOrEditShell />);
+
+    expect(screen.getByLabelText("Name *")).toHaveValue("typed shell name");
+  });
+});
+
+describe("shouldRevalidate", () => {
+  it("skips loader revalidation after a connection test", () => {
+    const formData = new FormData();
+    formData.set("intent", "test-config");
+
+    expect(shouldRevalidate({ formData, defaultShouldRevalidate: true } as never)).toBe(false);
+  });
+
+  it("keeps the router default for other submissions", () => {
+    const formData = new FormData();
+    formData.set("intent", "create-shell");
+
+    expect(shouldRevalidate({ formData, defaultShouldRevalidate: true } as never)).toBe(true);
+    expect(shouldRevalidate({ defaultShouldRevalidate: true } as never)).toBe(true);
   });
 });
