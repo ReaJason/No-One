@@ -133,7 +133,12 @@ export function usePersistedCommandConfig({
         const persisted = JSON.parse(raw) as Partial<PersistedCommandConfig>;
         if (typeof persisted.cwd === "string") next.cwd = persisted.cwd;
         if (typeof persisted.charset === "string") next.charset = persisted.charset;
-        if (typeof persisted.executable === "string") next.executable = persisted.executable;
+        // An empty executable usually means the OS was still unknown when the
+        // config was first stored. Keep the OS-specific default in that case so
+        // the first command does not fail with "executable is required".
+        if (typeof persisted.executable === "string" && persisted.executable.trim()) {
+          next.executable = persisted.executable;
+        }
         if (typeof persisted.args === "string") next.args = persisted.args || DEFAULT_TEMPLATE_ARGS;
         if (typeof persisted.env === "string") next.env = persisted.env;
       } catch {
@@ -150,6 +155,18 @@ export function usePersistedCommandConfig({
     loadedStorageKeyRef.current = storageKey;
     setConfigLoaded(true);
   }, [cwdHint, osName, storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || loadedStorageKeyRef.current !== storageKey) return;
+    if (templateExecutable.trim()) return;
+    // The shell OS is only known after the first system-info run. Fill in the
+    // matching default template as soon as it becomes available instead of
+    // making the user refresh the page (or pick a preset) first.
+    const defaultTemplate = getDefaultTemplateByOs(detectOsFamily(osName));
+    if (!defaultTemplate) return;
+    setTemplateExecutable(defaultTemplate.executable);
+    setTemplateArgs((prev) => (prev.trim() ? prev : defaultTemplate.args.join("\n")));
+  }, [osName, storageKey, templateExecutable]);
 
   useEffect(() => {
     if (

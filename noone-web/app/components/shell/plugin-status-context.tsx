@@ -14,7 +14,7 @@ import {
 import { useShellRouteFetcher } from "@/hooks/use-shell-route-fetcher";
 import { createShellRouteRequestId } from "@/lib/shell-route";
 
-interface PluginStatusContextValue {
+export interface PluginStatusContextValue {
   statuses: Record<string, PluginRuntimeStatus>;
   loading: boolean;
   refreshAll: () => Promise<void>;
@@ -24,7 +24,7 @@ interface PluginStatusContextValue {
   updatingIds: Set<string>;
 }
 
-const PluginStatusContext = createContext<PluginStatusContextValue | null>(null);
+export const PluginStatusContext = createContext<PluginStatusContextValue | null>(null);
 
 export function usePluginStatusContext() {
   const ctx = useContext(PluginStatusContext);
@@ -36,6 +36,33 @@ export function usePluginStatusContext() {
 
 export function usePluginStatusContextOptional() {
   return useContext(PluginStatusContext);
+}
+
+/**
+ * Loads a plugin into the remote shell the first time it is shown, so section
+ * views do not display a manual "Install Plugin" action on first visit.
+ * Returns true while the automatic load is still in progress.
+ */
+export function usePluginAutoLoad(pluginId: string): boolean {
+  const ctx = usePluginStatusContextOptional();
+  const status = ctx?.statuses[pluginId];
+  const attemptedIdRef = useRef<string | null>(null);
+  const alreadyAttempted = attemptedIdRef.current === pluginId;
+
+  useEffect(() => {
+    if (!ctx || !status || status.loaded || alreadyAttempted) {
+      return;
+    }
+    attemptedIdRef.current = pluginId;
+    void ctx.updatePlugin(pluginId).catch(() => {
+      // Keep the manual install action available when auto-loading fails.
+    });
+  }, [alreadyAttempted, ctx, pluginId, status]);
+
+  if (!ctx || !status || status.loaded) {
+    return false;
+  }
+  return ctx.updatingIds.has(pluginId) || !alreadyAttempted;
 }
 
 interface PluginStatusProviderProps {

@@ -78,12 +78,15 @@ public class CommandExecutor {
             applyEnv(pb.environment(), ctx.get("env"));
 
             Process process = pb.start();
-            int exitCode = process.waitFor();
-            byte[] stdout = readAllBytes(process.getInputStream());
-            byte[] stderr = readAllBytes(process.getErrorStream());
+            // Drain stdout and stderr while the process is running. Waiting for
+            // exit before reading deadlocks as soon as the child fills the OS pipe
+            // buffer, which makes the command appear to hang with no output.
+            ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+            ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+            int exitCode = collectOutput(process, stdout, stderr);
 
-            result.put("stdout", new String(stdout, charset));
-            result.put("stderr", new String(stderr, charset));
+            result.put("stdout", new String(stdout.toByteArray(), charset));
+            result.put("stderr", new String(stderr.toByteArray(), charset));
             result.put("exitCode", exitCode);
         } catch (Exception e) {
             result.put("error", "Command execution failed: " + safeMessage(e));
@@ -198,20 +201,54 @@ public class CommandExecutor {
         }
     }
 
-    private static byte[] readAllBytes(InputStream inputStream) throws Exception {
-        try {
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
-            int len;
-            while ((len = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, len);
-            }
-            return outputStream.toByteArray();
-        } finally {
+    /**
+     * Reads both output streams until the child process exits. Uses polling so
+     * neither pipe can fill up while the other one is being read.
+     */
+    private static int collectOutput(Process process, ByteArrayOutputStream stdout,
+                                     ByteArrayOutputStream stderr) throws Exception {
+        InputStream out = process.getInputStream();
+        InputStream err = process.getErrorStream();
+        byte[] buffer = new byte[4096];
+        while (true) {
+            boolean readAny = copyAvailable(out, stdout, buffer);
+            readAny = copyAvailable(err, stderr, buffer) || readAny;
             try {
-                inputStream.close();
-            } catch (Exception ignored) {
+                int exitCode = process.exitValue();
+                drain(out, stdout, buffer);
+                drain(err, stderr, buffer);
+                return exitCode;
+            } catch (IllegalThreadStateException running) {
+                if (!readAny) {
+                    try {
+                        Thread.sleep(10L);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
             }
+        }
+    }
+
+    private static boolean copyAvailable(InputStream in, ByteArrayOutputStream out, byte[] buffer)
+            throws Exception {
+        int available = in.available();
+        if (available <= 0) {
+            return false;
+        }
+        int toRead = available < buffer.length ? available : buffer.length;
+        int read = in.read(buffer, 0, toRead);
+        if (read <= 0) {
+            return false;
+        }
+        out.write(buffer, 0, read);
+        return true;
+    }
+
+    private static void drain(InputStream in, ByteArrayOutputStream out, byte[] buffer) throws Exception {
+        int len;
+        while ((len = in.read(buffer)) != -1) {
+            out.write(buffer, 0, len);
         }
     }
 

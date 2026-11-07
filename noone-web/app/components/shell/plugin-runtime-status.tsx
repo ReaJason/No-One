@@ -3,7 +3,10 @@ import type { PluginRuntimeStatus } from "@/types/plugin";
 import { ArrowUpCircle, CheckCircle2, ChevronDown, Loader2, Puzzle } from "lucide-react";
 import { useState } from "react";
 
-import { usePluginStatusContextOptional } from "@/components/shell/plugin-status-context";
+import {
+  usePluginAutoLoad,
+  usePluginStatusContextOptional,
+} from "@/components/shell/plugin-status-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -26,6 +29,7 @@ export default function PluginRuntimeStatusCard({
   showWhenSynced = true,
 }: PluginRuntimeStatusProps) {
   const ctx = usePluginStatusContextOptional();
+  const isAutoLoading = usePluginAutoLoad(pluginId);
   const status = ctx?.statuses[pluginId] ?? statusProp;
   const isUpdating = ctx?.updatingIds.has(pluginId) ?? false;
 
@@ -54,6 +58,7 @@ export default function PluginRuntimeStatusCard({
       pluginName={pluginName}
       status={status}
       isUpdating={isUpdating}
+      isAutoLoading={isAutoLoading}
       onUpdate={needsAction ? handleUpdate : undefined}
     />
   );
@@ -102,15 +107,22 @@ function ExpandedStatusCard({
   pluginName,
   status,
   isUpdating,
+  isAutoLoading,
   onUpdate,
 }: {
   pluginName: string;
   status: PluginRuntimeStatus;
   isUpdating: boolean;
+  isAutoLoading: boolean;
   onUpdate?: () => void;
 }) {
-  const badge = !status.loaded ? "Not Installed" : "Update Available";
-  const buttonLabel = status.loaded ? "Update Plugin" : "Install Plugin";
+  const installing = !status.loaded && (isAutoLoading || isUpdating);
+  const badge = !status.loaded ? (installing ? "Installing" : "Not Installed") : "Update Available";
+  const buttonLabel = status.loaded
+    ? "Update Plugin"
+    : installing
+      ? "Installing..."
+      : "Install Plugin";
 
   return (
     <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
@@ -130,11 +142,11 @@ function ExpandedStatusCard({
         </div>
 
         {onUpdate && (
-          <Button type="button" size="sm" onClick={onUpdate} disabled={isUpdating}>
-            {isUpdating ? (
+          <Button type="button" size="sm" onClick={onUpdate} disabled={isUpdating || installing}>
+            {isUpdating || installing ? (
               <>
                 <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                Updating...
+                {status.loaded ? "Updating..." : buttonLabel}
               </>
             ) : (
               <>

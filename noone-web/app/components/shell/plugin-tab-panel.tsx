@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
-import { usePluginStatusContext } from "@/components/shell/plugin-status-context";
+import {
+  usePluginAutoLoad,
+  usePluginStatusContext,
+} from "@/components/shell/plugin-status-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,6 +89,7 @@ export default function PluginTabPanel({
   const { submit: submitPluginAction } = useShellRouteFetcher<Record<string, unknown>>();
   const { load: loadTaskStatus } = useShellRouteFetcher<Record<string, unknown>>();
   const pluginStatusCtx = usePluginStatusContext();
+  const isAutoLoading = usePluginAutoLoad(plugin.id);
 
   const refreshPluginStatus = useCallback(async () => {
     await pluginStatusCtx.refreshOne(plugin.id);
@@ -305,6 +309,10 @@ export default function PluginTabPanel({
 
   const pluginStatus = pluginStatusCtx.statuses[plugin.id];
   const isPluginUpdating = pluginStatusCtx.updatingIds.has(plugin.id);
+  const isPluginInstalling = Boolean(
+    pluginStatus && !pluginStatus.loaded && (isAutoLoading || isPluginUpdating),
+  );
+  const isPluginBusy = isPluginUpdating || isPluginInstalling;
   const needsAction = pluginStatus && (pluginStatus.needsUpdate || !pluginStatus.loaded);
 
   return (
@@ -334,12 +342,12 @@ export default function PluginTabPanel({
               variant="outline"
               size="sm"
               onClick={() => pluginStatusCtx.updatePlugin(plugin.id)}
-              disabled={isPluginUpdating}
+              disabled={isPluginBusy}
             >
-              {isPluginUpdating ? (
+              {isPluginBusy ? (
                 <>
                   <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                  Updating...
+                  {pluginStatus.loaded ? "Updating..." : "Installing..."}
                 </>
               ) : (
                 <>
@@ -376,7 +384,7 @@ export default function PluginTabPanel({
             )}
             {!pluginStatus.loaded && (
               <Badge variant="outline" className="text-[10px]">
-                Not Installed
+                {isPluginInstalling ? "Installing..." : "Not Installed"}
               </Badge>
             )}
           </div>

@@ -406,6 +406,33 @@ class ShellPluginServiceTest {
     }
 
     @Test
+    void shouldLoadWithoutRefreshWhenInstallingUnloadedShellPlugin() {
+        Long shellId = 16L;
+        Shell shell = shell(shellId);
+        shell.setLanguage(ShellLanguage.NODEJS);
+        ShellConnection connection = mock(ShellConnection.class);
+        AtomicReference<String> shellVersion = new AtomicReference<>();
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenReturn(true);
+        when(connection.getLoadedPluginVersion("file-manager")).thenAnswer(invocation -> shellVersion.get());
+        when(connection.needLoadPlugin("file-manager")).thenAnswer(invocation -> shellVersion.get() == null);
+        doAnswer(invocation -> {
+            shellVersion.set(invocation.getArgument(1, String.class));
+            return null;
+        }).when(connection).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));
+        when(builtinPluginRegistryService.findOrRegister("file-manager", "nodejs"))
+                .thenReturn(Optional.of(plugin("file-manager", "module.exports = {};", "nodejs")));
+
+        ShellPluginStatusResponse response = shellPluginService.updatePlugin(shellId, "file-manager");
+
+        assertEquals("0.0.1", response.getShellVersion());
+        assertTrue(response.isLoaded());
+        verify(connection).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));
+        verify(connection, never()).refreshPlugin(any(), any(), any(byte[].class));
+    }
+
+    @Test
     void shouldLoadAutoRegisteredBuiltinPluginBeforeRun() {
         Long shellId = 15L;
         Shell shell = shell(shellId);
@@ -428,6 +455,80 @@ class ShellPluginServiceTest {
         assertEquals(Constants.SUCCESS, response.get(Constants.CODE));
         verify(connection).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));
         verify(connection).runPlugin(eq("file-manager"), any());
+    }
+
+    @Test
+    void shouldNotRefreshPluginThatIsAlreadyUpToDate() {
+        Long shellId = 17L;
+        Shell shell = shell(shellId);
+        shell.setLanguage(ShellLanguage.NODEJS);
+        ShellConnection connection = mock(ShellConnection.class);
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenReturn(true);
+        when(connection.getLoadedPluginVersion("file-manager")).thenReturn("0.0.1");
+        when(connection.needLoadPlugin("file-manager")).thenReturn(false);
+        when(builtinPluginRegistryService.findOrRegister("file-manager", "nodejs"))
+                .thenReturn(Optional.of(plugin("file-manager", "module.exports = {};", "nodejs")));
+
+        ShellPluginStatusResponse response = shellPluginService.updatePlugin(shellId, "file-manager");
+
+        assertTrue(response.isLoaded());
+        verify(connection, never()).loadPlugin(any(), any(), any(byte[].class));
+        verify(connection, never()).refreshPlugin(any(), any(), any(byte[].class));
+    }
+
+    @Test
+    void shouldInitializeRemotePluginCacheOnlyOnceOnRepeatedFirstVisit() {
+        Long shellId = 18L;
+        Shell shell = shell(shellId);
+        ShellConnection connection = mock(ShellConnection.class);
+        AtomicReference<Boolean> initialized = new AtomicReference<>(false);
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenAnswer(invocation -> initialized.get());
+        when(connection.test()).thenAnswer(invocation -> {
+            initialized.set(true);
+            return true;
+        });
+        when(connection.getLoadedPluginVersion("file-manager")).thenReturn("0.0.1");
+        when(connection.needLoadPlugin("file-manager")).thenReturn(false);
+        when(builtinPluginRegistryService.findOrRegister("file-manager", "java"))
+                .thenReturn(Optional.of(plugin("file-manager", "plugin-bytes")));
+
+        shellPluginService.getPluginStatus(shellId, "file-manager");
+        shellPluginService.getPluginStatus(shellId, "file-manager");
+
+        verify(shellCoreInitHelper, times(1)).initCoreIfNeeded(connection, shellId);
+        verify(connection, times(1)).test();
+    }
+
+    @Test
+    void shouldUploadPluginOnlyOnceWhenTwoRequestsNeedIt() {
+        Long shellId = 19L;
+        Shell shell = shell(shellId);
+        shell.setLanguage(ShellLanguage.NODEJS);
+        ShellConnection connection = mock(ShellConnection.class);
+        AtomicReference<Boolean> loaded = new AtomicReference<>(false);
+        when(shellLookupHelper.requireById(shellId)).thenReturn(shell);
+        when(shellConnectionPool.getOrCreateCached(shell)).thenReturn(connection);
+        when(connection.isPluginCacheInitialized()).thenReturn(true);
+        when(connection.needLoadPlugin("file-manager")).thenAnswer(invocation -> !loaded.get());
+        when(connection.getLoadedPluginVersion("file-manager")).thenAnswer(invocation -> loaded.get() ? "0.0.1" : null);
+        doAnswer(invocation -> {
+            loaded.set(true);
+            return null;
+        }).when(connection).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));
+        when(connection.runPlugin(eq("file-manager"), any()))
+                .thenReturn(Map.of(Constants.CODE, Constants.SUCCESS, Constants.DATA, Map.of()));
+        when(builtinPluginRegistryService.findOrRegister("file-manager", "nodejs"))
+                .thenReturn(Optional.of(plugin("file-manager", "module.exports = {};", "nodejs")));
+
+        shellPluginService.dispatchPlugin(shellId, "file-manager", Map.of("op", "list"));
+        shellPluginService.dispatchPlugin(shellId, "file-manager", Map.of("op", "list"));
+
+        verify(connection, times(1)).loadPlugin(eq("file-manager"), eq("0.0.1"), any(byte[].class));
+        verify(connection, times(2)).runPlugin(eq("file-manager"), any());
     }
 
     private Shell shell(Long id) {

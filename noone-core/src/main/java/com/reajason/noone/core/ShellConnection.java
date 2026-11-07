@@ -148,7 +148,7 @@ public abstract class ShellConnection {
         return response;
     }
 
-    public boolean init() {
+    public synchronized boolean init() {
         if (loaderClient != null) {
             byte[] coreBytes = getCoreBytes(shellType, coreProfile);
             return loadCore(coreBytes);
@@ -168,7 +168,7 @@ public abstract class ShellConnection {
         return checkStatus();
     }
 
-    public boolean checkStatus() {
+    public synchronized boolean checkStatus() {
         Map<String, Object> requestMap = new HashMap<>();
         requestMap.put(Constants.ACTION, Constants.ACTION_STATUS);
         Map<String, Object> response = sendRequest(requestMap);
@@ -193,24 +193,30 @@ public abstract class ShellConnection {
     }
 
     private void loadPluginInternal(String pluginName, String version, byte[] pluginCodeBytes, boolean refresh) {
-        if (!refresh && !pluginCache.needLoad(pluginName)) {
-            return;
+        // Plugin loads are serialized per connection and re-check the cache while
+        // holding the lock. The first page visit can trigger a status refresh, an
+        // auto-load and a dispatch at the same time; without this, each request
+        // uploads the payload to the remote shell again.
+        synchronized (this) {
+            if (!refresh && !pluginCache.needLoad(pluginName)) {
+                return;
+            }
+            Map<String, Object> requestMap = new HashMap<>();
+            requestMap.put(Constants.ACTION, Constants.ACTION_LOAD);
+            requestMap.put(Constants.PLUGIN, pluginName);
+            if (version != null) {
+                requestMap.put(Constants.VERSION, version);
+            }
+            requestMap.put(Constants.REFRESH, String.valueOf(refresh));
+            fillLoadPluginRequestMaps(pluginName, pluginCodeBytes, requestMap);
+            Map<String, Object> response = sendRequest(requestMap);
+            int code = requireResponseCode(response, Constants.ACTION_LOAD);
+            if (code == Constants.SUCCESS) {
+                pluginCache.put(pluginName, version);
+                return;
+            }
+            throw new ResponseBusinessException("Load plugin failed: " + errorMessage(response));
         }
-        Map<String, Object> requestMap = new HashMap<>();
-        requestMap.put(Constants.ACTION, Constants.ACTION_LOAD);
-        requestMap.put(Constants.PLUGIN, pluginName);
-        if (version != null) {
-            requestMap.put(Constants.VERSION, version);
-        }
-        requestMap.put(Constants.REFRESH, String.valueOf(refresh));
-        fillLoadPluginRequestMaps(pluginName, pluginCodeBytes, requestMap);
-        Map<String, Object> response = sendRequest(requestMap);
-        int code = requireResponseCode(response, Constants.ACTION_LOAD);
-        if (code == Constants.SUCCESS) {
-            pluginCache.put(pluginName, version);
-            return;
-        }
-        throw new ResponseBusinessException("Load plugin failed: " + errorMessage(response));
     }
 
     private int requireResponseCode(Map<String, Object> response, String action) {

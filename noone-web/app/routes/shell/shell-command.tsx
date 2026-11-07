@@ -74,25 +74,29 @@ async function loadShellCommandRouteData(
 }
 
 export async function clientAction({ context, params, request }: ActionFunctionArgs) {
+  let requestId: string | undefined;
   try {
     const shellId = parseShellIdParam(params.shellId);
-    const { intent, payload, requestId } =
-      await parseShellRouteFormData<Record<string, unknown>>(request);
-    if (intent !== "run-command") {
+    const parsed = await parseShellRouteFormData<Record<string, unknown>>(request);
+    requestId = parsed.requestId;
+    if (parsed.intent !== "run-command") {
       return Response.json({ ok: false, error: "Unsupported action", requestId }, { status: 400 });
     }
 
     const data = await dispatchShellPluginFromRoute(request, context, shellId, {
       pluginId: "command-execute",
-      args: payload,
+      args: parsed.payload,
     });
     return shellRouteSuccess(data, requestId);
   } catch (error) {
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+      return Response.json(
+        { ok: false, error: message, requestId },
+        { status: error.status || 400 },
+      );
     }
-    return shellRouteError(error, "Command execution failed");
+    return shellRouteError(error, "Command execution failed", requestId);
   }
 }
 

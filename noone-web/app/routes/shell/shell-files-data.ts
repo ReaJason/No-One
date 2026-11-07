@@ -48,26 +48,34 @@ export async function clientLoader({ context, params, request }: LoaderFunctionA
   } catch (error) {
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+      return Response.json(
+        { ok: false, error: message, requestId },
+        { status: error.status || 400 },
+      );
     }
     return shellRouteError(error, "File manager request failed", requestId);
   }
 }
 
 export async function clientAction({ context, params, request }: ActionFunctionArgs) {
+  let requestId: string | undefined;
   try {
     const shellId = parseShellIdParam(params.shellId);
-    const { payload, requestId } = await parseShellRouteFormData<Record<string, unknown>>(request);
+    const parsed = await parseShellRouteFormData<Record<string, unknown>>(request);
+    requestId = parsed.requestId;
     const data = await dispatchShellPluginFromRoute(request, context, shellId, {
       pluginId: "file-manager",
-      args: payload,
+      args: parsed.payload,
     });
     return shellRouteSuccess(data, requestId);
   } catch (error) {
     if (error instanceof Response) {
       const message = (await error.text()) || error.statusText || "Invalid request";
-      return Response.json({ ok: false, error: message }, { status: error.status || 400 });
+      return Response.json(
+        { ok: false, error: message, requestId },
+        { status: error.status || 400 },
+      );
     }
-    return shellRouteError(error, "File manager request failed");
+    return shellRouteError(error, "File manager request failed", requestId);
   }
 }
