@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn, downloadBytes } from "@/lib/utils";
 
-import CodeViewer from "./code-viewer";
+import CodeViewer from "./lazy-code-viewer";
 import { BasicInfo } from "./results/basic-info";
 import { ResultComponent } from "./results/result-component";
 

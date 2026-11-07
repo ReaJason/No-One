@@ -47,6 +47,8 @@ interface PluginTabPanelProps {
 }
 
 const TERMINAL_STATUSES: TaskStatus[] = ["COMPLETED", "FAILED", "CANCELLED"];
+const POLL_INTERVAL_MS = 1500;
+const HIDDEN_POLL_INTERVAL_MS = 5000;
 
 function isAsyncMode(plugin: Plugin): boolean {
   return plugin.runMode === "async";
@@ -79,10 +81,10 @@ export default function PluginTabPanel({
   const actions = plugin.actions ?? {};
   const actionKeys = Object.keys(actions);
   const currentAction = actions[state.selectedAction];
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingGenerationRef = useRef(0);
   const { submit: submitPluginAction } = useShellRouteFetcher<Record<string, unknown>>();
-  const { fetcher: taskStatusFetcher, load: loadTaskStatus } =
-    useShellRouteFetcher<Record<string, unknown>>();
+  const { load: loadTaskStatus } = useShellRouteFetcher<Record<string, unknown>>();
   const pluginStatusCtx = usePluginStatusContext();
 
   const refreshPluginStatus = useCallback(async () => {
@@ -103,8 +105,9 @@ export default function PluginTabPanel({
   };
 
   const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
+    pollingGenerationRef.current += 1;
+    if (pollingRef.current !== null) {
+      clearTimeout(pollingRef.current);
       pollingRef.current = null;
     }
   }, []);
@@ -114,17 +117,18 @@ export default function PluginTabPanel({
   }, [stopPolling]);
 
   const pollTaskStatus = useCallback(
-    async (taskId: string) => {
+    async (taskId: string, generation: number): Promise<boolean> => {
       try {
-        if (taskStatusFetcher.state !== "idle") {
-          return;
-        }
+        if (generation !== pollingGenerationRef.current) return false;
+
         const requestId = createShellRouteRequestId();
         const url = new URL(taskStatusPath, window.location.origin);
         url.searchParams.set("pluginId", plugin.id);
         url.searchParams.set("taskId", taskId);
         url.searchParams.set("requestId", requestId);
         const taskResult = await loadTaskStatus(`${url.pathname}${url.search}`, requestId);
+        if (generation !== pollingGenerationRef.current) return false;
+
         const status = taskResult?.status as TaskStatus | undefined;
         const partialResult = taskResult?.partialResult;
         const finalResult = taskResult?.result;
@@ -139,38 +143,57 @@ export default function PluginTabPanel({
           displayResult = formatResult(lastResult);
         }
 
-        const isTerminal = status && TERMINAL_STATUSES.includes(status);
+        const isTerminal = status != null && TERMINAL_STATUSES.includes(status);
         onStateChange({
           taskStatus: status,
           result: displayResult,
           loading: !isTerminal,
           polling: !isTerminal,
         });
-
-        if (isTerminal) {
-          stopPolling();
-        }
+        return !isTerminal;
       } catch {
-        stopPolling();
-        onStateChange({ polling: false, loading: false });
+        if (generation === pollingGenerationRef.current) {
+          onStateChange({ polling: false, loading: false });
+        }
+        return false;
       }
     },
-    [
-      loadTaskStatus,
-      onStateChange,
-      plugin.id,
-      stopPolling,
-      taskStatusFetcher.state,
-      taskStatusPath,
-    ],
+    [loadTaskStatus, onStateChange, plugin.id, taskStatusPath],
   );
 
   const startPolling = useCallback(
     (taskId: string) => {
       stopPolling();
+      const generation = pollingGenerationRef.current;
       onStateChange({ polling: true });
-      pollingRef.current = setInterval(() => pollTaskStatus(taskId), 1500);
-      pollTaskStatus(taskId);
+
+      const schedule = (delay: number) => {
+        if (generation !== pollingGenerationRef.current) return;
+        pollingRef.current = setTimeout(() => {
+          void run();
+        }, delay);
+      };
+
+      const run = async () => {
+        pollingRef.current = null;
+        if (generation !== pollingGenerationRef.current) return;
+
+        if (document.hidden) {
+          schedule(HIDDEN_POLL_INTERVAL_MS);
+          return;
+        }
+
+        const shouldContinue = await pollTaskStatus(taskId, generation);
+        if (generation !== pollingGenerationRef.current) return;
+
+        if (shouldContinue) {
+          schedule(POLL_INTERVAL_MS);
+        } else {
+          stopPolling();
+        }
+      };
+
+      void run();
     },
     [pollTaskStatus, stopPolling, onStateChange],
   );

@@ -1,57 +1,12 @@
-import type { VariantProps } from "class-variance-authority";
-
-import { Check, Copy } from "lucide-react";
-import { type HTMLProps, type ReactNode, useCallback, useEffect, useState } from "react";
-import CopyToClipboard from "react-copy-to-clipboard";
+import { type HTMLProps, type ReactNode } from "react";
 import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
 import java from "react-syntax-highlighter/dist/esm/languages/prism/java";
 import materialDark from "react-syntax-highlighter/dist/esm/styles/prism/material-dark";
-import { toast } from "sonner";
 
-import { Button, type buttonVariants } from "@/components/ui/button";
+import { CopyButton } from "@/components/memshell/copy-button";
 import { cn } from "@/lib/utils";
 
 SyntaxHighlighter.registerLanguage("java", java);
-interface CopyButtonProps extends React.ComponentProps<"button"> {
-  value: string;
-  src?: string;
-}
-
-export function CopyButton({
-  value,
-}: Readonly<CopyButtonProps & VariantProps<typeof buttonVariants>>) {
-  const [hasCopied, setHasCopied] = useState(false);
-
-  useEffect(() => {
-    if (hasCopied) {
-      const timer = setTimeout(() => {
-        setHasCopied(false);
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [hasCopied]);
-
-  const handleCopy = useCallback(() => {
-    if (!hasCopied) {
-      setHasCopied(true);
-      toast.success("copySuccess", { duration: 1000 });
-    }
-  }, [hasCopied]);
-
-  return (
-    <CopyToClipboard.CopyToClipboard text={value} onCopy={handleCopy}>
-      <Button
-        variant="ghost"
-        size="icon"
-        type="button"
-        className="h-7 w-7 [&_svg]:h-4 [&_svg]:w-4"
-        disabled={hasCopied}
-      >
-        {hasCopied ? <Check /> : <Copy />}
-      </Button>
-    </CopyToClipboard.CopyToClipboard>
-  );
-}
 
 export default function CodeViewer({
   code,
@@ -99,7 +54,7 @@ export default function CodeViewer({
   );
 }
 
-interface CodeViewerProps {
+export interface CodeViewerProps {
   code: string;
   language: string;
   header?: ReactNode;

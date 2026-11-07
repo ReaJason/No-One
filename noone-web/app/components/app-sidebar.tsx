@@ -63,7 +63,7 @@ function NavItemRenderer({ item, location }: NavItemRendererProps) {
               <span>{item.title}</span>
             </div>
           ) : (
-            <NavLink to={item.url} viewTransition>
+            <NavLink to={item.url} prefetch="intent" viewTransition>
               <item.icon />
               <span>{item.title}</span>
             </NavLink>
@@ -173,7 +173,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              render={<Link to="/" viewTransition />}
+              render={<Link to="/" prefetch="intent" viewTransition />}
               className="h-10 gap-3 [&_svg]:size-8"
             >
               <div className="flex size-8 shrink-0 items-center justify-center">
