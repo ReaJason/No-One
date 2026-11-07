@@ -75,30 +75,7 @@ public class ClientFactory {
         }
 
         // Apply connection overrides from clientConfig
-        String proxyUrl = configString(cfg, "proxyUrl");
-        if (proxyUrl != null && !proxyUrl.isEmpty()) {
-            builder.proxy(parseProxyUrl(proxyUrl));
-        }
-        Integer connectTimeoutMs = configInt(cfg, "connectTimeoutMs");
-        if (connectTimeoutMs != null) {
-            builder.connectTimeoutMs(connectTimeoutMs);
-        }
-        Integer readTimeoutMs = configInt(cfg, "readTimeoutMs");
-        if (readTimeoutMs != null) {
-            builder.readTimeoutMs(readTimeoutMs);
-        }
-        Boolean skipSslVerify = configBoolean(cfg, "skipSslVerify");
-        if (skipSslVerify != null) {
-            builder.skipSslVerify(skipSslVerify);
-        }
-        Integer maxRetries = configInt(cfg, "maxRetries");
-        if (maxRetries != null) {
-            builder.maxRetries(maxRetries);
-        }
-        Long retryDelayMs = configLong(cfg, "retryDelayMs");
-        if (retryDelayMs != null) {
-            builder.retryDelayMs(retryDelayMs);
-        }
+        readTransportOverrides(cfg).applyTo(builder);
 
         return builder.build();
     }
@@ -129,22 +106,7 @@ public class ClientFactory {
             builder.requestHeaders(requestHeaders);
         }
 
-        String proxyUrl = configString(cfg, "proxyUrl");
-        if (proxyUrl != null && !proxyUrl.isEmpty()) {
-            builder.proxy(parseProxyUrl(proxyUrl));
-        }
-        Integer connectTimeoutMs = configInt(cfg, "connectTimeoutMs");
-        if (connectTimeoutMs != null) {
-            builder.connectTimeoutMs(connectTimeoutMs);
-        }
-        Integer readTimeoutMs = configInt(cfg, "readTimeoutMs");
-        if (readTimeoutMs != null) {
-            builder.readTimeoutMs(readTimeoutMs);
-        }
-        Boolean skipSslVerify = configBoolean(cfg, "skipSslVerify");
-        if (skipSslVerify != null) {
-            builder.skipSslVerify(skipSslVerify);
-        }
+        readTransportOverrides(cfg).applyTo(builder);
 
         return builder.build();
     }
@@ -231,6 +193,108 @@ public class ClientFactory {
     }
 
     // ==================== clientConfig helper methods ====================
+
+    /**
+     * Transport settings shared by the core and loader clients. Both are built from the same
+     * {@link Shell#getClientConfig()}, so a shell cannot end up impersonating one browser for the
+     * core payload and another for the loader.
+     */
+    private static TransportOverrides readTransportOverrides(Map<String, Object> cfg) {
+        TransportOverrides overrides = new TransportOverrides();
+
+        String proxyUrl = configString(cfg, "proxyUrl");
+        if (proxyUrl != null && !proxyUrl.isEmpty()) {
+            overrides.proxy = parseProxyUrl(proxyUrl);
+        }
+        overrides.connectTimeoutMs = configInt(cfg, "connectTimeoutMs");
+        overrides.readTimeoutMs = configInt(cfg, "readTimeoutMs");
+        overrides.skipSslVerify = configBoolean(cfg, "skipSslVerify");
+        overrides.maxRetries = configInt(cfg, "maxRetries");
+        overrides.retryDelayMs = configLong(cfg, "retryDelayMs");
+
+        overrides.browserImpersonation = Boolean.TRUE.equals(configBoolean(cfg, "browserImpersonation"));
+        // Rejects an unsupported profile here, while the connection is being built, rather than
+        // silently connecting without impersonation.
+        overrides.impersonationProfile = BrowserImpersonationProfile.fromConfig(
+                configString(cfg, "impersonationProfile"));
+
+        // Validated when the client is built, so a malformed keystore fails the connection attempt
+        // with a message naming the offending field.
+        overrides.clientCertificate = configString(cfg, "clientCertificate");
+        overrides.clientCertificatePassword = configString(cfg, "clientCertificatePassword");
+        return overrides;
+    }
+
+    private static final class TransportOverrides {
+        private ProxyConfig proxy;
+        private Integer connectTimeoutMs;
+        private Integer readTimeoutMs;
+        private Boolean skipSslVerify;
+        private Integer maxRetries;
+        private Long retryDelayMs;
+        private boolean browserImpersonation;
+        private BrowserImpersonationProfile impersonationProfile;
+        private String clientCertificate;
+        private String clientCertificatePassword;
+
+        private void applyTo(HttpClientConfig.HttpClientConfigBuilder builder) {
+            if (proxy != null) {
+                builder.proxy(proxy);
+            }
+            if (connectTimeoutMs != null) {
+                builder.connectTimeoutMs(connectTimeoutMs);
+            }
+            if (readTimeoutMs != null) {
+                builder.readTimeoutMs(readTimeoutMs);
+            }
+            if (skipSslVerify != null) {
+                builder.skipSslVerify(skipSslVerify);
+            }
+            if (maxRetries != null) {
+                builder.maxRetries(maxRetries);
+            }
+            if (retryDelayMs != null) {
+                builder.retryDelayMs(retryDelayMs);
+            }
+            applyTlsSettings(builder);
+        }
+
+        private void applyTo(WebSocketClientConfig.WebSocketClientConfigBuilder builder) {
+            if (proxy != null) {
+                builder.proxy(proxy);
+            }
+            if (connectTimeoutMs != null) {
+                builder.connectTimeoutMs(connectTimeoutMs);
+            }
+            if (readTimeoutMs != null) {
+                builder.readTimeoutMs(readTimeoutMs);
+            }
+            if (skipSslVerify != null) {
+                builder.skipSslVerify(skipSslVerify);
+            }
+            applyTlsSettings(builder);
+        }
+
+        private void applyTlsSettings(HttpClientConfig.HttpClientConfigBuilder builder) {
+            builder.browserImpersonation(browserImpersonation);
+            if (impersonationProfile != null) {
+                builder.impersonationProfile(impersonationProfile);
+            }
+            // Passed through as a pair even when the certificate is missing: the transport then
+            // rejects a password on its own instead of silently ignoring it here.
+            builder.clientCertificate(clientCertificate);
+            builder.clientCertificatePassword(clientCertificatePassword);
+        }
+
+        private void applyTlsSettings(WebSocketClientConfig.WebSocketClientConfigBuilder builder) {
+            builder.browserImpersonation(browserImpersonation);
+            if (impersonationProfile != null) {
+                builder.impersonationProfile(impersonationProfile);
+            }
+            builder.clientCertificate(clientCertificate);
+            builder.clientCertificatePassword(clientCertificatePassword);
+        }
+    }
 
     private static Map<String, Object> safeConfig(Shell shell) {
         Map<String, Object> cfg = ShellClientConfigCompat.effectiveConfig(shell);

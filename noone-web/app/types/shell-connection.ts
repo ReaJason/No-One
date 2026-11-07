@@ -9,6 +9,10 @@ export interface ShellClientConfig {
   skipSslVerify?: boolean;
   maxRetries?: number;
   retryDelayMs?: number;
+  browserImpersonation?: boolean;
+  impersonationProfile?: string;
+  clientCertificate?: string;
+  clientCertificatePassword?: string;
   [key: string]: unknown;
 }
 

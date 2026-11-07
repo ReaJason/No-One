@@ -40,7 +40,11 @@ public class HttpClient implements Client {
                 config.getConnectTimeoutMs(),
                 config.getReadTimeoutMs(),
                 config.getWriteTimeoutMs(),
-                config.isSkipSslVerify()
+                config.isSkipSslVerify(),
+                config.resolveImpersonationProfile(),
+                config.getRequestHeaders(),
+                config.getClientCertificate(),
+                config.getClientCertificatePassword()
         );
     }
 

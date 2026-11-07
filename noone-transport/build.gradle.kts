@@ -27,8 +27,16 @@ tasks.compileTestJava {
 }
 
 
+configurations.configureEach {
+    // impersonator-okhttp is a fork of OkHttp that provides the same okhttp3.* classes.
+    // Any official OkHttp on the classpath would shadow it at random, so every transitive
+    // copy is excluded, including the one dubbo-remoting-http and mockwebserver3 bring in.
+    exclude(group = "com.squareup.okhttp3", module = "okhttp")
+    exclude(group = "com.squareup.okhttp3", module = "okhttp-jvm")
+}
+
 dependencies {
-    implementation(libs.okhttp3)
+    implementation(libs.impersonator.okhttp)
     // Alibaba Dubbo 2.x MUST be declared before Apache Dubbo 3.x so that
     // the real com.alibaba.dubbo.* classes take precedence over the incomplete
     // backward-compatibility shim baked into org.apache.dubbo:dubbo
@@ -51,6 +59,8 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.netty.handler.proxy)
     testImplementation(libs.okhttp3.mockwebserver)
+    // Generates the throwaway certificates the mutual TLS tests use.
+    testImplementation(libs.bcpkix)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 }

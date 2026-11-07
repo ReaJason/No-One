@@ -2,6 +2,7 @@ package com.reajason.noone.core.client;
 
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
+import mockwebserver3.RecordedRequest;
 import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
@@ -55,6 +56,37 @@ class WebSocketClientTest {
 
             assertTrue(client.connect());
             assertTrue(client.connect());
+            client.disconnect();
+        }
+    }
+
+    @Test
+    void shouldApplyBrowserProfileHeadersToHandshakeWhenImpersonating() throws Exception {
+        try (MockWebServer server = new MockWebServer()) {
+            server.enqueue(new MockResponse.Builder()
+                    .webSocketUpgrade(new EchoWebSocketListener())
+                    .build());
+            server.start();
+
+            WebSocketClient client = new WebSocketClient(
+                    server.url("/ws").toString(),
+                    WebSocketClientConfig.builder()
+                            .connectTimeoutMs(5000)
+                            .readTimeoutMs(5000)
+                            .browserImpersonation(true)
+                            .impersonationProfile(BrowserImpersonationProfile.MAC_FIREFOX)
+                            .build()
+            );
+
+            assertTrue(client.connect());
+
+            RecordedRequest request = server.takeRequest();
+            assertNotNull(request);
+            String userAgent = request.getHeaders().get("User-Agent");
+            assertNotNull(userAgent);
+            assertTrue(userAgent.contains("Firefox/"), "expected Firefox user agent, got " + userAgent);
+            assertEquals("none", request.getHeaders().get("Sec-Fetch-Site"));
+
             client.disconnect();
         }
     }

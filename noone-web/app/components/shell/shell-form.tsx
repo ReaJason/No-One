@@ -7,6 +7,7 @@ import { useFetcher } from "react-router";
 import { toast } from "sonner";
 
 import ShellFormActions from "@/components/shell/shell-form-actions";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -28,7 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
+  BROWSER_IMPERSONATION_PROFILES,
   COMMON_SHELL_TYPES,
   createShellFormSchema,
   LANGUAGE_ITEMS,
@@ -88,6 +91,7 @@ export function ShellForm({
   }, [testFetcher.data, testFetcher.state]);
 
   const staging = watch("staging");
+  const browserImpersonation = watch("browserImpersonation");
   const profileIdValue = watch("profileId");
   const loaderProfileIdValue = watch("loaderProfileId");
 
@@ -548,6 +552,132 @@ export function ShellForm({
                   </FieldDescription>
                 </FieldContent>
               </Field>
+
+              <Field orientation="horizontal">
+                <Controller
+                  name="browserImpersonation"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="browserImpersonation"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+                <FieldContent>
+                  <FieldLabel htmlFor="browserImpersonation">
+                    Browser fingerprint impersonation
+                  </FieldLabel>
+                  <FieldDescription>
+                    Mimic a browser&apos;s TLS/JA3/JA4 and HTTP/2 fingerprint. Applies to both the
+                    core and loader clients. Use a TLS target (https or wss) for this to take
+                    effect.
+                  </FieldDescription>
+                </FieldContent>
+              </Field>
+
+              {browserImpersonation ? (
+                <Field>
+                  <FieldLabel htmlFor="impersonationProfile">Browser Profile</FieldLabel>
+                  <Controller
+                    name="impersonationProfile"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        items={BROWSER_IMPERSONATION_PROFILES}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger id="impersonationProfile" className="w-full">
+                          <SelectValue placeholder="Select a browser profile" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectGroup>
+                            {BROWSER_IMPERSONATION_PROFILES.map((profile) => (
+                              <SelectItem key={profile.value} value={profile.value}>
+                                {profile.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FieldDescription>
+                    Fingerprint to impersonate. Defaults to Chrome (macOS) when left empty.
+                  </FieldDescription>
+                </Field>
+              ) : null}
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <Field className="md:col-span-2">
+                  <FieldLabel htmlFor="clientCertificate">Client Certificate (PKCS#12)</FieldLabel>
+                  <Controller
+                    name="clientCertificate"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="space-y-2">
+                        <Input
+                          id="clientCertificate"
+                          type="file"
+                          accept=".p12,.pfx,application/x-pkcs12"
+                          onChange={async (event) => {
+                            const file = event.target.files?.[0];
+                            if (!file) {
+                              return;
+                            }
+                            try {
+                              field.onChange(await readFileAsBase64(file));
+                            } catch {
+                              toast.error("Failed to read the certificate file");
+                            }
+                          }}
+                        />
+                        {field.value ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>Certificate configured.</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => field.onChange("")}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  />
+                  <FieldDescription>
+                    Optional mutual TLS client certificate. Upload a .p12/.pfx keystore; it is
+                    stored Base64-encoded in the shell configuration and used for both the core and
+                    loader clients.
+                  </FieldDescription>
+                </Field>
+
+                <Field className="md:col-span-2">
+                  <FieldLabel htmlFor="clientCertificatePassword">Certificate Password</FieldLabel>
+                  <Controller
+                    name="clientCertificatePassword"
+                    control={control}
+                    render={({ field }) => (
+                      <Input
+                        {...field}
+                        id="clientCertificatePassword"
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="Leave empty for an unprotected keystore"
+                        value={field.value ?? ""}
+                      />
+                    )}
+                  />
+                  <FieldDescription>
+                    Password of the uploaded keystore. Its private key must use the same password.
+                  </FieldDescription>
+                </Field>
+              </div>
             </FieldGroup>
           </FieldSet>
         </CardContent>
@@ -562,4 +692,18 @@ export function ShellForm({
       />
     </form>
   );
+}
+
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      // readAsDataURL returns "data:<mime>;base64,<payload>"; the server wants only the payload.
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read the file"));
+    reader.readAsDataURL(file);
+  });
 }
