@@ -1,5 +1,8 @@
 server:
   port: 8888
+  compression:
+    enabled: true
+    min-response-size: 2KB
 spring:
   profiles:
     default: sqlite
