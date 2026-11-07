@@ -13,14 +13,8 @@ namespace NoOne.Plugins.Dotnet.SystemInfo
 {
     public sealed class DotnetSystemInfoPlugin
     {
-        public override bool Equals(object obj)
+        public object Execute(IDictionary<string, object> ctx)
         {
-            IDictionary<string, object> ctx = obj as IDictionary<string, object>;
-            if (ctx == null)
-            {
-                return true;
-            }
-
             Dictionary<string, object> systemInfo = new Dictionary<string, object>();
             try
             {
@@ -33,11 +27,10 @@ namespace NoOne.Plugins.Dotnet.SystemInfo
             }
             catch (Exception ex)
             {
-                systemInfo["error"] = "Failed to collect system info: " + ex.Message;
+                throw new InvalidOperationException("Failed to collect system info: " + ex.Message, ex);
             }
 
-            ctx["result"] = systemInfo;
-            return true;
+            return systemInfo;
         }
 
         public override int GetHashCode()
@@ -86,7 +79,7 @@ namespace NoOne.Plugins.Dotnet.SystemInfo
             }
             catch (Exception ex)
             {
-                info["error"] = "Failed to get runtime memory: " + ex.Message;
+                throw new InvalidOperationException("Failed to get runtime memory: " + ex.Message, ex);
             }
             return info;
         }
@@ -113,7 +106,7 @@ namespace NoOne.Plugins.Dotnet.SystemInfo
             }
             catch (Exception ex)
             {
-                info["error"] = "Failed to collect process info: " + ex.Message;
+                throw new InvalidOperationException("Failed to collect process info: " + ex.Message, ex);
             }
             return info;
         }
@@ -203,9 +196,7 @@ namespace NoOne.Plugins.Dotnet.SystemInfo
             }
             catch (Exception ex)
             {
-                Dictionary<string, object> error = new Dictionary<string, object>();
-                error["error"] = "Failed to collect system info: " + ex.Message;
-                return error;
+                throw new InvalidOperationException("Failed to collect network info: " + ex.Message, ex);
             }
         }
 

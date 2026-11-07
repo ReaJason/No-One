@@ -24,19 +24,12 @@ public class HttpRepeater {
     private static final String CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         HashMap<String, Object> result = new HashMap<String, Object>();
-        ctx.put("result", result);
 
         String url = asString(ctx.get("url"));
         if (url == null || url.isEmpty()) {
-            result.put("error", "url is required");
-            return true;
+            throw new IllegalArgumentException("url is required");
         }
 
         String method = asString(ctx.get("method"));
@@ -197,8 +190,10 @@ public class HttpRepeater {
                 }
                 break;
             }
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            result.put("error", "HTTP request failed: " + safeMessage(e));
+            throw new RuntimeException("HTTP request failed: " + safeMessage(e), e);
         } finally {
             if (conn != null) {
                 try {
@@ -208,7 +203,7 @@ public class HttpRepeater {
             }
         }
 
-        return true;
+        return result;
     }
 
     private static boolean isRedirect(int code) {

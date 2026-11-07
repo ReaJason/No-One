@@ -8,16 +8,12 @@ import java.util.*;
  */
 public class ClassFinder {
 
-    @Override
-    public boolean equals(Object obj) {
-        Map<String, Object> map = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> map) {
         Map<String, Object> result = new HashMap<String, Object>();
         try {
             String className = (String) map.get("className");
             if (className == null || className.trim().isEmpty()) {
-                result.put("error", "className is required");
-                map.put("result", result);
-                return true;
+                throw new IllegalArgumentException("className is required");
             }
 
             Set<ClassLoader> visitedLoaders = new HashSet<ClassLoader>();
@@ -102,11 +98,12 @@ public class ClassFinder {
             }
 
             result.put("text", sb.toString());
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            result.put("error", "Class finder failed: " + e.getMessage());
+            throw new RuntimeException("Class finder failed: " + e.getMessage(), e);
         }
-        map.put("result", result);
-        return true;
+        return result;
     }
 
     private static void collectClassLoaders(ClassLoader cl, Set<ClassLoader> visited) {

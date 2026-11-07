@@ -7,9 +7,7 @@ import java.util.Map;
 
 public class ThreadDumpCollector {
 
-    @Override
-    public boolean equals(Object obj) {
-        Map<String, Object> map = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> map) {
         List<Map<String, Object>> threadsInfo = new ArrayList<Map<String, Object>>();
         try {
             Thread[] threads = new Thread[Thread.activeCount()];
@@ -28,11 +26,8 @@ public class ThreadDumpCollector {
                 }
             }
         } catch (Exception e) {
-            Map<String, Object> errorInfo = new HashMap<String, Object>();
-            errorInfo.put("error", "Failed to get threads info: " + e.getMessage());
-            threadsInfo.add(errorInfo);
+            throw new RuntimeException("Failed to get threads info: " + e.getMessage(), e);
         }
-        map.put("result", threadsInfo);
-        return true;
+        return threadsInfo;
     }
 }

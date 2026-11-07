@@ -17,8 +17,8 @@ import java.util.Map;
  * - /work/&lt;className-as-path&gt;.class : plugin class bytecode
  * <p>
  * Produces:
- * - /work/output.ser : serialized Map&lt;String,Object&gt; (ctx after
- * plugin.equals(ctx))
+ * - /work/output.ser : serialized Map&lt;String,Object&gt; with the plugin's
+ * return value under "result" (test harness format)
  * - exit code 0 on success, 1 on failure
  */
 public class PluginRunner extends ClassLoader {
@@ -56,15 +56,16 @@ public class PluginRunner extends ClassLoader {
             Map<String, Object> ctx = loadInputContext();
             System.out.println("[PluginRunner] Input context keys: " + ctx.keySet());
 
-            // 4. Invoke plugin via equals(Map)
-            plugin.equals(ctx);
+            // 4. Invoke plugin via execute(Map)
+            Object pluginResult = pluginClass.getDeclaredMethod("execute", Map.class).invoke(plugin, ctx);
             System.out.println("[PluginRunner] Plugin executed successfully");
 
-            // 5. Serialize output (full ctx including "result")
-            writeOutput(ctx);
+            // 5. Serialize output for the matrix test harness
+            Map<String, Object> output = new HashMap<String, Object>();
+            output.put("result", pluginResult);
+            writeOutput(output);
             System.out.println("[PluginRunner] Output written to output.ser");
-            System.out.println("[PluginRunner] Result keys: " +
-                    (ctx.get("result") instanceof Map ? ((Map<?, ?>) ctx.get("result")).keySet() : ctx.get("result")));
+            System.out.println("[PluginRunner] Result: " + pluginResult);
 
             System.exit(0);
         } catch (Throwable t) {

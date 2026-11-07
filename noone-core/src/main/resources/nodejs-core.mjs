@@ -6,6 +6,8 @@
     const ARGS = "args";
 
     const REFRESH = "refresh";
+    const CLASS_DEFINE = "classDefine";
+    const CLASS_RUN = "classRun";
     const PLUGIN_CACHES = "pluginCaches";
     const GLOBAL_CACHES = "globalCaches";
 
@@ -30,7 +32,14 @@
     const LIST = 0x07;
     const OBJECT_ARRAY = 0x08;
     const SET = 0x09;
+    // Strings whose modified UTF-8 representation exceeds MAX_UTF_LENGTH bytes
+    // are written with an int length and standard UTF-8 instead of writeUTF.
+    const LONG_STRING = 0x0a;
     const MAP = 0x10;
+    const MAX_UTF_LENGTH = 0xffff;
+    // Initial capacity cap for collections read from the wire, so a malicious
+    // size prefix cannot trigger a huge eager allocation.
+    const INITIAL_CAPACITY_LIMIT = 1024;
 
     const loadedPluginCache = new Map();
     const loadedPluginVersionCache = new Map();
@@ -84,13 +93,7 @@
                 chunks.push(Buffer.from(value));
             },
             writeUTF(value) {
-                const utfBytes = encodeModifiedUtf8(String(value));
-                if (utfBytes.length > 0xffff) {
-                    throw new Error("Encoded string too long for modified UTF-8.");
-                }
-                const len = Buffer.allocUnsafe(2);
-                len.writeUInt16BE(utfBytes.length, 0);
-                chunks.push(len, utfBytes);
+                writeUtfBytes(this, encodeModifiedUtf8(String(value)));
             },
             toBuffer() {
                 return Buffer.concat(chunks);
@@ -145,12 +148,19 @@
                 offset += length;
                 return value;
             },
+            remaining() {
+                return buffer.length - offset;
+            },
             readUTF() {
                 requireLength(2);
                 const length = buffer.readUInt16BE(offset);
                 offset += 2;
                 const bytes = this.readRaw(length);
                 return decodeModifiedUtf8(bytes);
+            },
+            readLongString() {
+                const length = this.readInt();
+                return this.readRaw(length).toString("utf8");
             }
         };
     }
@@ -169,14 +179,47 @@
         }
     }
 
+    function writeUtfBytes(writer, utfBytes) {
+        if (utfBytes.length > MAX_UTF_LENGTH) {
+            throw new Error("Encoded string too long for modified UTF-8.");
+        }
+        const len = Buffer.allocUnsafe(2);
+        len.writeUInt16BE(utfBytes.length, 0);
+        writer.writeRaw(len);
+        writer.writeRaw(utfBytes);
+    }
+
+    function writeString(writer, value) {
+        const utfBytes = encodeModifiedUtf8(value);
+        if (utfBytes.length <= MAX_UTF_LENGTH) {
+            writer.writeByte(STRING);
+            writeUtfBytes(writer, utfBytes);
+            return;
+        }
+        const bytes = Buffer.from(value, "utf8");
+        writer.writeByte(LONG_STRING);
+        writer.writeInt(bytes.length);
+        writer.writeRaw(bytes);
+    }
+
+    function readCollectionSize(reader, what) {
+        const size = reader.readInt();
+        if (size < 0) {
+            throw new Error(`Negative ${what} size found in stream: ${size}`);
+        }
+        if (size > reader.remaining()) {
+            throw new Error(`Declared ${what} size ${size} exceeds remaining ${reader.remaining()} bytes`);
+        }
+        return size;
+    }
+
     function writeObject(writer, obj) {
         if (obj == null) {
             writer.writeByte(NULL);
             return;
         }
         if (typeof obj === "string") {
-            writer.writeByte(STRING);
-            writer.writeUTF(obj);
+            writeString(writer, obj);
             return;
         }
         if (typeof obj === "number") {
@@ -233,10 +276,7 @@
     }
 
     function readMap(reader) {
-        const size = reader.readInt();
-        if (size < 0) {
-            throw new Error(`Negative map size found in stream: ${size}`);
-        }
+        const size = readCollectionSize(reader, "map");
         const map = {};
         for (let i = 0; i < size; i++) {
             const key = reader.readUTF();
@@ -252,6 +292,8 @@
                 return null;
             case STRING:
                 return reader.readUTF();
+            case LONG_STRING:
+                return reader.readLongString();
             case INTEGER:
                 return reader.readInt();
             case LONG:
@@ -265,10 +307,7 @@
                 return reader.readRaw(len);
             }
             case SET: {
-                const size = reader.readInt();
-                if (size < 0) {
-                    throw new Error(`Negative set size found in stream: ${size}`);
-                }
+                const size = readCollectionSize(reader, "set");
                 const set = new Set();
                 for (let i = 0; i < size; i++) {
                     set.add(readObject(reader));
@@ -277,11 +316,8 @@
             }
             case LIST:
             case OBJECT_ARRAY: {
-                const size = reader.readInt();
-                if (size < 0) {
-                    throw new Error(`Negative array size found in stream: ${size}`);
-                }
-                const list = new Array(size);
+                const size = readCollectionSize(reader, "list");
+                const list = new Array(Math.min(size, INITIAL_CAPACITY_LIMIT));
                 for (let i = 0; i < size; i++) {
                     list[i] = readObject(reader);
                 }
@@ -377,6 +413,7 @@
     function getStatus() {
         const result = {};
         result[PLUGIN_CACHES] = Object.fromEntries(loadedPluginVersionCache);
+        result[GLOBAL_CACHES] = new Set(globalCaches.keys());
         return result;
     }
 
@@ -384,7 +421,6 @@
         const plugin = args[PLUGIN];
         const pluginCode = args[CLASS_BYTES];
         const version = args[VERSION] == null ? null : String(args[VERSION]);
-        console.log("pluginCode: " + pluginCode);
         const refresh = args[REFRESH] === true || String(args[REFRESH]).toLowerCase() === "true";
         let pluginObj = refresh ? null : loadedPluginCache.get(plugin);
         if (pluginObj == null) {
@@ -402,31 +438,36 @@
                 } else {
                     pluginObj = pluginFunc;
                 }
+                if (pluginObj == null || typeof pluginObj.execute !== 'function') {
+                    throw new Error("plugin [" + plugin + "] does not implement execute(ctx); regenerate it for this core version");
+                }
                 loadedPluginCache.set(plugin, pluginObj);
                 loadedPluginVersionCache.set(plugin, version);
+                result[CLASS_DEFINE] = true;
             } catch (error) {
                 console.error(error);
                 throw new Error(`Failed to load class: ${error.message}\n${error.stack}`);
             }
         }
-
         return pluginObj;
     }
 
     async function run(args) {
         const plugin = args[PLUGIN];
         const pluginObj = loadedPluginCache.get(plugin);
-        console.log("pluginObj: " + pluginObj);
-        let map = args[ARGS];
-        if (map == null) {
-            map = {};
+        if (pluginObj == null) {
+            throw new Error("plugin [" + plugin + "] not found");
         }
-        map[PLUGIN_CACHES] = Object.fromEntries(loadedPluginCache);
-        map[GLOBAL_CACHES] = Object.fromEntries(globalCaches);
-        await pluginObj.equals(map);
-        console.log("plugin result: ", map.result);
+        if (typeof pluginObj.execute !== "function") {
+            throw new Error("plugin [" + plugin + "] does not implement execute(ctx); regenerate it for this core version");
+        }
+        // Copy the caller's args; runtime-only values stay in this invocation.
+        const ctx = Object.assign({}, args[ARGS] || {});
+        ctx[PLUGIN_CACHES] = Object.fromEntries(loadedPluginCache);
+        ctx[GLOBAL_CACHES] = Object.fromEntries(globalCaches);
         const result = {};
-        result[DATA] = map.result;
+        result[DATA] = await pluginObj.execute(ctx);
+        result[CLASS_RUN] = true;
         return result;
     }
 
@@ -457,9 +498,19 @@
                         result[DATA] = loaded != null;
                         break;
                     case ACTION_CLEAN:
+                        for (const [, service] of globalCaches) {
+                            try {
+                                const shutdownCtx = { op: "shutdown" };
+                                if (typeof service.execute === 'function') {
+                                    await service.execute(shutdownCtx);
+                                }
+                            } catch (e) {
+                                // ignored
+                            }
+                        }
+                        globalCaches.clear();
                         loadedPluginCache.clear();
                         loadedPluginVersionCache.clear();
-                        globalCaches.clear();
                         result[DATA] = true;
                         break;
                     default:

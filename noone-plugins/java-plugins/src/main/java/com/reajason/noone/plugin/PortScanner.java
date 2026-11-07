@@ -15,19 +15,13 @@ import java.util.*;
 public class PortScanner {
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         Map<String, Object> result = new HashMap<String, Object>();
-        ctx.put("result", result);
+        ctx.put("progress", result);
 
         String target = asString(ctx.get("target"));
         if (target == null || target.isEmpty()) {
-            result.put("error", "target is required");
-            return true;
+            throw new IllegalArgumentException("target is required");
         }
 
         String portsStr = asString(ctx.get("ports"));
@@ -39,8 +33,7 @@ public class PortScanner {
 
         int[] range = parsePortRange(portsStr);
         if (range == null) {
-            result.put("error", "invalid port range: " + portsStr);
-            return true;
+            throw new IllegalArgumentException("invalid port range: " + portsStr);
         }
 
         int startPort = range[0];
@@ -58,7 +51,7 @@ public class PortScanner {
         for (int port = startPort; port <= endPort; port++) {
             if (Thread.currentThread().isInterrupted()) {
                 result.put("status", "cancelled");
-                return true;
+                return result;
             }
 
             if (isPortOpen(target, port, timeout)) {
@@ -69,7 +62,7 @@ public class PortScanner {
         }
 
         result.put("status", "completed");
-        return true;
+        return result;
     }
 
     private boolean isPortOpen(String host, int port, int timeoutMs) {

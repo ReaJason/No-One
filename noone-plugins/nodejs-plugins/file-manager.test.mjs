@@ -6,10 +6,7 @@ import test from "node:test";
 import { createTempDir, executePlugin } from "./plugin-test-utils.mjs";
 
 test("file-manager plugin requires op", async () => {
-    const result = await executePlugin("file-manager.mjs");
-
-    assert.equal(result.errorCode, "INVALID_ARG");
-    assert.equal(result.error, "op is required");
+    await assert.rejects(executePlugin("file-manager.mjs"), /op is required/);
 });
 
 test("file-manager plugin lists directories before files", async (t) => {
@@ -26,9 +23,6 @@ test("file-manager plugin lists directories before files", async (t) => {
         cwd: baseDir,
         path: baseDir,
     });
-
-    assert.equal(result.error, undefined);
-    assert.equal(result.errorCode, undefined);
     assert.equal(result.cwd, baseDir);
     assert.equal(result.path, baseDir);
     assert.deepEqual(
@@ -59,9 +53,6 @@ test("file-manager plugin writes and reads file bytes", async (t) => {
         bytes: payload,
         createParent: true,
     });
-
-    assert.equal(writeResult.error, undefined);
-    assert.equal(writeResult.errorCode, undefined);
     assert.equal(writeResult.path, targetPath);
     assert.equal(writeResult.fileSize, payload.length);
     assert.equal(readFileSync(targetPath, "utf8"), payload.toString("utf8"));
@@ -71,9 +62,6 @@ test("file-manager plugin writes and reads file bytes", async (t) => {
         cwd: baseDir,
         path: relativePath,
     });
-
-    assert.equal(readResult.error, undefined);
-    assert.equal(readResult.errorCode, undefined);
     assert.equal(readResult.path, targetPath);
     assert.equal(readResult.fileSize, payload.length);
     assert.ok(Buffer.isBuffer(readResult.bytes));

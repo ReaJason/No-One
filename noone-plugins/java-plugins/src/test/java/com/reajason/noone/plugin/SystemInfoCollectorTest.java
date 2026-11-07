@@ -12,10 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class SystemInfoCollectorTest {
 
     @Test
-    void testEquals() {
+    void testExecute() {
         HashMap<String, Object> map = new HashMap<>();
-        new SystemInfoCollector().equals(map);
-        Object result = map.get("result");
+        Object result = new SystemInfoCollector().execute(map);
         System.out.println(JSON.toJSONString(result));
     }
 

@@ -3,6 +3,7 @@ package com.reajason.noone.core;
 import lombok.SneakyThrows;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
@@ -24,7 +25,14 @@ public final class TlvCodec {
     static final byte LIST = 0x07;
     static final byte OBJECT_ARRAY = 0x08;
     static final byte SET = 0x09;
+    // Strings whose modified UTF-8 representation exceeds MAX_UTF_LENGTH bytes
+    // are written with an int length and standard UTF-8 instead of writeUTF.
+    static final byte LONG_STRING = 0x0A;
     static final byte MAP = 0x10;
+    static final int MAX_UTF_LENGTH = 0xffff;
+    // Initial capacity cap for collections read from the wire, so a malicious
+    // size prefix cannot trigger a huge eager allocation.
+    private static final int INITIAL_CAPACITY_LIMIT = 1024;
 
     private TlvCodec() {
     }
@@ -66,8 +74,7 @@ public final class TlvCodec {
         if (obj == null) {
             dos.writeByte(NULL);
         } else if (obj instanceof String) {
-            dos.writeByte(STRING);
-            dos.writeUTF((String) obj);
+            writeStringObject(dos, (String) obj);
         } else if (obj instanceof Integer) {
             dos.writeByte(INTEGER);
             dos.writeInt((Integer) obj);
@@ -116,8 +123,8 @@ public final class TlvCodec {
     }
 
     static Map<String, Object> readMap(DataInputStream dis) throws IOException {
-        int size = dis.readInt();
-        Map<String, Object> map = new HashMap<>(size);
+        int size = readCollectionSize(dis, "map");
+        Map<String, Object> map = new HashMap<>(Math.min(size, INITIAL_CAPACITY_LIMIT));
         for (int i = 0; i < size; i++) {
             String key = dis.readUTF();
             Object value = readObject(dis);
@@ -133,6 +140,8 @@ public final class TlvCodec {
                 return null;
             case STRING:
                 return dis.readUTF();
+            case LONG_STRING:
+                return readLongString(dis);
             case INTEGER:
                 return dis.readInt();
             case LONG:
@@ -142,26 +151,26 @@ public final class TlvCodec {
             case BOOLEAN:
                 return dis.readBoolean();
             case BYTE_ARRAY:
-                int len = dis.readInt();
+                int len = readLength(dis, "byte array");
                 byte[] bytes = new byte[len];
                 dis.readFully(bytes);
                 return bytes;
             case SET:
-                int setSize = dis.readInt();
-                Set<Object> set = new LinkedHashSet<>(setSize);
+                int setSize = readCollectionSize(dis, "set");
+                Set<Object> set = new LinkedHashSet<>(Math.min(setSize, INITIAL_CAPACITY_LIMIT));
                 for (int i = 0; i < setSize; i++) {
                     set.add(readObject(dis));
                 }
                 return set;
             case LIST:
-                int listSize = dis.readInt();
-                List<Object> list = new ArrayList<>(listSize);
+                int listSize = readCollectionSize(dis, "list");
+                List<Object> list = new ArrayList<>(Math.min(listSize, INITIAL_CAPACITY_LIMIT));
                 for (int i = 0; i < listSize; i++) {
                     list.add(readObject(dis));
                 }
                 return list;
             case OBJECT_ARRAY:
-                int arrayLength = dis.readInt();
+                int arrayLength = readCollectionSize(dis, "array");
                 Object[] array = new Object[arrayLength];
                 for (int i = 0; i < arrayLength; i++) {
                     array[i] = readObject(dis);
@@ -172,5 +181,67 @@ public final class TlvCodec {
             default:
                 throw new IOException("Unknown data type found in stream: " + type);
         }
+    }
+
+    static void writeStringObject(DataOutputStream dos, String value) throws IOException {
+        if (modifiedUtfLength(value) <= MAX_UTF_LENGTH) {
+            dos.writeByte(STRING);
+            dos.writeUTF(value);
+            return;
+        }
+
+        byte[] bytes = value.getBytes(StandardCharsets.UTF_8);
+        dos.writeByte(LONG_STRING);
+        dos.writeInt(bytes.length);
+        dos.write(bytes);
+    }
+
+    static String readLongString(DataInputStream dis) throws IOException {
+        int length = readLength(dis, "string");
+        byte[] bytes = new byte[length];
+        dis.readFully(bytes);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
+    static int modifiedUtfLength(String value) {
+        long length = 0;
+        for (int i = 0; i < value.length(); i++) {
+            int c = value.charAt(i);
+            if (c >= 0x0001 && c <= 0x007f) {
+                length++;
+            } else if (c > 0x07ff) {
+                length += 3;
+            } else {
+                length += 2;
+            }
+            if (length > MAX_UTF_LENGTH) {
+                return MAX_UTF_LENGTH + 1;
+            }
+        }
+        return (int) length;
+    }
+
+    static int readLength(DataInputStream dis, String what) throws IOException {
+        int length = dis.readInt();
+        if (length < 0) {
+            throw new IOException("Negative " + what + " length: " + length);
+        }
+        if (length > dis.available()) {
+            throw new IOException("Declared " + what + " length " + length
+                    + " exceeds remaining " + dis.available() + " bytes");
+        }
+        return length;
+    }
+
+    static int readCollectionSize(DataInputStream dis, String what) throws IOException {
+        int size = dis.readInt();
+        if (size < 0) {
+            throw new IOException("Negative " + what + " size: " + size);
+        }
+        if (size > dis.available()) {
+            throw new IOException("Declared " + what + " size " + size
+                    + " exceeds remaining " + dis.available() + " bytes");
+        }
+        return size;
     }
 }

@@ -1,94 +1,77 @@
 (function () {
     return {
-        equals: async function (ctx) {
+        execute: async function (ctx) {
             const result = {};
             const cp = await import("node:child_process");
             const fs = await import("node:fs");
             const path = await import("node:path");
             const os = await import("node:os");
-            try {
-                const op = typeof ctx.op === "string" ? ctx.op.trim() : "";
-                if (!op) {
-                    result.error = "op is required";
-                    ctx.result = result;
-                    return;
-                }
+            const op = typeof ctx.op === "string" ? ctx.op.trim() : "";
+            if (!op) {
+                throw new Error("op is required");
+            }
 
-                const cwd = normalizePath(path, typeof ctx.cwd === "string" ? ctx.cwd : "");
-                const charset = normalizeCharset(typeof ctx.charset === "string" ? ctx.charset : "");
-                result.cwd = cwd;
-                result.charsetUsed = charset;
+            const cwd = normalizePath(path, typeof ctx.cwd === "string" ? ctx.cwd : "");
+            const charset = normalizeCharset(typeof ctx.charset === "string" ? ctx.charset : "");
+            result.cwd = cwd;
+            result.charsetUsed = charset;
 
-                if (op === "cd") {
-                    const cdTarget = typeof ctx.cdTarget === "string" ? ctx.cdTarget : "~";
-                    const nextCwd = resolveCdTarget(path, fs, os, cwd, cdTarget);
-                    result.stdout = "";
-                    result.stderr = "";
-                    result.exitCode = 0;
-                    result.cwd = nextCwd;
-                    ctx.result = result;
-                    return;
-                }
+            if (op === "cd") {
+                const cdTarget = typeof ctx.cdTarget === "string" ? ctx.cdTarget : "~";
+                const nextCwd = resolveCdTarget(path, fs, os, cwd, cdTarget);
+                result.stdout = "";
+                result.stderr = "";
+                result.exitCode = 0;
+                result.cwd = nextCwd;
+                return result;
+            }
 
-                if (op !== "exec") {
-                    result.error = "unsupported op: " + op;
-                    ctx.result = result;
-                    return;
-                }
+            if (op !== "exec") {
+                throw new Error("unsupported op: " + op);
+            }
 
-                const executable = typeof ctx.executable === "string" ? ctx.executable.trim() : "";
-                if (!executable) {
-                    result.error = "executable is required";
-                    ctx.result = result;
-                    return;
-                }
+            const executable = typeof ctx.executable === "string" ? ctx.executable.trim() : "";
+            if (!executable) {
+                throw new Error("executable is required");
+            }
 
-                const argv = Array.isArray(ctx.argv) ? ctx.argv.map((item) => String(item)) : [];
-                const env = isPlainObject(ctx.env) ? normalizeEnv(ctx.env) : {};
+            const argv = Array.isArray(ctx.argv) ? ctx.argv.map((item) => String(item)) : [];
+            const env = isPlainObject(ctx.env) ? normalizeEnv(ctx.env) : {};
 
-                const execResult = await new Promise((resolve) => {
-                    const child = cp.spawn(executable, argv, {
-                        cwd,
-                        env: Object.assign({}, process.env, env),
-                        windowsHide: true,
-                        stdio: ["ignore", "pipe", "pipe"],
-                    });
-
-                    const stdoutChunks = [];
-                    const stderrChunks = [];
-                    child.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
-                    child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
-                    child.on("close", (code) => {
-                        const stdoutBuffer = Buffer.concat(stdoutChunks);
-                        const stderrBuffer = Buffer.concat(stderrChunks);
-                        resolve({
-                            stdout: decode(stdoutBuffer, charset),
-                            stderr: decode(stderrBuffer, charset),
-                            exitCode: code == null ? -1 : code,
-                            cwd,
-                            charsetUsed: charset,
-                        });
-                    });
-                    child.on("error", (err) => {
-                        resolve({
-                            error: "Command execution failed: " + err.message
-                        });
-                    });
+            const execResult = await new Promise((resolve, reject) => {
+                const child = cp.spawn(executable, argv, {
+                    cwd,
+                    env: Object.assign({}, process.env, env),
+                    windowsHide: true,
+                    stdio: ["ignore", "pipe", "pipe"],
                 });
 
-                if (execResult.error) {
-                    result.error = execResult.error;
-                } else {
-                    result.stdout = execResult.stdout;
-                    result.stderr = execResult.stderr;
-                    result.exitCode = execResult.exitCode;
-                    result.cwd = execResult.cwd;
-                    result.charsetUsed = execResult.charsetUsed;
-                }
-            } catch (e) {
-                result.error = "Failed: " + e.message;
-            }
-            ctx.result = result;
+                const stdoutChunks = [];
+                const stderrChunks = [];
+                child.stdout.on("data", (chunk) => stdoutChunks.push(chunk));
+                child.stderr.on("data", (chunk) => stderrChunks.push(chunk));
+                child.on("close", (code) => {
+                    const stdoutBuffer = Buffer.concat(stdoutChunks);
+                    const stderrBuffer = Buffer.concat(stderrChunks);
+                    resolve({
+                        stdout: decode(stdoutBuffer, charset),
+                        stderr: decode(stderrBuffer, charset),
+                        exitCode: code == null ? -1 : code,
+                        cwd,
+                        charsetUsed: charset,
+                    });
+                });
+                child.on("error", (err) => {
+                    reject(new Error("Command execution failed: " + err.message));
+                });
+            });
+
+            result.stdout = execResult.stdout;
+            result.stderr = execResult.stderr;
+            result.exitCode = execResult.exitCode;
+            result.cwd = execResult.cwd;
+            result.charsetUsed = execResult.charsetUsed;
+            return result;
         }
     };
 

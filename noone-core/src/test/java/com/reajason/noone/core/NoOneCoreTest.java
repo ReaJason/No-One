@@ -138,7 +138,74 @@ class NoOneCoreTest {
         noOneCore.load(args, new HashMap<>());
     }
 
+    @Test
+    void testSerializeLongString() throws Exception {
+        String longString = "y".repeat(100000);
+        Map<String, Object> map = new HashMap<>();
+        map.put("value", longString);
+
+        Map<String, Object> decoded = noOneCore.deserialize(noOneCore.serialize(map));
+
+        assertEquals(longString, decoded.get("value"));
+    }
+
+    @Test
+    void testRejectOversizedDeclaredLength() {
+        // MAP(1) + key "x" + BYTE_ARRAY claiming 2GB
+        byte[] data = new byte[]{0x10, 0, 0, 0, 1, 0, 1, 'x', 0x06, 0x7f, -1, -1, -1};
+
+        assertThrows(Exception.class, () -> noOneCore.deserialize(data));
+    }
+
     private byte[] createSimplePluginBytes(String className) {
+        String internalName = className.replace('.', '/');
+        ClassWriter writer = new ClassWriter(0);
+        writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, "java/lang/Object", null);
+
+        MethodVisitor init = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
+        init.visitCode();
+        init.visitVarInsn(Opcodes.ALOAD, 0);
+        init.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+        init.visitInsn(Opcodes.RETURN);
+        init.visitMaxs(1, 1);
+        init.visitEnd();
+
+        MethodVisitor execute = writer.visitMethod(
+                Opcodes.ACC_PUBLIC,
+                "execute",
+                "(Ljava/util/Map;)Ljava/lang/Object;",
+                null,
+                null
+        );
+        execute.visitCode();
+        execute.visitLdcInsn("ok");
+        execute.visitInsn(Opcodes.ARETURN);
+        execute.visitMaxs(1, 2);
+        execute.visitEnd();
+
+        writer.visitEnd();
+        return writer.toByteArray();
+    }
+
+    @Test
+    void testLoadRejectsLegacyEqualsPlugin() {
+        // Contract v2 removed the equals(Map) entry point. Loading a legacy
+        // plugin must fail loudly instead of silently returning no data.
+        String className = "com.reajason.noone.runtime.LegacyPlugin";
+        byte[] classBytes = createLegacyPluginBytes(className);
+
+        Map<String, Object> loadArgs = new HashMap<>();
+        loadArgs.put("plugin", "legacy-plugin");
+        loadArgs.put("className", className);
+        loadArgs.put("pluginBytes", classBytes);
+        loadArgs.put("version", "1.0.0");
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> noOneCore.load(loadArgs, new HashMap<>()));
+        assertTrue(exception.getMessage().contains("does not implement execute"));
+    }
+
+    private byte[] createLegacyPluginBytes(String className) {
         String internalName = className.replace('.', '/');
         ClassWriter writer = new ClassWriter(0);
         writer.visit(Opcodes.V17, Opcodes.ACC_PUBLIC, internalName, null, "java/lang/Object", null);
@@ -153,21 +220,9 @@ class NoOneCoreTest {
 
         MethodVisitor equals = writer.visitMethod(Opcodes.ACC_PUBLIC, "equals", "(Ljava/lang/Object;)Z", null, null);
         equals.visitCode();
-        equals.visitVarInsn(Opcodes.ALOAD, 1);
-        equals.visitTypeInsn(Opcodes.CHECKCAST, "java/util/Map");
-        equals.visitLdcInsn("result");
-        equals.visitLdcInsn("ok");
-        equals.visitMethodInsn(
-                Opcodes.INVOKEINTERFACE,
-                "java/util/Map",
-                "put",
-                "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;",
-                true
-        );
-        equals.visitInsn(Opcodes.POP);
         equals.visitInsn(Opcodes.ICONST_1);
         equals.visitInsn(Opcodes.IRETURN);
-        equals.visitMaxs(3, 2);
+        equals.visitMaxs(1, 2);
         equals.visitEnd();
 
         writer.visitEnd();

@@ -21,19 +21,12 @@ public class CommandExecutor {
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         Map<String, Object> result = new HashMap<String, Object>();
         try {
             String op = asTrimString(ctx.get("op"));
             if (op == null || op.isEmpty()) {
-                result.put("error", "op is required");
-                ctx.put("result", result);
-                return true;
+                throw new IllegalArgumentException("op is required");
             }
 
             String cwd = normalizeCwd(asTrimString(ctx.get("cwd")));
@@ -49,21 +42,16 @@ public class CommandExecutor {
                 result.put("stderr", "");
                 result.put("exitCode", 0);
                 result.put("cwd", nextCwd);
-                ctx.put("result", result);
-                return true;
+                return result;
             }
 
             if (!"exec".equals(op)) {
-                result.put("error", "unsupported op: " + op);
-                ctx.put("result", result);
-                return true;
+                throw new IllegalArgumentException("unsupported op: " + op);
             }
 
             String executable = asTrimString(ctx.get("executable"));
             if (executable == null || executable.isEmpty()) {
-                result.put("error", "executable is required");
-                ctx.put("result", result);
-                return true;
+                throw new IllegalArgumentException("executable is required");
             }
 
             List<String> command = new ArrayList<String>();
@@ -85,11 +73,12 @@ public class CommandExecutor {
             result.put("stdout", new String(stdout, charset));
             result.put("stderr", new String(stderr, charset));
             result.put("exitCode", exitCode);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            result.put("error", "Command execution failed: " + safeMessage(e));
+            throw new RuntimeException("Command execution failed: " + safeMessage(e), e);
         }
-        ctx.put("result", result);
-        return true;
+        return result;
     }
 
     private static void applyEnv(Map<String, String> processEnv, Object rawEnv) {

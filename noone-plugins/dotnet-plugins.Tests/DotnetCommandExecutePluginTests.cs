@@ -18,27 +18,17 @@ public class DotnetCommandExecutePluginTests
     }
 
     [Fact]
-    public void Equals_WithNonMapInput_ReturnsTrue()
-    {
-        var plugin = new DotnetCommandExecutePlugin();
-        bool ok = plugin.Equals("invalid");
-        Assert.True(ok);
-    }
-
-    [Fact]
-    public void Equals_WithoutOp_ShouldReturnError()
+    public void Execute_WithoutOp_ShouldThrow()
     {
         var plugin = new DotnetCommandExecutePlugin();
         var ctx = new Dictionary<string, object>();
 
-        plugin.Equals(ctx);
-
-        var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
-        Assert.Equal("op is required", result["error"]);
+        var error = Assert.Throws<System.ArgumentException>(() => plugin.Execute(ctx));
+        Assert.Equal("op is required", error.Message);
     }
 
     [Fact]
-    public void Equals_CdToChildDirectory_ShouldUpdateCwd()
+    public void Execute_CdToChildDirectory_ShouldUpdateCwd()
     {
         var plugin = new DotnetCommandExecutePlugin();
         string baseDir = Path.Combine(Path.GetTempPath(), "cmd-exec-test-" + Path.GetRandomFileName());
@@ -52,9 +42,7 @@ public class DotnetCommandExecutePluginTests
             ctx["cdTarget"] = "child";
             ctx["cwd"] = baseDir;
 
-            plugin.Equals(ctx);
-
-            var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
             Assert.Equal(0, result["exitCode"]);
             Assert.Equal(Path.GetFullPath(childDir), result["cwd"]);
         }
@@ -65,7 +53,7 @@ public class DotnetCommandExecutePluginTests
     }
 
     [Fact]
-    public void Equals_CdToNonExistent_ShouldReturnError()
+    public void Execute_CdToNonExistent_ShouldThrow()
     {
         var plugin = new DotnetCommandExecutePlugin();
         string baseDir = Path.Combine(Path.GetTempPath(), "cmd-exec-test-" + Path.GetRandomFileName());
@@ -78,11 +66,8 @@ public class DotnetCommandExecutePluginTests
             ctx["cdTarget"] = "not-exists";
             ctx["cwd"] = baseDir;
 
-            plugin.Equals(ctx);
-
-            var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
-            string error = Assert.IsType<string>(result["error"]);
-            Assert.Contains("Directory does not exist", error);
+            var error = Assert.Throws<System.ArgumentException>(() => plugin.Execute(ctx));
+            Assert.Contains("Directory does not exist", error.Message);
         }
         finally
         {
@@ -91,7 +76,7 @@ public class DotnetCommandExecutePluginTests
     }
 
     [Fact]
-    public void Equals_ExecCommand_ShouldReturnOutput()
+    public void Execute_ExecCommand_ShouldReturnOutput()
     {
         var plugin = new DotnetCommandExecutePlugin();
         string workDir = Path.GetTempPath();
@@ -111,13 +96,10 @@ public class DotnetCommandExecutePluginTests
             ctx["argv"] = new List<object> { "hello" };
         }
 
-        plugin.Equals(ctx);
-
-        var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
+        var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
         string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         _output.WriteLine(json);
 
-        Assert.Null(result.ContainsKey("error") ? result["error"] : null);
         Assert.Equal(0, result["exitCode"]);
         string stdout = Assert.IsType<string>(result["stdout"]);
         Assert.Contains("hello", stdout);
@@ -125,15 +107,13 @@ public class DotnetCommandExecutePluginTests
     }
 
     [Fact]
-    public void Equals_UnsupportedOp_ShouldReturnError()
+    public void Execute_UnsupportedOp_ShouldThrow()
     {
         var plugin = new DotnetCommandExecutePlugin();
         var ctx = new Dictionary<string, object>();
         ctx["op"] = "invalid";
 
-        plugin.Equals(ctx);
-
-        var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
-        Assert.Equal("unsupported op: invalid", result["error"]);
+        var error = Assert.Throws<System.ArgumentException>(() => plugin.Execute(ctx));
+        Assert.Equal("unsupported op: invalid", error.Message);
     }
 }

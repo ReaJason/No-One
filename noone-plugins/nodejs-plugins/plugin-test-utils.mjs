@@ -6,15 +6,13 @@ import { join } from "node:path";
 export function loadPlugin(pluginFilename) {
     const code = readFileSync(new URL(pluginFilename, import.meta.url), "utf8");
     const plugin = new Function("return " + code)();
-    assert.equal(typeof plugin?.equals, "function");
+    assert.equal(typeof plugin?.execute, "function");
     return plugin;
 }
 
 export async function executePlugin(pluginFilename, ctx = {}) {
     const plugin = loadPlugin(pluginFilename);
-    await plugin.equals(ctx);
-    assert.ok(Object.prototype.hasOwnProperty.call(ctx, "result"));
-    return ctx.result;
+    return await plugin.execute(ctx);
 }
 
 export function createTempDir(prefix) {

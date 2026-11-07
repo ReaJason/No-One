@@ -12,17 +12,14 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CommandExecutorTest {
 
-    @SuppressWarnings("unchecked")
     @Test
     void shouldRequireOp() {
         CommandExecutor executor = new CommandExecutor();
         Map<String, Object> ctx = new HashMap<String, Object>();
 
-        executor.equals(ctx);
-
-        Map<String, Object> result = (Map<String, Object>) ctx.get("result");
-        assertNotNull(result);
-        assertEquals("op is required", result.get("error"));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> executor.execute(ctx));
+        assertEquals("op is required", error.getMessage());
     }
 
     @SuppressWarnings("unchecked")
@@ -37,15 +34,12 @@ class CommandExecutorTest {
         ctx.put("cdTarget", "child");
         ctx.put("cwd", baseDir.toString());
 
-        executor.equals(ctx);
-
-        Map<String, Object> result = (Map<String, Object>) ctx.get("result");
+        Map<String, Object> result = (Map<String, Object>) executor.execute(ctx);
         assertNotNull(result);
         assertEquals(0, ((Number) result.get("exitCode")).intValue());
         assertEquals(childDir.toFile().getCanonicalPath(), result.get("cwd"));
     }
 
-    @SuppressWarnings("unchecked")
     @Test
     void shouldReturnErrorForInvalidCdTarget() throws Exception {
         CommandExecutor executor = new CommandExecutor();
@@ -56,11 +50,9 @@ class CommandExecutorTest {
         ctx.put("cdTarget", "not-exists");
         ctx.put("cwd", baseDir.toString());
 
-        executor.equals(ctx);
-
-        Map<String, Object> result = (Map<String, Object>) ctx.get("result");
-        assertNotNull(result);
-        assertTrue(String.valueOf(result.get("error")).contains("Directory does not exist"));
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> executor.execute(ctx));
+        assertTrue(error.getMessage().contains("Directory does not exist"));
     }
 
     @SuppressWarnings("unchecked")
@@ -75,11 +67,8 @@ class CommandExecutorTest {
         ctx.put("argv", new String[]{"-version"});
         ctx.put("cwd", workingDir.toString());
 
-        executor.equals(ctx);
-
-        Map<String, Object> result = (Map<String, Object>) ctx.get("result");
+        Map<String, Object> result = (Map<String, Object>) executor.execute(ctx);
         assertNotNull(result);
-        assertNull(result.get("error"));
         assertEquals(0, ((Number) result.get("exitCode")).intValue());
         assertEquals(workingDir.toFile().getCanonicalPath(), result.get("cwd"));
         assertNotNull(result.get("charsetUsed"));

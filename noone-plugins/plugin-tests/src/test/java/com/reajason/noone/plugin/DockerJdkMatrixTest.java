@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Docker-based JDK matrix test for plugin compatibility.
  * <p>
  * Verifies that each plugin class, compiled to JDK 1.6 bytecode via ByteBuddy,
- * can be loaded and executed (defineClass → newInstance → equals(Map)) inside
+ * can be loaded and executed (defineClass → newInstance → execute(Map)) inside
  * Docker containers running various JDK versions.
  * <p>
  * Run via: ./gradlew :noone-plugins:plugin-tests:dockerJdkMatrixTest

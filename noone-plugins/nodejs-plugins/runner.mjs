@@ -5,8 +5,8 @@
  *
  * 1. Reads the plugin source and evaluates it via `new Function()`
  * 2. Reads the input context from a JSON file
- * 3. Calls `plugin.equals(ctx)`
- * 4. Writes `ctx.result` to the output JSON file
+ * 3. Calls `plugin.execute(ctx)`
+ * 4. Writes the returned result to the output JSON file
  */
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -25,16 +25,15 @@ const code = readFileSync(pluginPath, "utf8");
 const plugin = new Function("return " + code)();
 const ctx = JSON.parse(readFileSync(inputPath, "utf8"));
 
-process.stdout.write("[Runner] Plugin loaded, executing equals()...\n");
+process.stdout.write("[Runner] Plugin loaded, executing execute()...\n");
 
 plugin
-    .equals(ctx)
-    .then(() => {
-        const result = ctx.result || {};
-        writeFileSync(outputPath, JSON.stringify(result), "utf8");
+    .execute(ctx)
+    .then((result) => {
+        writeFileSync(outputPath, JSON.stringify(result == null ? {} : result), "utf8");
         process.stdout.write(
             "[Runner] Done. Result keys: " +
-            Object.keys(result).join(", ") +
+            Object.keys(result == null ? {} : result).join(", ") +
             "\n"
         );
         process.exit(0);
