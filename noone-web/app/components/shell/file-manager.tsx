@@ -718,6 +718,7 @@ export default function FileManager({
   const [fileBuffersByPath, setFileBuffersByPath] = useState<Map<string, FileBufferState>>(
     new Map(),
   );
+  const fileBuffersRef = useRef(fileBuffersByPath);
   const [currentPath, setCurrentPath] = useState(initialDirectoryState.path);
   const [pathInput, setPathInput] = useState(initialDirectoryState.path);
   const [activeLocationId, setActiveLocationId] = useState<string | null>(
@@ -746,6 +747,19 @@ export default function FileManager({
   const activeOperationIdRef = useRef<number | null>(null);
   const operationSeqRef = useRef(0);
   const operationClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const updateFileBuffers = useCallback(
+    (update: (current: Map<string, FileBufferState>) => Map<string, FileBufferState>) => {
+      const current = fileBuffersRef.current;
+      const next = update(current);
+      fileBuffersRef.current = next;
+      if (next !== current) {
+        setFileBuffersByPath(next);
+      }
+    },
+    [],
+  );
+
   const { submit: submitFileAction } = useShellRouteFetcher<Record<string, unknown>>();
   const { load: loadFileData } = useShellRouteFetcher<Record<string, unknown>>();
 
@@ -1260,7 +1274,7 @@ export default function FileManager({
         action();
         return;
       }
-      const buffer = fileBuffersByPath.get(openedFilePath);
+      const buffer = fileBuffersRef.current.get(openedFilePath);
       if (!buffer?.isDirty) {
         action();
         return;
@@ -1268,12 +1282,12 @@ export default function FileManager({
       pendingNavigationRef.current = action;
       setUnsavedDialogOpen(true);
     },
-    [openedFilePath, fileBuffersByPath],
+    [openedFilePath],
   );
 
   const saveFile = useCallback(
     async (path: string) => {
-      const buffer = fileBuffersByPath.get(path);
+      const buffer = fileBuffersRef.current.get(path);
       if (!buffer) return false;
       if (buffer.readOnlyReason) {
         toast.warning(buffer.readOnlyReason);
@@ -1291,7 +1305,7 @@ export default function FileManager({
 
       await writeAllBytes(path, bytes);
       const now = new Date().toISOString();
-      setFileBuffersByPath((prev) => {
+      updateFileBuffers((prev) => {
         const existing = prev.get(path);
         if (!existing) return prev;
         const next = new Map(prev);
@@ -1316,12 +1330,12 @@ export default function FileManager({
       toast.success(`Saved ${getBaseName(path, osFamily)}.`);
       return true;
     },
-    [fileBuffersByPath, osFamily, writeAllBytes],
+    [osFamily, updateFileBuffers, writeAllBytes],
   );
 
   const discardOpenedFileDraft = useCallback(() => {
     if (!openedFilePath) return;
-    setFileBuffersByPath((prev) => {
+    updateFileBuffers((prev) => {
       const existing = prev.get(openedFilePath);
       if (!existing || !existing.isDirty) return prev;
       const next = new Map(prev);
@@ -1332,7 +1346,7 @@ export default function FileManager({
       });
       return next;
     });
-  }, [openedFilePath]);
+  }, [openedFilePath, updateFileBuffers]);
 
   const handleSaveAndContinue = useCallback(async () => {
     if (openedFilePath) {
@@ -1363,15 +1377,17 @@ export default function FileManager({
 
       if (node.sizeBytes > MAX_PREVIEW_EDIT_BYTES) {
         setIsEditorMounted(false);
-        const next = new Map(fileBuffersByPath);
-        next.set(node.path, {
-          savedContent: "",
-          draftContent: "",
-          language: resolveMonacoLanguage(node.path),
-          isDirty: false,
-          readOnlyReason: `This file is ${formatBytes(node.sizeBytes)}. Direct preview/edit is disabled above ${formatBytes(MAX_PREVIEW_EDIT_BYTES)}. Use chunk upload/download.`,
+        updateFileBuffers((prev) => {
+          const next = new Map(prev);
+          next.set(node.path, {
+            savedContent: "",
+            draftContent: "",
+            language: resolveMonacoLanguage(node.path),
+            isDirty: false,
+            readOnlyReason: `This file is ${formatBytes(node.sizeBytes)}. Direct preview/edit is disabled above ${formatBytes(MAX_PREVIEW_EDIT_BYTES)}. Use chunk upload/download.`,
+          });
+          return next;
         });
-        setFileBuffersByPath(next);
         return;
       }
 
@@ -1379,7 +1395,7 @@ export default function FileManager({
       try {
         const readResult = await readAllBytes(node.path, MAX_PREVIEW_EDIT_BYTES);
         const content = decodeText(readResult.bytes);
-        setFileBuffersByPath((prev) => {
+        updateFileBuffers((prev) => {
           const next = new Map(prev);
           next.set(node.path, {
             savedContent: content,
@@ -1398,7 +1414,7 @@ export default function FileManager({
         setLoadingFile(false);
       }
     },
-    [fileBuffersByPath, readAllBytes],
+    [readAllBytes, updateFileBuffers],
   );
 
   const openNode = useCallback(
@@ -1436,17 +1452,25 @@ export default function FileManager({
   const handleEditorChange = useCallback(
     (nextValue: string) => {
       if (!openedFilePath) return;
-      setFileBuffersByPath((prev) => {
-        const existing = prev.get(openedFilePath);
-        if (!existing || existing.readOnlyReason) return prev;
-        const next = new Map(prev);
-        next.set(openedFilePath, {
-          ...existing,
-          draftContent: nextValue,
-          isDirty: nextValue !== existing.savedContent,
-        });
-        return next;
+
+      const current = fileBuffersRef.current;
+      const existing = current.get(openedFilePath);
+      if (!existing || existing.readOnlyReason || existing.draftContent === nextValue) return;
+
+      const isDirty = nextValue !== existing.savedContent;
+      const next = new Map(current);
+      next.set(openedFilePath, {
+        ...existing,
+        draftContent: nextValue,
+        isDirty,
       });
+
+      // Monaco owns the high-frequency text state. Only render the file manager
+      // when the dirty marker changes; saves and navigation read the latest ref.
+      fileBuffersRef.current = next;
+      if (existing.isDirty !== isDirty) {
+        setFileBuffersByPath(next);
+      }
     },
     [openedFilePath],
   );

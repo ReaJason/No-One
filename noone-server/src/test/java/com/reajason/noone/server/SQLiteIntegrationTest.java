@@ -50,6 +50,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,6 +110,19 @@ class SQLiteIntegrationTest {
                     .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
                     .andExpect(content().string(containsString("\"isSpaMode\":true")));
         }
+    }
+
+    @Test
+    void cachesFingerprintedAssetsAndRevalidatesSpaHtml() throws Exception {
+        mockMvc.perform(get("/assets/cache-test.js"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("max-age=31536000")))
+                .andExpect(header().string("Cache-Control", containsString("immutable")))
+                .andExpect(header().string("Cache-Control", containsString("public")));
+
+        mockMvc.perform(get("/auth/login"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-cache"));
     }
 
     @Test

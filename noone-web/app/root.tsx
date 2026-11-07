@@ -1,6 +1,8 @@
 import type { Route } from "./+types/root";
 
 import { ThemeProvider } from "next-themes";
+import { lazy, Suspense } from "react";
+import "@fontsource-variable/inter/wght.css";
 
 import "./app.css";
 import {
@@ -12,24 +14,21 @@ import {
   ScrollRestoration,
 } from "react-router";
 
-import { NotFoundErrorBoundary } from "@/components/not-found-error-boundary";
-import { ServerErrorBoundary } from "@/components/server-error-boundary";
 import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { UnAuthorizedErrorBoundary } from "@/components/unauthorized-error-boundary";
 import { isAuthRedirectError } from "@/lib/auth-redirect-error";
 
-export const links: Route.LinksFunction = () => [
-  { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  {
-    rel: "preconnect",
-    href: "https://fonts.gstatic.com",
-    crossOrigin: "anonymous",
-  },
-  {
-    rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-  },
-];
+const NotFoundErrorBoundary = lazy(async () => {
+  const { NotFoundErrorBoundary } = await import("@/components/not-found-error-boundary");
+  return { default: NotFoundErrorBoundary };
+});
+const ServerErrorBoundary = lazy(async () => {
+  const { ServerErrorBoundary } = await import("@/components/server-error-boundary");
+  return { default: ServerErrorBoundary };
+});
+const UnAuthorizedErrorBoundary = lazy(async () => {
+  const { UnAuthorizedErrorBoundary } = await import("@/components/unauthorized-error-boundary");
+  return { default: UnAuthorizedErrorBoundary };
+});
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -62,32 +61,33 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  let boundary: React.ReactNode;
+
   if (isAuthRedirectError(error)) {
-    return <UnAuthorizedErrorBoundary description={error.message} />;
-  }
-
-  if (isRouteErrorResponse(error)) {
-    if (error.status === 404) {
-      return <NotFoundErrorBoundary />;
-    }
-
-    return (
+    boundary = <UnAuthorizedErrorBoundary description={error.message} />;
+  } else if (isRouteErrorResponse(error)) {
+    boundary =
+      error.status === 404 ? (
+        <NotFoundErrorBoundary />
+      ) : (
+        <ServerErrorBoundary
+          description={error.statusText || "An unexpected error occurred."}
+          devMode={import.meta.env.DEV}
+        />
+      );
+  } else {
+    boundary = (
       <ServerErrorBoundary
-        description={error.statusText || "An unexpected error occurred."}
+        description={
+          error instanceof Error
+            ? error.message
+            : "Sorry, something went wrong on our end. Please try again later."
+        }
+        error={error instanceof Error ? error : undefined}
         devMode={import.meta.env.DEV}
       />
     );
   }
 
-  return (
-    <ServerErrorBoundary
-      description={
-        error instanceof Error
-          ? error.message
-          : "Sorry, something went wrong on our end. Please try again later."
-      }
-      error={error instanceof Error ? error : undefined}
-      devMode={import.meta.env.DEV}
-    />
-  );
+  return <Suspense fallback={null}>{boundary}</Suspense>;
 }

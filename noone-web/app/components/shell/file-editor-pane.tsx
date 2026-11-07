@@ -59,7 +59,7 @@ export default function FileEditorPane({
   const [monacoLoadError, setMonacoLoadError] = useState<string | null>(null);
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
-  const isInternalChange = useRef(false);
+  const fallbackRef = useRef<HTMLTextAreaElement | null>(null);
   const { resolvedTheme, theme } = useTheme();
 
   const monacoTheme = useMemo(() => {
@@ -69,13 +69,17 @@ export default function FileEditorPane({
     return "vs-dark";
   }, [resolvedTheme, theme]);
 
+  const isReadOnly = readOnlyReason != null && readOnlyReason.length > 0;
+
   useEffect(() => {
+    if (!filePath || isReadOnly || MonacoEditor) return;
+
     let disposed = false;
     const bootstrap = async () => {
       try {
         const [{ default: Monaco, loader }, monaco] = await Promise.all([
           import("@monaco-editor/react"),
-          import("monaco-editor"),
+          import("@/lib/monaco-editor"),
         ]);
         if (disposed) return;
         loader.config({ monaco });
@@ -96,7 +100,7 @@ export default function FileEditorPane({
     return () => {
       disposed = true;
     };
-  }, []);
+  }, [filePath, isReadOnly, MonacoEditor]);
 
   const isMonacoReady = MonacoEditor != null && monacoLoadError == null;
 
@@ -114,16 +118,19 @@ export default function FileEditorPane({
   }, [filePath, onSave, isMonacoReady]);
 
   useEffect(() => {
-    if (isInternalChange.current) {
-      isInternalChange.current = false;
-      return;
+    if (!filePath) return;
+
+    const model = editorRef.current?.getModel?.();
+    if (model) {
+      const currentValue = model.getValue?.() ?? "";
+      if (currentValue !== value) {
+        model.setValue?.(value);
+      }
     }
-    if (!filePath || !editorRef.current || !monacoRef.current) return;
-    const model = editorRef.current.getModel?.();
-    if (!model) return;
-    const currentValue = model.getValue?.() ?? "";
-    if (currentValue !== value) {
-      model.setValue?.(value);
+
+    const fallback = fallbackRef.current;
+    if (fallback && fallback.value !== value) {
+      fallback.value = value;
     }
   }, [filePath, value]);
 
@@ -151,7 +158,6 @@ export default function FileEditorPane({
   }
 
   const fileName = getFileName(filePath);
-  const isReadOnly = readOnlyReason != null && readOnlyReason.length > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -199,7 +205,6 @@ export default function FileEditorPane({
                 defaultValue={value}
                 theme={monacoTheme}
                 onChange={(nextValue) => {
-                  isInternalChange.current = true;
                   onChange(nextValue ?? "");
                 }}
                 onMount={(editor, monaco) => {
@@ -232,7 +237,8 @@ export default function FileEditorPane({
                     : "Loading Monaco..."}
                 </div>
                 <textarea
-                  value={value}
+                  ref={fallbackRef}
+                  defaultValue={value}
                   onChange={(event) => onChange(event.target.value)}
                   className="h-full min-h-0 w-full resize-none border-0 bg-transparent p-3 font-mono text-sm outline-none"
                   spellCheck={false}

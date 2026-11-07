@@ -1,7 +1,7 @@
 import { ArrowRight, File as FileIcon, Loader2, Minus, Plus, Upload, X } from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import { CopyButton } from "@/components/memshell/code-viewer";
+import { CopyButton } from "@/components/memshell/copy-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

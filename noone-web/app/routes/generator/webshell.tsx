@@ -15,7 +15,7 @@ import {
   type WebShellLanguage,
 } from "@/api/webshell-api";
 import { AuthRedirectErrorBoundary } from "@/components/auth-redirect-error-boundary";
-import CodeViewer from "@/components/memshell/code-viewer";
+import CodeViewer from "@/components/memshell/lazy-code-viewer";
 import AddShellButton from "@/components/shell/add-shell-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

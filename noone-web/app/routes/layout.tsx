@@ -50,7 +50,13 @@ export default function Layout() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink render={<Link to="/">No One</Link>}></BreadcrumbLink>
+                  <BreadcrumbLink
+                    render={
+                      <Link to="/" prefetch="intent">
+                        No One
+                      </Link>
+                    }
+                  ></BreadcrumbLink>
                 </BreadcrumbItem>
                 {breadcrumbs.map((crumb, index) => (
                   <React.Fragment key={crumb.id}>
@@ -60,7 +66,11 @@ export default function Layout() {
                         <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
                       ) : (
                         <BreadcrumbLink
-                          render={<Link to={crumb.to ?? "#"}>{crumb.label}</Link>}
+                          render={
+                            <Link to={crumb.to ?? "#"} prefetch="intent">
+                              {crumb.label}
+                            </Link>
+                          }
                         ></BreadcrumbLink>
                       )}
                     </BreadcrumbItem>

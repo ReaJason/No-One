@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useFetcher } from "react-router";
 
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useSeedSync } from "@/hooks/use-seed-sync";
 import { createProfileFormSchema } from "@/routes/profile/profile-form.shared";
 import {
   COMPRESSION_OPTIONS,
@@ -94,9 +95,7 @@ export function ProfileForm({
   const isSubmitting = fetcher.state === "submitting";
   const serverErrors = fetcher.data?.errors;
 
-  useEffect(() => {
-    reset(initialValues);
-  }, [initialValues, reset]);
+  useSeedSync(initialValues, reset);
 
   const onSubmit = async (data: ProfileFormValues) => {
     await fetcher.submit(data, {

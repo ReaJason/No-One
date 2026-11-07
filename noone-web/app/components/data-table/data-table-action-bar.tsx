@@ -1,7 +1,6 @@
 import type { Table } from "@/lib/react-table";
 
 import { Loader, X } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 
@@ -10,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-interface DataTableActionBarProps<TData> extends React.ComponentProps<typeof motion.div> {
+interface DataTableActionBarProps<TData> extends React.ComponentProps<"div"> {
   table: Table<TData>;
   visible?: boolean;
   container?: Element | DocumentFragment | null;
@@ -48,25 +47,19 @@ function DataTableActionBar<TData>({
   const visible = visibleProp ?? table.getFilteredSelectedRowModel().rows.length > 0;
 
   return ReactDOM.createPortal(
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          role="toolbar"
-          aria-orientation="horizontal"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.2, ease: "easeInOut" }}
-          className={cn(
-            "fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit flex-wrap items-center justify-center gap-2 rounded-md border bg-background p-2 text-foreground shadow-sm",
-            className,
-          )}
-          {...props}
-        >
-          {children}
-        </motion.div>
-      )}
-    </AnimatePresence>,
+    visible ? (
+      <div
+        role="toolbar"
+        aria-orientation="horizontal"
+        className={cn(
+          "fixed inset-x-0 bottom-6 z-50 mx-auto flex w-fit animate-in flex-wrap items-center justify-center gap-2 rounded-md border bg-background p-2 text-foreground shadow-sm duration-200 slide-in-from-bottom-5 fade-in",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    ) : null,
     container,
   );
 }

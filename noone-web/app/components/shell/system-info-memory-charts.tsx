@@ -1,10 +1,3 @@
-import type { ChartConfig } from "@/components/ui/chart";
-
-import { useMemo } from "react";
-import { Pie, PieChart, Sector } from "recharts";
-
-import { ChartContainer } from "@/components/ui/chart";
-
 export type MemoryChartsProps = {
   isJava: boolean;
   heapUsed: number;
@@ -15,11 +8,64 @@ export type MemoryChartsProps = {
   nonHeapUsagePercent: string;
 };
 
-function pieSectorShape(props: any) {
-  return <Sector {...props} fill={props.payload?.fill ?? props.fill} />;
-}
+type MemoryDonutProps = {
+  label: string;
+  used: number;
+  free: number;
+  usagePercent: string;
+  color: string;
+  testId: string;
+};
 
-const CHART_SIZE = 96;
+function MemoryDonut({
+  label,
+  used,
+  free,
+  usagePercent,
+  color,
+  testId,
+}: Readonly<MemoryDonutProps>) {
+  const total = used + free;
+  const usedRatio = total > 0 ? Math.max(0, Math.min(1, used / total)) : 0;
+  const accessibleLabel = `${label} memory: ${usagePercent}% used`;
+
+  return (
+    <div className="relative h-24 w-24">
+      <svg
+        viewBox="0 0 96 96"
+        className="h-full w-full -rotate-90"
+        role="img"
+        aria-label={accessibleLabel}
+      >
+        <title>{accessibleLabel}</title>
+        <circle
+          cx="48"
+          cy="48"
+          r="37.5"
+          fill="none"
+          strokeWidth="15"
+          stroke="currentColor"
+          className="text-zinc-200 dark:text-zinc-800"
+        />
+        <circle
+          data-testid={testId}
+          cx="48"
+          cy="48"
+          r="37.5"
+          pathLength="100"
+          fill="none"
+          strokeWidth="15"
+          stroke="currentColor"
+          strokeDasharray={`${usedRatio * 100} 100`}
+          style={{ color }}
+        />
+      </svg>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="text-xs font-bold">{usagePercent}%</span>
+      </div>
+    </div>
+  );
+}
 
 export default function MemoryCharts({
   isJava,
@@ -29,138 +75,38 @@ export default function MemoryCharts({
   nonHeapUsed,
   nonHeapFree,
   nonHeapUsagePercent,
-}: MemoryChartsProps) {
-  const heapConfig = useMemo(
-    () =>
-      ({
-        used: {
-          label: "Used",
-          color: isJava ? "#3b82f6" : "#22c55e",
-        },
-        free: {
-          label: "Free",
-          theme: {
-            light: "#e5e7eb",
-            dark: "#27272a",
-          },
-        },
-      }) satisfies ChartConfig,
-    [isJava],
+}: Readonly<MemoryChartsProps>) {
+  const heapChart = (
+    <MemoryDonut
+      label="Heap"
+      used={heapUsed}
+      free={heapFree}
+      usagePercent={heapUsagePercent}
+      color={isJava ? "#3b82f6" : "#22c55e"}
+      testId="heap-used"
+    />
   );
 
-  const nonHeapConfig = useMemo(
-    () =>
-      ({
-        used: {
-          label: "Used",
-          color: "#a855f7",
-        },
-        free: {
-          label: "Free",
-          theme: {
-            light: "#e5e7eb",
-            dark: "#27272a",
-          },
-        },
-      }) satisfies ChartConfig,
-    [],
-  );
-
-  const heapData = useMemo(
-    () => [
-      { name: "used", value: heapUsed, fill: "var(--color-used)" },
-      { name: "free", value: heapFree, fill: "var(--color-free)" },
-    ],
-    [heapFree, heapUsed],
-  );
-
-  const nonHeapData = useMemo(
-    () => [
-      { name: "used", value: nonHeapUsed, fill: "var(--color-used)" },
-      { name: "free", value: nonHeapFree, fill: "var(--color-free)" },
-    ],
-    [nonHeapFree, nonHeapUsed],
-  );
-
-  if (isJava) {
-    return (
-      <div className="flex shrink-0 flex-col flex-wrap items-center justify-center gap-4">
-        <div className="w-24">
-          <div className="relative h-24 w-24">
-            <ChartContainer
-              config={heapConfig}
-              responsive={false}
-              className="aspect-square h-full w-full"
-            >
-              <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-                <Pie
-                  data={heapData}
-                  innerRadius={30}
-                  outerRadius={45}
-                  paddingAngle={0}
-                  dataKey="value"
-                  stroke="none"
-                  shape={pieSectorShape}
-                />
-              </PieChart>
-            </ChartContainer>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-bold">{heapUsagePercent}%</span>
-            </div>
-          </div>
-          <p className="mt-1 text-center text-[10px] text-zinc-500">Heap</p>
-        </div>
-
-        <div className="w-24">
-          <div className="relative h-24 w-24">
-            <ChartContainer
-              config={nonHeapConfig}
-              responsive={false}
-              className="aspect-square h-full w-full"
-            >
-              <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-                <Pie
-                  data={nonHeapData}
-                  innerRadius={30}
-                  outerRadius={45}
-                  paddingAngle={0}
-                  dataKey="value"
-                  stroke="none"
-                  shape={pieSectorShape}
-                />
-              </PieChart>
-            </ChartContainer>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <span className="text-xs font-bold">{nonHeapUsagePercent}%</span>
-            </div>
-          </div>
-          <p className="mt-1 text-center text-[10px] text-zinc-500">Non-Heap</p>
-        </div>
-      </div>
-    );
+  if (!isJava) {
+    return <div className="relative h-24 w-24 flex-shrink-0">{heapChart}</div>;
   }
 
   return (
-    <div className="relative h-24 w-24 flex-shrink-0">
-      <ChartContainer
-        config={heapConfig}
-        responsive={false}
-        className="aspect-square h-full w-full"
-      >
-        <PieChart width={CHART_SIZE} height={CHART_SIZE}>
-          <Pie
-            data={heapData}
-            innerRadius={30}
-            outerRadius={45}
-            paddingAngle={0}
-            dataKey="value"
-            stroke="none"
-            shape={pieSectorShape}
-          />
-        </PieChart>
-      </ChartContainer>
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <span className="text-xs font-bold">{heapUsagePercent}%</span>
+    <div className="flex shrink-0 flex-col flex-wrap items-center justify-center gap-4">
+      <div className="w-24">
+        {heapChart}
+        <p className="mt-1 text-center text-[10px] text-zinc-500">Heap</p>
+      </div>
+      <div className="w-24">
+        <MemoryDonut
+          label="Non-Heap"
+          used={nonHeapUsed}
+          free={nonHeapFree}
+          usagePercent={nonHeapUsagePercent}
+          color="#a855f7"
+          testId="non-heap-used"
+        />
+        <p className="mt-1 text-center text-[10px] text-zinc-500">Non-Heap</p>
       </div>
     </div>
   );

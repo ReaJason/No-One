@@ -1,7 +1,11 @@
 import type { Profile } from "@/types/profile";
 import type { Project } from "@/types/project";
 import type { ShellConnection, ShellLanguage } from "@/types/shell-connection";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
+import type {
+  ActionFunctionArgs,
+  LoaderFunctionArgs,
+  ShouldRevalidateFunctionArgs,
+} from "react-router";
 
 import { useMemo } from "react";
 import { redirect, useLoaderData, useNavigate, useParams } from "react-router";
@@ -132,6 +136,19 @@ export async function clientAction({ request, context, params }: ActionFunctionA
       success: false,
     } satisfies ShellActionData;
   }
+}
+
+export function shouldRevalidate({
+  formData,
+  defaultShouldRevalidate,
+}: ShouldRevalidateFunctionArgs) {
+  // Testing a connection does not change loader data. Skipping revalidation also
+  // keeps the form's identity stable so in-progress input is preserved.
+  if (formData?.get("intent") === "test-config") {
+    return false;
+  }
+
+  return defaultShouldRevalidate;
 }
 
 export const handle = createBreadcrumb(({ params }) => {

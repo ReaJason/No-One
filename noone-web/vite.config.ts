@@ -3,8 +3,12 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig, type PluginOption } from "vite";
 import devtoolsJson from "vite-plugin-devtools-json";
 
-export default defineConfig(() => {
-  const plugins: PluginOption[] = [tailwindcss(), devtoolsJson()];
+export default defineConfig(({ command }) => {
+  const plugins: PluginOption[] = [tailwindcss()];
+
+  if (command === "serve" && !process.env.VITEST) {
+    plugins.push(devtoolsJson());
+  }
 
   if (!process.env.VITEST) {
     plugins.splice(1, 0, reactRouter());

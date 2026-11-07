@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { base64ToBytes, downloadBytes, downloadContent } from "@/lib/utils";
 
-import CodeViewer from "../code-viewer";
+import CodeViewer from "../lazy-code-viewer";
 import { AgentResult } from "./agent";
 import { JarResult } from "./jar-result";
 

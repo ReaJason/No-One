@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useSeedSync } from "@/hooks/use-seed-sync";
 import {
   PROJECT_STATUS_ITEMS,
   type ProjectActionData,
@@ -181,10 +182,10 @@ export function ProjectForm({
     setCalendarTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
   }, []);
 
-  useEffect(() => {
-    reset(initialValues);
+  useSeedSync(initialValues, (values) => {
+    reset(values);
     setQuery("");
-  }, [initialValues, reset]);
+  });
 
   const normalizedQuery = deferredQuery.trim().toLowerCase();
   const filteredUsers = normalizedQuery

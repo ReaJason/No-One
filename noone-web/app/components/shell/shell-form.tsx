@@ -59,7 +59,6 @@ export function ShellForm({
     formState: { errors: formErrors },
     getValues,
     handleSubmit,
-    reset,
     setValue,
     watch,
   } = useForm<ShellFormValues>({
@@ -71,11 +70,11 @@ export function ShellForm({
   const testFetcher = useFetcher<ShellActionData>();
   const isSubmitting = fetcher.state === "submitting";
   const isTesting = testFetcher.state !== "idle";
+  // The form is keyed by its identity in the parent route, so a changed shell or
+  // prefill remounts it with fresh default values. Resetting on every
+  // `initialValues` identity change would wipe user input whenever a fetcher
+  // action (such as "Test Connection") triggers loader revalidation.
   const serverErrors = fetcher.data?.errors;
-
-  useEffect(() => {
-    reset(initialValues);
-  }, [initialValues, reset]);
 
   useEffect(() => {
     if (testFetcher.state !== "idle" || !testFetcher.data) return;

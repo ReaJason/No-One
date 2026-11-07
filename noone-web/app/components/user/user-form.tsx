@@ -1,7 +1,7 @@
 import type { Role, UserStatus } from "@/types/admin";
 import type { LucideIcon } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Form } from "react-router";
 
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSeedSync } from "@/hooks/use-seed-sync";
 import { USER_STATUS_ITEMS, type UserFormSeed } from "@/routes/admin/users/user-form.shared";
 
 type UserFormProps = {
@@ -53,10 +54,10 @@ export function UserForm({
     () => new Set(initialValues.roleIds),
   );
 
-  useEffect(() => {
-    setStatus(initialValues.status);
-    setSelectedRoleIds(new Set(initialValues.roleIds));
-  }, [initialValues]);
+  useSeedSync(initialValues, (values) => {
+    setStatus(values.status);
+    setSelectedRoleIds(new Set(values.roleIds));
+  });
 
   const toggleRole = (roleId: number, checked: boolean) => {
     setSelectedRoleIds((previous) => {
