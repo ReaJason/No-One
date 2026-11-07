@@ -13,26 +13,17 @@ import java.util.Map;
 public class ProcessMonitor {
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         HashMap<String, Object> result = new HashMap<String, Object>();
         try {
             String osName = System.getProperty("os.name", "");
             if (!osName.toLowerCase().contains("linux")) {
-                result.put("error", "Process monitoring via /proc is only supported on Linux");
-                ctx.put("result", result);
-                return true;
+                throw new UnsupportedOperationException("Process monitoring via /proc is only supported on Linux");
             }
 
             File procDir = new File("/proc");
             if (!procDir.exists() || !procDir.isDirectory()) {
-                result.put("error", "/proc filesystem not available");
-                ctx.put("result", result);
-                return true;
+                throw new IllegalStateException("/proc filesystem not available");
             }
 
             HashMap<String, String> uidMap = buildUidMap();
@@ -53,11 +44,12 @@ public class ProcessMonitor {
             result.put("os", "Linux");
             result.put("total", Integer.valueOf(processes.size()));
             result.put("processes", processes);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            result.put("error", "Failed to monitor processes: " + e.getMessage());
+            throw new RuntimeException("Failed to monitor processes: " + e.getMessage(), e);
         }
-        ctx.put("result", result);
-        return true;
+        return result;
     }
 
     private static HashMap<String, Object> readProcessInfo(String pid, HashMap<String, String> uidMap) {

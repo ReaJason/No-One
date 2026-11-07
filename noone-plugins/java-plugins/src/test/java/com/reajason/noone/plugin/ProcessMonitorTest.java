@@ -12,10 +12,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class ProcessMonitorTest {
 
     @Test
-    void testEquals() {
+    void testExecute() {
         HashMap<String, Object> ctx = new HashMap<>();
-        new ProcessMonitor().equals(ctx);
-        Object result = ctx.get("result");
+        Object result = new ProcessMonitor().execute(ctx);
         assertNotNull(result);
         System.out.println(JSON.toJSONString(result));
     }

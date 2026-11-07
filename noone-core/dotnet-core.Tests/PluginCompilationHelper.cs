@@ -16,19 +16,9 @@ using System.Collections.Generic;
 
 public class TestPlugin
 {
-    public override bool Equals(object obj)
+    public object Execute(IDictionary<string, object> ctx)
     {
-        Dictionary<string, object> map = obj as Dictionary<string, object>;
-        if (map != null)
-        {
-            map[""result""] = """ + EscapeString(resultValue) + @""";
-        }
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        return 0;
+        return """ + EscapeString(resultValue) + @""";
     }
 }
 ";
@@ -42,37 +32,17 @@ using System.Collections.Generic;
 
 public class FirstPlugin
 {
-    public override bool Equals(object obj)
+    public object Execute(IDictionary<string, object> ctx)
     {
-        Dictionary<string, object> map = obj as Dictionary<string, object>;
-        if (map != null)
-        {
-            map[""result""] = ""first"";
-        }
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        return 0;
+        return ""first"";
     }
 }
 
 public class SecondPlugin
 {
-    public override bool Equals(object obj)
+    public object Execute(IDictionary<string, object> ctx)
     {
-        Dictionary<string, object> map = obj as Dictionary<string, object>;
-        if (map != null)
-        {
-            map[""result""] = ""second"";
-        }
-        return true;
-    }
-
-    public override int GetHashCode()
-    {
-        return 0;
+        return ""second"";
     }
 }
 ";

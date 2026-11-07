@@ -14,7 +14,9 @@ Java plugins compile as Java 8 source, then `generateRelease` rewrites the bytec
 Use this as the practical rule set:
 
 - Keep production plugin code simple and self-contained.
-- Override `equals(Object obj)`, guard non-`Map` input, write `ctx.put("result", result)`, and return `true`.
+- Implement `public Object execute(Map<String, Object> ctx)` and return the result map.
+- Return results directly; do not write to `ctx.put("result", ...)`.
+- Report failures by throwing a `RuntimeException`; the core converts it into `code=1`/`error`. Do not add `error` fields to the result map.
 - Prefer classic control flow and collection usage.
 - Avoid production-code features that make downgrade or older-runtime compatibility fragile, especially lambdas, method references, streams, and try-with-resources.
 - Do not assume a Java 8 library API is safe just because the source compiles; unavailable runtime APIs still fail after bytecode rewriting.
@@ -39,16 +41,9 @@ import java.util.Map;
 
 public class PluginName {
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         HashMap<String, Object> result = new HashMap<String, Object>();
-        ctx.put("result", result);
-        return true;
+        return result;
     }
 }
 ```
@@ -57,5 +52,5 @@ public class PluginName {
 
 ```bash
 ./gradlew :noone-plugins:java-plugins:test --tests "com.reajason.noone.plugin.PluginNameTest"
-./gradlew :noone-plugins:java-plugins:generateRelease
+./gradlew :noone-plugins:generateRelease
 ```

@@ -41,32 +41,16 @@ public class FileManagerPlugin {
     private static final String OP_ZIP = "zip";
     private static final String OP_UNZIP = "unzip";
 
-    private static final String ERR_INVALID_ARG = "INVALID_ARG";
-    private static final String ERR_NOT_FOUND = "NOT_FOUND";
-    private static final String ERR_NOT_DIRECTORY = "NOT_DIRECTORY";
-    private static final String ERR_ALREADY_EXISTS = "ALREADY_EXISTS";
-    private static final String ERR_IO = "IO_ERROR";
-    private static final String ERR_OFFSET = "OFFSET_OUT_OF_RANGE";
-    private static final String ERR_TOO_LARGE = "FILE_TOO_LARGE";
-    private static final String ERR_SECURITY = "SECURITY_ERROR";
-
     private static final int DEFAULT_CHUNK_LENGTH = 256 * 1024;
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         Map<String, Object> result = new HashMap<String, Object>();
         try {
             String op = asTrimString(ctx.get("op"));
             if (op == null || op.length() == 0) {
-                fail(result, ERR_INVALID_ARG, "op is required");
-                ctx.put("result", result);
-                return true;
+                fail("op is required");
+                return result;
             }
 
             String cwd = normalizeCwd(asTrimString(ctx.get("cwd")));
@@ -103,14 +87,15 @@ public class FileManagerPlugin {
             } else if (OP_UNZIP.equals(op)) {
                 handleUnzip(ctx, result, cwd);
             } else {
-                fail(result, ERR_INVALID_ARG, "unsupported op: " + op);
+                fail("unsupported op: " + op);
             }
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Throwable t) {
-            fail(result, ERR_IO, "File manager failed: " + safeMessage(t));
+            throw new RuntimeException("File manager failed: " + safeMessage(t), t);
         }
 
-        ctx.put("result", result);
-        return true;
+        return result;
     }
 
     private static void handleList(Map<String, Object> ctx, Map<String, Object> result, String cwd) throws Exception {
@@ -171,12 +156,12 @@ public class FileManagerPlugin {
         long fileSize = file.length();
         long maxBytes = asLong(ctx.get("maxBytes"), -1L);
         if (maxBytes > -1 && fileSize > maxBytes) {
-            fail(result, ERR_TOO_LARGE, "file exceeds maxBytes");
+            fail("file exceeds maxBytes");
             result.put("fileSize", Long.valueOf(fileSize));
             return;
         }
         if (fileSize > Integer.MAX_VALUE) {
-            fail(result, ERR_TOO_LARGE, "file is too large for read-all");
+            fail("file is too large for read-all");
             result.put("fileSize", Long.valueOf(fileSize));
             return;
         }
@@ -194,17 +179,17 @@ public class FileManagerPlugin {
         long offset = asLong(ctx.get("offset"), 0L);
         int length = asInt(ctx.get("length"), DEFAULT_CHUNK_LENGTH);
         if (offset < 0) {
-            fail(result, ERR_INVALID_ARG, "offset must be >= 0");
+            fail("offset must be >= 0");
             return;
         }
         if (length <= 0) {
-            fail(result, ERR_INVALID_ARG, "length must be > 0");
+            fail("length must be > 0");
             return;
         }
 
         long fileSize = file.length();
         if (offset > fileSize) {
-            fail(result, ERR_OFFSET, "offset exceeds file size");
+            fail("offset exceeds file size");
             result.put("fileSize", Long.valueOf(fileSize));
             return;
         }
@@ -245,7 +230,7 @@ public class FileManagerPlugin {
         File file = resolvePath(ctx.get("path"), cwd, true);
         byte[] bytes = asBytes(ctx.get("bytes"));
         if (bytes == null) {
-            fail(result, ERR_INVALID_ARG, "bytes is required");
+            fail("bytes is required");
             return;
         }
 
@@ -268,14 +253,14 @@ public class FileManagerPlugin {
         File file = resolvePath(ctx.get("path"), cwd, true);
         byte[] bytes = asBytes(ctx.get("bytes"));
         if (bytes == null) {
-            fail(result, ERR_INVALID_ARG, "bytes is required");
+            fail("bytes is required");
             return;
         }
 
         long offset = asLong(ctx.get("offset"), 0L);
         boolean truncate = asBoolean(ctx.get("truncate"), false);
         if (offset < 0) {
-            fail(result, ERR_INVALID_ARG, "offset must be >= 0");
+            fail("offset must be >= 0");
             return;
         }
 
@@ -287,13 +272,13 @@ public class FileManagerPlugin {
             if (truncate) {
                 raf.setLength(0L);
                 if (offset != 0L) {
-                    fail(result, ERR_INVALID_ARG, "offset must be 0 when truncate=true");
+                    fail("offset must be 0 when truncate=true");
                     return;
                 }
             }
             long currentLength = raf.length();
             if (offset > currentLength) {
-                fail(result, ERR_OFFSET, "offset exceeds current file size");
+                fail("offset exceeds current file size");
                 result.put("fileSize", Long.valueOf(currentLength));
                 return;
             }
@@ -317,7 +302,7 @@ public class FileManagerPlugin {
 
         if (dir.exists()) {
             if (!dir.isDirectory()) {
-                fail(result, ERR_ALREADY_EXISTS, "path exists and is not a directory");
+                fail("path exists and is not a directory");
                 return;
             }
             result.put("path", canonicalPath(dir));
@@ -327,7 +312,7 @@ public class FileManagerPlugin {
 
         boolean created = recursive ? dir.mkdirs() : dir.mkdir();
         if (!created) {
-            fail(result, ERR_IO, "failed to create directory");
+            fail("failed to create directory");
             return;
         }
         result.put("path", canonicalPath(dir));
@@ -341,7 +326,7 @@ public class FileManagerPlugin {
 
         if (file.exists()) {
             if (file.isDirectory()) {
-                fail(result, ERR_ALREADY_EXISTS, "path exists and is a directory");
+                fail("path exists and is a directory");
                 return;
             }
             if (overwrite) {
@@ -361,7 +346,7 @@ public class FileManagerPlugin {
 
         boolean created = file.createNewFile();
         if (!created) {
-            fail(result, ERR_IO, "failed to create file");
+            fail("failed to create file");
             return;
         }
         result.put("path", canonicalPath(file));
@@ -372,7 +357,7 @@ public class FileManagerPlugin {
     private static void handleMoveOrCopy(Map<String, Object> ctx, Map<String, Object> result, String cwd, boolean move) throws Exception {
         List<File> sources = parseSourcePaths(ctx.get("sourcePaths"), ctx.get("sourcePath"), cwd);
         if (sources.isEmpty()) {
-            fail(result, ERR_INVALID_ARG, "sourcePaths is required");
+            fail("sourcePaths is required");
             return;
         }
         File destination = resolvePath(ctx.get("destinationPath"), cwd, true);
@@ -381,7 +366,7 @@ public class FileManagerPlugin {
         boolean destinationExists = destination.exists();
         boolean destinationIsDir = destinationExists && destination.isDirectory();
         if (sources.size() > 1 && !destinationIsDir) {
-            fail(result, ERR_INVALID_ARG, "destinationPath must be an existing directory for multiple sources");
+            fail("destinationPath must be an existing directory for multiple sources");
             return;
         }
 
@@ -406,13 +391,13 @@ public class FileManagerPlugin {
                 continue;
             }
             if (source.isDirectory() && isDescendantPath(target, source)) {
-                fail(result, ERR_INVALID_ARG, "cannot move/copy directory into itself");
+                fail("cannot move/copy directory into itself");
                 return;
             }
 
             if (target.exists()) {
                 if (!overwrite) {
-                    fail(result, ERR_ALREADY_EXISTS, "target already exists: " + target.getPath());
+                    fail("target already exists: " + target.getPath());
                     return;
                 }
                 deleteRecursively(target);
@@ -441,19 +426,19 @@ public class FileManagerPlugin {
 
         String newName = asTrimString(ctx.get("newName"));
         if (newName == null || newName.length() == 0 || newName.indexOf('/') >= 0 || newName.indexOf('\\') >= 0) {
-            fail(result, ERR_INVALID_ARG, "invalid newName");
+            fail("invalid newName");
             return;
         }
 
         File parent = source.getParentFile();
         if (parent == null) {
-            fail(result, ERR_INVALID_ARG, "cannot rename root path");
+            fail("cannot rename root path");
             return;
         }
 
         File target = new File(parent, newName).getCanonicalFile();
         if (target.exists() && !isSamePath(source, target)) {
-            fail(result, ERR_ALREADY_EXISTS, "target already exists");
+            fail("target already exists");
             return;
         }
 
@@ -465,7 +450,7 @@ public class FileManagerPlugin {
     private static void handleTouch(Map<String, Object> ctx, Map<String, Object> result, String cwd) throws Exception {
         List<File> paths = parseSourcePaths(ctx.get("paths"), ctx.get("path"), cwd);
         if (paths.isEmpty()) {
-            fail(result, ERR_INVALID_ARG, "path or paths is required");
+            fail("path or paths is required");
             return;
         }
 
@@ -477,7 +462,7 @@ public class FileManagerPlugin {
             ensureExists(file);
             boolean ok = file.setLastModified(modifiedAt);
             if (!ok) {
-                fail(result, ERR_IO, "failed to update modified time: " + file.getPath());
+                fail("failed to update modified time: " + file.getPath());
                 return;
             }
             updatedPaths.add(canonicalPath(file));
@@ -490,7 +475,7 @@ public class FileManagerPlugin {
     private static void handleDelete(Map<String, Object> ctx, Map<String, Object> result, String cwd) throws Exception {
         List<File> paths = parseSourcePaths(ctx.get("paths"), ctx.get("path"), cwd);
         if (paths.isEmpty()) {
-            fail(result, ERR_INVALID_ARG, "path or paths is required");
+            fail("path or paths is required");
             return;
         }
         boolean recursive = asBoolean(ctx.get("recursive"), false);
@@ -500,7 +485,7 @@ public class FileManagerPlugin {
             File file = paths.get(i);
             ensureExists(file);
             if (file.isDirectory() && !recursive) {
-                fail(result, ERR_INVALID_ARG, "directory delete requires recursive=true: " + file.getPath());
+                fail("directory delete requires recursive=true: " + file.getPath());
                 return;
             }
             deleteRecursively(file);
@@ -513,13 +498,13 @@ public class FileManagerPlugin {
     private static void handleZip(Map<String, Object> ctx, Map<String, Object> result, String cwd) throws Exception {
         List<File> rawSources = parseSourcePaths(ctx.get("sourcePaths"), ctx.get("sourcePath"), cwd);
         if (rawSources.isEmpty()) {
-            fail(result, ERR_INVALID_ARG, "sourcePath or sourcePaths is required");
+            fail("sourcePath or sourcePaths is required");
             return;
         }
 
         String destinationText = asTrimString(ctx.get("destinationPath"));
         if (destinationText == null) {
-            fail(result, ERR_INVALID_ARG, "destinationPath is required");
+            fail("destinationPath is required");
             return;
         }
 
@@ -529,7 +514,7 @@ public class FileManagerPlugin {
         try {
             destination = resolvePath(destinationText, cwd, true).getCanonicalFile();
         } catch (IllegalArgumentException e) {
-            fail(result, ERR_INVALID_ARG, safeMessage(e));
+            fail(safeMessage(e));
             return;
         }
 
@@ -538,15 +523,15 @@ public class FileManagerPlugin {
         for (int i = 0; i < rawSources.size(); i++) {
             File source = rawSources.get(i).getCanonicalFile();
             if (!source.exists()) {
-                fail(result, ERR_NOT_FOUND, "source path does not exist: " + source.getPath());
+                fail("source path does not exist: " + source.getPath());
                 return;
             }
             if (isSamePath(source, destination)) {
-                fail(result, ERR_INVALID_ARG, "destinationPath cannot be the same as source path");
+                fail("destinationPath cannot be the same as source path");
                 return;
             }
             if (source.isDirectory() && isDescendantPath(destination, source)) {
-                fail(result, ERR_INVALID_ARG, "destinationPath cannot be inside source directory");
+                fail("destinationPath cannot be inside source directory");
                 return;
             }
             sources.add(source);
@@ -555,11 +540,11 @@ public class FileManagerPlugin {
 
         if (destination.exists()) {
             if (destination.isDirectory()) {
-                fail(result, ERR_ALREADY_EXISTS, "destinationPath exists and is a directory");
+                fail("destinationPath exists and is a directory");
                 return;
             }
             if (!overwrite) {
-                fail(result, ERR_ALREADY_EXISTS, "destinationPath already exists");
+                fail("destinationPath already exists");
                 return;
             }
         }
@@ -585,9 +570,9 @@ public class FileManagerPlugin {
             result.put("entryCount", Integer.valueOf(entryCounter[0]));
             result.put("sourcePaths", sourcePaths);
         } catch (IllegalArgumentException e) {
-            fail(result, ERR_INVALID_ARG, safeMessage(e));
+            fail(safeMessage(e));
         } catch (IOException e) {
-            fail(result, ERR_IO, safeMessage(e));
+            fail(safeMessage(e));
         } finally {
             closeQuietly(zipOutput);
         }
@@ -598,25 +583,25 @@ public class FileManagerPlugin {
         try {
             archive = resolvePath(ctx.get("path"), cwd, true).getCanonicalFile();
         } catch (IllegalArgumentException e) {
-            fail(result, ERR_INVALID_ARG, safeMessage(e));
+            fail(safeMessage(e));
             return;
         }
         if (!archive.exists()) {
-            fail(result, ERR_NOT_FOUND, "path does not exist: " + archive.getPath());
+            fail("path does not exist: " + archive.getPath());
             return;
         }
         if (!archive.isFile()) {
-            fail(result, ERR_INVALID_ARG, "path must be a file");
+            fail("path must be a file");
             return;
         }
         if (!hasZipMagic(archive)) {
-            fail(result, ERR_INVALID_ARG, "path is not a zip file");
+            fail("path is not a zip file");
             return;
         }
 
         String destinationText = asTrimString(ctx.get("destinationPath"));
         if (destinationText == null) {
-            fail(result, ERR_INVALID_ARG, "destinationPath is required");
+            fail("destinationPath is required");
             return;
         }
 
@@ -626,21 +611,21 @@ public class FileManagerPlugin {
         try {
             destination = resolvePath(destinationText, cwd, true).getCanonicalFile();
             if (destination.exists() && !destination.isDirectory()) {
-                fail(result, ERR_INVALID_ARG, "destinationPath exists and is not a directory");
+                fail("destinationPath exists and is not a directory");
                 return;
             }
             if (!destination.exists()) {
                 ensureParent(destination, createParent);
                 if (!destination.mkdirs()) {
-                    fail(result, ERR_IO, "failed to create destination directory");
+                    fail("failed to create destination directory");
                     return;
                 }
             }
         } catch (IllegalArgumentException e) {
-            fail(result, ERR_INVALID_ARG, safeMessage(e));
+            fail(safeMessage(e));
             return;
         } catch (IOException e) {
-            fail(result, ERR_IO, safeMessage(e));
+            fail(safeMessage(e));
             return;
         }
 
@@ -691,18 +676,18 @@ public class FileManagerPlugin {
                 zipInput.closeEntry();
             }
         } catch (SecurityException e) {
-            fail(result, ERR_SECURITY, safeMessage(e));
+            fail(safeMessage(e));
             return;
         } catch (IllegalArgumentException e) {
             String message = safeMessage(e);
             if (message.startsWith("target already exists:")) {
-                fail(result, ERR_ALREADY_EXISTS, message);
+                fail(message);
             } else {
-                fail(result, ERR_INVALID_ARG, message);
+                fail(message);
             }
             return;
         } catch (IOException e) {
-            fail(result, ERR_IO, safeMessage(e));
+            fail(safeMessage(e));
             return;
         } finally {
             closeQuietly(zipInput);
@@ -1262,9 +1247,8 @@ public class FileManagerPlugin {
         }
     }
 
-    private static void fail(Map<String, Object> result, String errorCode, String message) {
-        result.put("errorCode", errorCode);
-        result.put("error", message);
+    private static void fail(String message) {
+        throw new IllegalArgumentException(message);
     }
 
     private static String asTrimString(Object value) {

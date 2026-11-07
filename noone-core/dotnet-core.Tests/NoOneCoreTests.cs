@@ -67,6 +67,31 @@ public class NoOneCoreTests
     }
 
     [Fact]
+    public void Serialize_LongString_RoundTripsThroughLongStringTag()
+    {
+        string longString = new string('你', 40000);
+        Dictionary<string, object> map = new Dictionary<string, object>();
+        map["value"] = longString;
+
+        byte[] bytes = _core.Serialize(map);
+
+        // MAP + size(4) + key writeUTF(2 + 5) -> value type byte at index 12
+        Assert.Equal(0x0A, bytes[12]);
+
+        Dictionary<string, object> decoded = _core.Deserialize(bytes);
+        Assert.Equal(longString, decoded["value"]);
+    }
+
+    [Fact]
+    public void Deserialize_RejectsOversizedDeclaredLength()
+    {
+        // MAP(1) + key "x" + BYTE_ARRAY claiming 2GB
+        byte[] data = new byte[] { 0x10, 0, 0, 0, 1, 0, 1, (byte)'x', 0x06, 0x7F, 0xFF, 0xFF, 0xFF };
+
+        Assert.Throws<IOException>(() => _core.Deserialize(data));
+    }
+
+    [Fact]
     public void Equals_LoadAndRun_WithPluginBytesOnly_Succeeds()
     {
         byte[] pluginBytes = PluginCompilationHelper.CompileSingleTypePlugin("sample.plugin", "ok");

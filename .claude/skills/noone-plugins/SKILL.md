@@ -35,19 +35,26 @@ noone-plugins/
 
 ## Plugin Architecture
 
-All plugins across all languages share the same execution contract:
+All plugins across all languages share the same execution contract (v2):
 
-1. The runtime calls `equals(ctx)` on the plugin instance
+1. The runtime calls `execute(ctx)` on the plugin instance
 2. `ctx` is a Map/Dictionary/Object carrying input parameters
-3. The plugin reads args from `ctx`, executes logic, and writes results back to `ctx["result"]`
-4. The plugin always returns `true`
+3. The plugin reads args from `ctx`, executes logic, and **returns** the result
+4. The returned value is put into the response `data` field — nothing is written back to `ctx`
 
-**Why `equals()`?** — The plugin class is loaded dynamically (from base64 bytes / eval'd code / loaded DLL). Using `equals()` avoids needing to cast to a known interface, since every `Object` has it.
+Entry-point signatures:
+- Java: `public Object execute(Map<String, Object> ctx)`
+- Node.js: `execute(ctx)` (may be async)
+- .NET: `public object Execute(IDictionary<string, object> ctx)`
+
+**Why reflection instead of a shared interface?** — The plugin class is loaded dynamically (from base64 bytes / eval'd code / loaded DLL) by a classloader that cannot see the core's classes. A shared typed interface would fail to link, so the core resolves `execute` reflectively by name and parameter type. `equals` was used in v1 but cannot return a result in Java/.NET, hence the dedicated `execute` method.
 
 **Context Map contract:**
 - Input params: `ctx.get("key")` — varies per plugin
-- Output: `ctx.put("result", resultMap)` — always a Map/Dict with plugin results
-- Errors: `result.put("error", "message")` — error field in result map
+- Runtime-reserved keys: `pluginCaches`, `globalCaches` (Java also gets `request` and `response`)
+- Output: the method's return value — usually a Map/Dict with plugin results
+- Errors: throw an exception (`RuntimeException` / `Error` / `Exception`). The core catches it and returns `code=1` with the message and stack trace — never put `error`/`errorCode` fields in the result
+- Incremental progress (long-running plugins): `ctx.put("progress", partialResult)` in Java, `ctx.progress = partialResult` in Node.js; TaskManager polls it
 
 ---
 
@@ -78,27 +85,19 @@ import java.util.Map;
 
 public class PluginName {
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         HashMap<String, Object> result = new HashMap<String, Object>();
-        try {
-            // Read args from ctx
-            String arg = (String) ctx.get("arg");
-
-            // Plugin logic here...
-
-            // Store results
-            result.put("data", "value");
-        } catch (Exception e) {
-            result.put("error", "Plugin failed: " + e.getMessage());
+        // Read args from ctx
+        String arg = (String) ctx.get("arg");
+        if (arg == null || arg.length() == 0) {
+            throw new IllegalArgumentException("arg is required");
         }
-        ctx.put("result", result);
-        return true;
+
+        // Plugin logic here...
+
+        // Return results; throw on failure and let the core build the error response
+        result.put("data", "value");
+        return result;
     }
 }
 ```
@@ -122,10 +121,9 @@ import static org.junit.jupiter.api.Assertions.*;
 class PluginNameTest {
 
     @Test
-    void testEquals() {
+    void testExecute() {
         HashMap<String, Object> ctx = new HashMap<>();
-        new PluginName().equals(ctx);
-        Object result = ctx.get("result");
+        Object result = new PluginName().execute(ctx);
         assertNotNull(result);
         System.out.println(JSON.toJSONString(result));
     }
@@ -164,7 +162,7 @@ The `plugin-id` must match the `"id"` field in the release JSON.
 
 - Node.js 18+ required
 - **Must use `node:` prefix** for all built-in modules (e.g., `node:os`, `node:fs`, `node:child_process`) — ensures compatibility with Deno and Bun
-- Plugin is wrapped in an IIFE that returns an object with an async `equals` method
+- Plugin is wrapped in an IIFE that returns an object with an `execute` method (sync or async)
 - Multi-line source is collapsed to a single line in the release payload
 
 ### Source Template
@@ -174,22 +172,21 @@ File: `noone-plugins/nodejs-plugins/<plugin-id>.mjs`
 ```javascript
 (function () {
     return {
-        equals: async function (ctx) {
+        execute: async function (ctx) {
             const result = {};
-            try {
-                const os = await import("node:os");
-                const fs = await import("node:fs");
+            const os = await import("node:os");
 
-                // Read args from ctx
-                const arg = ctx.arg;
-
-                // Plugin logic here...
-
-                result.data = "value";
-            } catch (e) {
-                result.error = 'Failed: ' + e.message;
+            // Read args from ctx
+            const arg = ctx.arg;
+            if (!arg) {
+                throw new Error("arg is required");
             }
-            ctx.result = result;
+
+            // Plugin logic here...
+
+            // Return results; throw on failure and let the core build the error response
+            result.data = "value";
+            return result;
         }
     };
 })();
@@ -205,8 +202,8 @@ Test files use the pattern `<plugin-id>.test.mjs` or a shared `test.mjs`:
     let code = fs.readFileSync("plugin-id.mjs", "utf-8");
     const plugin = new Function("return " + code)();
     const ctx = {};
-    await plugin.equals(ctx);
-    console.log(JSON.stringify(ctx.result, null, 2));
+    const result = await plugin.execute(ctx);
+    console.log(JSON.stringify(result, null, 2));
 })();
 ```
 
@@ -221,6 +218,8 @@ Run with: `node noone-plugins/nodejs-plugins/test.mjs`
 - Target **.netstandard 2.0** — no C# 8+ features (no nullable reference types, no switch expressions, no ranges, no default interface methods)
 - Use `sealed class` for performance
 - The `.csproj` auto-generates a `.base64` file in `build/` after `dotnet build`
+- All plugin projects share one directory, so `Directory.Build.props` gives each project its own `obj/<project>/` and `bin/<project>/`; without it parallel builds overwrite `obj/project.assets.json` and fail with CS0518
+- `dotnet-plugins.sln` builds all plugins at once; add every new plugin project to it (`dotnet sln dotnet-plugins.sln add <file>.csproj`)
 
 ### Source Template
 
@@ -234,33 +233,23 @@ namespace NoOne.Plugins.Dotnet.PluginName
 {
     public sealed class DotnetPluginNamePlugin
     {
-        public override bool Equals(object obj)
+        public object Execute(IDictionary<string, object> ctx)
         {
-            IDictionary<string, object> ctx = obj as IDictionary<string, object>;
-            if (ctx == null)
-            {
-                return true;
-            }
-
             Dictionary<string, object> result = new Dictionary<string, object>();
-            try
+            // Read args from ctx
+            object argObj;
+            ctx.TryGetValue("arg", out argObj);
+            string arg = argObj as string;
+            if (string.IsNullOrEmpty(arg))
             {
-                // Read args from ctx
-                object argObj;
-                ctx.TryGetValue("arg", out argObj);
-                string arg = argObj as string;
-
-                // Plugin logic here...
-
-                result["data"] = "value";
-            }
-            catch (Exception ex)
-            {
-                result["error"] = "Failed to run plugin: " + ex.Message;
+                throw new ArgumentException("arg is required");
             }
 
-            ctx["result"] = result;
-            return true;
+            // Plugin logic here...
+
+            // Return results; throw on failure and let the core build the error response
+            result["data"] = "value";
+            return result;
         }
     }
 }
@@ -277,7 +266,7 @@ Key properties:
 <PluginBase64Output>$(MSBuildProjectDirectory)/build/$(PluginId).base64</PluginBase64Output>
 ```
 
-Build: `cd noone-plugins/dotnet-plugins && dotnet build`
+Build: `cd noone-plugins/dotnet-plugins && dotnet build dotnet-plugins.sln`
 
 ### Test Template
 
@@ -302,26 +291,17 @@ public class DotnetPluginNamePluginTests
     }
 
     [Fact]
-    public void Equals_WithNonMapInput_ReturnsTrue()
-    {
-        var plugin = new DotnetPluginNamePlugin();
-        bool ok = plugin.Equals("invalid");
-        Assert.True(ok);
-    }
-
-    [Fact]
-    public void Equals_ShouldPopulateResult()
+    public void Execute_ShouldReturnResult()
     {
         var plugin = new DotnetPluginNamePlugin();
         var ctx = new Dictionary<string, object>();
 
-        bool ok = plugin.Equals(ctx);
-        string json = JsonSerializer.Serialize(ctx["result"],
+        object result = plugin.Execute(ctx);
+        string json = JsonSerializer.Serialize(result,
             new JsonSerializerOptions { WriteIndented = true });
         _output.WriteLine(json);
 
-        Assert.True(ok);
-        Assert.True(ctx.ContainsKey("result"));
+        Assert.NotNull(result);
     }
 }
 ```
@@ -431,11 +411,11 @@ Leave `payload` as an empty string.
 ### 5. Generate release payloads
 
 ```bash
-# For .NET plugins, build the DLL first:
-cd noone-plugins/dotnet-plugins && dotnet build
+# For .NET plugins, build the solution first:
+cd noone-plugins/dotnet-plugins && dotnet build dotnet-plugins.sln
 
 # Generate all release payloads (Java + Node.js + .NET):
-./gradlew :noone-plugins:java-plugins:generateRelease
+./gradlew :noone-plugins:generateRelease
 ```
 
 ### 6. Run tests
@@ -462,6 +442,10 @@ cd noone-plugins/dotnet-plugins.Tests && dotnet test
 | Forgetting `javaPluginMapping` entry | `generateRelease` skips the plugin silently | Add mapping before running generateRelease |
 | Using bare module names in Node.js (`"os"`) | Fails in Deno/Bun | Always use `"node:os"` prefix |
 | Using C# 8+ features in .NET | Incompatible with .netstandard 2.0 | Stick to C# 7.3 syntax |
+| Using the v1 `equals(ctx)` contract | Core only resolves `execute(ctx)`; plugin fails to load | Implement `execute` and return the result |
+| Writing results to `ctx["result"]` instead of returning | Core ignores `ctx` writes; response data is null | `return result;` from `execute` |
+| Returning `error`/`errorCode` fields instead of throwing | Bypasses the core's uniform failure response | Throw an exception; the core fills `code`/`error` |
 | Forgetting ByteBuddy test | JDK6 incompatibility caught only at runtime | Always include the redefine test |
 | Release JSON `id` doesn't match `javaPluginMapping` key | Payload generation silently skipped | Ensure IDs match exactly |
-| Not building .NET before generateRelease | Missing `.base64` file, plugin skipped | Run `dotnet build` first |
+| Not building .NET before generateRelease | Missing `.base64` file, plugin skipped | Run `dotnet build dotnet-plugins.sln` first |
+| New .NET project not added to `dotnet-plugins.sln` | Solution build skips it, payload never regenerates | `dotnet sln dotnet-plugins.sln add <file>.csproj` |

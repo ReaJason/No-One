@@ -18,19 +18,13 @@ public class LogMonitor {
     private static final int MAX_BUFFER_LINES = 1000;
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
+    public Object execute(Map<String, Object> ctx) {
         Map<String, Object> result = new HashMap<String, Object>();
-        ctx.put("result", result);
+        ctx.put("progress", result);
 
         String path = asString(ctx.get("path"));
         if (path == null || path.isEmpty()) {
-            result.put("error", "path is required");
-            return true;
+            throw new IllegalArgumentException("path is required");
         }
 
         int initialLines = asInt(ctx.get("initialLines"), DEFAULT_INITIAL_LINES);
@@ -38,12 +32,10 @@ public class LogMonitor {
 
         File file = new File(path);
         if (!file.exists() || !file.isFile()) {
-            result.put("error", "file not found: " + path);
-            return true;
+            throw new IllegalArgumentException("file not found: " + path);
         }
         if (!file.canRead()) {
-            result.put("error", "file not readable: " + path);
-            return true;
+            throw new IllegalArgumentException("file not readable: " + path);
         }
 
         result.put("path", path);
@@ -105,8 +97,7 @@ public class LogMonitor {
 
             result.put("status", "stopped");
         } catch (IOException e) {
-            result.put("status", "error");
-            result.put("error", "IO error: " + e.getMessage());
+            throw new RuntimeException("IO error: " + e.getMessage(), e);
         } finally {
             if (raf != null) {
                 try {
@@ -116,7 +107,7 @@ public class LogMonitor {
             }
         }
 
-        return true;
+        return result;
     }
 
     private long findTailPosition(RandomAccessFile raf, long fileLength, int lines) throws IOException {

@@ -95,18 +95,17 @@ public class TaskManager implements Runnable {
         Object plugin = pluginCaches != null ? pluginCaches.get(taskInfo.get("plugin")) : null;
         if (taskCtx == null || plugin == null) {
             taskInfo.put("status", STATUS_FAILED);
-            taskInfo.put("error", "missing ctx or plugin");
+            taskInfo.put("taskError", "missing ctx or plugin");
             taskInfo.put("endTime", Long.valueOf(System.currentTimeMillis()));
             return;
         }
 
         try {
-            plugin.equals(taskCtx);
+            taskInfo.put("result", executePlugin(plugin, taskCtx));
             taskInfo.put("status", STATUS_COMPLETED);
-            taskInfo.put("result", taskCtx.get("result"));
         } catch (Throwable t) {
             taskInfo.put("status", STATUS_FAILED);
-            taskInfo.put("error", t.toString());
+            taskInfo.put("taskError", t.toString());
         } finally {
             taskInfo.put("endTime", Long.valueOf(System.currentTimeMillis()));
             taskInfo.remove("ctx");
@@ -152,9 +151,7 @@ public class TaskManager implements Runnable {
             }
 
             try {
-                taskCtx.remove("result");
-                plugin.equals(taskCtx);
-                taskInfo.put("lastResult", taskCtx.get("result"));
+                taskInfo.put("lastResult", executePlugin(plugin, taskCtx));
                 taskInfo.put("lastRunStatus", STATUS_COMPLETED);
             } catch (Throwable t) {
                 taskInfo.put("lastRunStatus", STATUS_FAILED);
@@ -206,13 +203,7 @@ public class TaskManager implements Runnable {
     }
 
     @SuppressWarnings("unchecked")
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
-        Map<String, Object> ctx = (Map<String, Object>) obj;
-
+    public Object execute(Map<String, Object> ctx) {
         if (pluginCaches == null) {
             pluginCaches = (Map<String, Object>) ctx.get("pluginCaches");
         }
@@ -243,24 +234,43 @@ public class TaskManager implements Runnable {
         } else if ("info".equals(op)) {
             handleInfo(result);
         } else {
-            result.put("error", "unknown op: " + op);
+            throw new IllegalArgumentException("unknown op: " + op);
         }
 
-        ctx.put("result", result);
-        return true;
+        return result;
+    }
+
+    /**
+     * Invokes another loaded plugin through the shared entry contract. Plugins
+     * are defined by the core's classloader, so they cannot share a typed
+     * interface with this class; reflection is the only portable option.
+     */
+    private static Object executePlugin(Object plugin, Map<String, Object> ctx) throws Exception {
+        java.lang.reflect.Method method = plugin.getClass().getDeclaredMethod("execute", Map.class);
+        method.setAccessible(true);
+        try {
+            return method.invoke(plugin, ctx);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof Exception) {
+                throw (Exception) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw e;
+        }
     }
 
     @SuppressWarnings("unchecked")
     private void handleSubmit(Map<String, Object> ctx, Map<String, Object> result) {
         String targetPluginName = (String) ctx.get(TARGET_PLUGIN);
         if (targetPluginName == null || pluginCaches == null) {
-            result.put("error", "targetPlugin is required and pluginCaches must be available");
-            return;
+            throw new IllegalArgumentException("targetPlugin is required and pluginCaches must be available");
         }
         Object targetPlugin = pluginCaches.get(targetPluginName);
         if (targetPlugin == null) {
-            result.put("error", "plugin not loaded: " + targetPluginName);
-            return;
+            throw new IllegalArgumentException("plugin not loaded: " + targetPluginName);
         }
 
         Map<String, Object> targetArgs = (Map<String, Object>) ctx.get(TARGET_ARGS);
@@ -286,12 +296,10 @@ public class TaskManager implements Runnable {
         taskStore.put(taskId, taskInfo);
 
         if (!asyncQueue.offer(taskId)) {
-            taskInfo.put("status", STATUS_FAILED);
-            taskInfo.put("error", "task rejected: queue full");
-            taskInfo.remove("ctx");
-        } else {
-            ensureWorkers();
+            taskStore.remove(taskId);
+            throw new IllegalStateException("task rejected: queue full");
         }
+        ensureWorkers();
 
         result.put("taskId", taskId);
         result.put("status", taskInfo.get("status"));
@@ -301,13 +309,11 @@ public class TaskManager implements Runnable {
     private void handleSchedule(Map<String, Object> ctx, Map<String, Object> result) {
         String targetPluginName = (String) ctx.get(TARGET_PLUGIN);
         if (targetPluginName == null || pluginCaches == null) {
-            result.put("error", "targetPlugin is required and pluginCaches must be available");
-            return;
+            throw new IllegalArgumentException("targetPlugin is required and pluginCaches must be available");
         }
         Object targetPlugin = pluginCaches.get(targetPluginName);
         if (targetPlugin == null) {
-            result.put("error", "plugin not loaded: " + targetPluginName);
-            return;
+            throw new IllegalArgumentException("plugin not loaded: " + targetPluginName);
         }
 
         Map<String, Object> targetArgs = (Map<String, Object>) ctx.get(TARGET_ARGS);
@@ -352,13 +358,11 @@ public class TaskManager implements Runnable {
     private void handleStatus(Map<String, Object> ctx, Map<String, Object> result) {
         String taskId = (String) ctx.get(TASK_ID);
         if (taskId == null) {
-            result.put("error", "taskId is required");
-            return;
+            throw new IllegalArgumentException("taskId is required");
         }
         Map<String, Object> taskInfo = taskStore.get(taskId);
         if (taskInfo == null) {
-            result.put("error", "task not found: " + taskId);
-            return;
+            throw new IllegalArgumentException("task not found: " + taskId);
         }
         result.put("taskId", taskId);
         result.put("status", taskInfo.get("status"));
@@ -371,11 +375,11 @@ public class TaskManager implements Runnable {
         if (STATUS_COMPLETED.equals(status)) {
             result.put("result", taskInfo.get("result"));
         } else if (STATUS_FAILED.equals(status)) {
-            result.put("error", taskInfo.get("error"));
+            result.put("taskError", taskInfo.get("taskError"));
         } else if (STATUS_RUNNING.equals(status) || STATUS_SUBMITTED.equals(status)) {
             Map<String, Object> taskCtx = (Map<String, Object>) taskInfo.get("ctx");
             if (taskCtx != null) {
-                Object partialResult = taskCtx.get("result");
+                Object partialResult = taskCtx.get("progress");
                 if (partialResult != null) {
                     result.put("partialResult", partialResult);
                 }
@@ -394,13 +398,11 @@ public class TaskManager implements Runnable {
     private void handleCancel(Map<String, Object> ctx, Map<String, Object> result) {
         String taskId = (String) ctx.get(TASK_ID);
         if (taskId == null) {
-            result.put("error", "taskId is required");
-            return;
+            throw new IllegalArgumentException("taskId is required");
         }
         Map<String, Object> taskInfo = taskStore.get(taskId);
         if (taskInfo == null) {
-            result.put("error", "task not found: " + taskId);
-            return;
+            throw new IllegalArgumentException("task not found: " + taskId);
         }
 
         boolean removed = asyncQueue.remove(taskId);

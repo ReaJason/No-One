@@ -13,8 +13,8 @@ Node.js plugins are source strings that the build reads directly and collapses i
 Keep these rules:
 
 - Export the plugin as an IIFE that returns an object.
-- Implement `equals` as an async function.
-- Write results to `ctx.result`; do not replace the runtime contract with a plain return value.
+- Implement `execute` (sync or async).
+- Return the result from `execute`; the runtime uses the return value as the response data. Do not write results to `ctx.result`.
 - Use the `node:` prefix for built-in modules inside plugin source files.
 - Keep the file executable through `new Function("return " + code)()` as used by the local runner.
 
@@ -23,15 +23,14 @@ Keep these rules:
 ```javascript
 (function () {
     return {
-        equals: async function (ctx) {
+        execute: async function (ctx) {
             const result = {};
-            try {
-                const fs = await import("node:fs");
-                result.ok = Boolean(fs);
-            } catch (e) {
-                result.error = "Failed: " + e.message;
+            const fs = await import("node:fs");
+            if (!fs) {
+                throw new Error("Failed to load node:fs");
             }
-            ctx.result = result;
+            result.ok = true;
+            return result;
         }
     };
 })();
@@ -43,12 +42,12 @@ Keep these rules:
 2. Use a nearby plugin as the baseline for argument names and result shape.
 3. Add or update a focused runner script or reuse `test.mjs` when that is enough.
 4. Add or update `noone-plugins/release/nodejs/nodejs-<plugin-id>-plugin-0.0.1.json`.
-5. Regenerate payloads with `./gradlew :noone-plugins:java-plugins:generateRelease`.
+5. Regenerate payloads with `./gradlew :noone-plugins:generateRelease`.
 
 ## Validation Commands
 
 ```bash
 node noone-plugins/nodejs-plugins/test.mjs
 node noone-plugins/nodejs-plugins/runner.mjs noone-plugins/nodejs-plugins/system-info.mjs /tmp/input.json /tmp/output.json
-./gradlew :noone-plugins:java-plugins:generateRelease
+./gradlew :noone-plugins:generateRelease
 ```

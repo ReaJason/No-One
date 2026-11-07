@@ -14,11 +14,7 @@ import java.util.*;
  */
 public class SystemInfoCollector {
 
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof Map)) {
-            return true;
-        }
+    public Object execute(Map<String, Object> map) {
         Map<String, Object> systemInfo = new HashMap<String, Object>();
         try {
             systemInfo.put("os", getOs());
@@ -27,13 +23,13 @@ public class SystemInfoCollector {
             systemInfo.put("process", getProcess());
             systemInfo.put("network", getNetwork());
             systemInfo.put("file_systems", getFileSystem());
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            systemInfo.put("error", "Failed to collect system info: " + e.getMessage());
+            throw new RuntimeException("Failed to collect system info: " + e.getMessage(), e);
         }
 
-        Map<String, Object> map = (Map<String, Object>) obj;
-        map.put("result", systemInfo);
-        return true;
+        return systemInfo;
     }
 
     private static Map<String, Object> getOs() {
@@ -117,9 +113,7 @@ public class SystemInfoCollector {
             Collections.reverse(interfaces);
             return interfaces;
         } catch (Exception e) {
-            Map<String, Object> error = new HashMap<String, Object>();
-            error.put("error", "Failed to collect system info: " + e.getMessage());
-            return error;
+            throw new RuntimeException("Failed to collect network info: " + e.getMessage(), e);
         }
     }
 
@@ -153,7 +147,7 @@ public class SystemInfoCollector {
                 properties.put(key, sysProps.getProperty(key));
             }
         } catch (Exception e) {
-            properties.put("error", "Failed to get system properties: " + e.getMessage());
+            throw new RuntimeException("Failed to get system properties: " + e.getMessage(), e);
         }
         return properties;
     }

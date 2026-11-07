@@ -11,23 +11,16 @@ namespace NoOne.Plugins.Dotnet.FileManager
     {
         private const int DefaultChunkLength = 256 * 1024;
 
-        public override bool Equals(object obj)
+        public object Execute(IDictionary<string, object> ctx)
         {
-            IDictionary<string, object> ctx = obj as IDictionary<string, object>;
-            if (ctx == null)
-            {
-                return true;
-            }
-
             Dictionary<string, object> result = new Dictionary<string, object>();
             try
             {
                 string op = GetTrimString(ctx, "op");
                 if (string.IsNullOrEmpty(op))
                 {
-                    Fail(result, "INVALID_ARG", "op is required");
-                    ctx["result"] = result;
-                    return true;
+                    Fail("op is required");
+                    return result;
                 }
 
                 string cwd = NormalizeCwd(GetTrimString(ctx, "cwd"));
@@ -95,16 +88,19 @@ namespace NoOne.Plugins.Dotnet.FileManager
                 }
                 else
                 {
-                    Fail(result, "INVALID_ARG", "unsupported op: " + op);
+                    Fail("unsupported op: " + op);
                 }
+            }
+            catch (ArgumentException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                Fail(result, "IO_ERROR", "File manager failed: " + SafeMessage(ex));
+                throw new InvalidOperationException("File manager failed: " + SafeMessage(ex), ex);
             }
 
-            ctx["result"] = result;
-            return true;
+            return result;
         }
 
         public override int GetHashCode()
@@ -163,13 +159,13 @@ namespace NoOne.Plugins.Dotnet.FileManager
             long maxBytes = GetLong(ctx, "maxBytes", -1L);
             if (maxBytes > -1 && fileSize > maxBytes)
             {
-                Fail(result, "FILE_TOO_LARGE", "file exceeds maxBytes");
+                Fail("file exceeds maxBytes");
                 result["fileSize"] = fileSize;
                 return;
             }
             if (fileSize > int.MaxValue)
             {
-                Fail(result, "FILE_TOO_LARGE", "file is too large for read-all");
+                Fail("file is too large for read-all");
                 result["fileSize"] = fileSize;
                 return;
             }
@@ -191,12 +187,12 @@ namespace NoOne.Plugins.Dotnet.FileManager
             int length = GetInt(ctx, "length", DefaultChunkLength);
             if (offset < 0)
             {
-                Fail(result, "INVALID_ARG", "offset must be >= 0");
+                Fail("offset must be >= 0");
                 return;
             }
             if (length <= 0)
             {
-                Fail(result, "INVALID_ARG", "length must be > 0");
+                Fail("length must be > 0");
                 return;
             }
 
@@ -204,7 +200,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             long fileSize = fi.Length;
             if (offset > fileSize)
             {
-                Fail(result, "OFFSET_OUT_OF_RANGE", "offset exceeds file size");
+                Fail("offset exceeds file size");
                 result["fileSize"] = fileSize;
                 return;
             }
@@ -251,7 +247,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             byte[] bytes = GetBytes(ctx, "bytes");
             if (bytes == null)
             {
-                Fail(result, "INVALID_ARG", "bytes is required");
+                Fail("bytes is required");
                 return;
             }
 
@@ -272,7 +268,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             byte[] bytes = GetBytes(ctx, "bytes");
             if (bytes == null)
             {
-                Fail(result, "INVALID_ARG", "bytes is required");
+                Fail("bytes is required");
                 return;
             }
 
@@ -280,7 +276,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             bool truncate = GetBool(ctx, "truncate", false);
             if (offset < 0)
             {
-                Fail(result, "INVALID_ARG", "offset must be >= 0");
+                Fail("offset must be >= 0");
                 return;
             }
 
@@ -295,14 +291,14 @@ namespace NoOne.Plugins.Dotnet.FileManager
                     fs.SetLength(0L);
                     if (offset != 0L)
                     {
-                        Fail(result, "INVALID_ARG", "offset must be 0 when truncate=true");
+                        Fail("offset must be 0 when truncate=true");
                         return;
                     }
                 }
                 long currentLength = fs.Length;
                 if (offset > currentLength)
                 {
-                    Fail(result, "OFFSET_OUT_OF_RANGE", "offset exceeds current file size");
+                    Fail("offset exceeds current file size");
                     result["fileSize"] = currentLength;
                     return;
                 }
@@ -337,7 +333,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             }
             if (File.Exists(dirPath))
             {
-                Fail(result, "ALREADY_EXISTS", "path exists and is not a directory");
+                Fail("path exists and is not a directory");
                 return;
             }
 
@@ -358,7 +354,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             {
                 if (Directory.Exists(filePath))
                 {
-                    Fail(result, "ALREADY_EXISTS", "path exists and is a directory");
+                    Fail("path exists and is a directory");
                     return;
                 }
                 if (overwrite)
@@ -393,7 +389,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             List<string> sources = ParseSourcePaths(ctx, "sourcePaths", "sourcePath", cwd);
             if (sources.Count == 0)
             {
-                Fail(result, "INVALID_ARG", "sourcePaths is required");
+                Fail("sourcePaths is required");
                 return;
             }
             string destination = ResolvePath(GetTrimString(ctx, "destinationPath"), cwd);
@@ -403,7 +399,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             bool destinationIsDir = destinationExists && Directory.Exists(destination);
             if (sources.Count > 1 && !destinationIsDir)
             {
-                Fail(result, "INVALID_ARG", "destinationPath must be an existing directory for multiple sources");
+                Fail("destinationPath must be an existing directory for multiple sources");
                 return;
             }
 
@@ -436,7 +432,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
                 }
                 if (Directory.Exists(source) && IsDescendantPath(target, source))
                 {
-                    Fail(result, "INVALID_ARG", "cannot move/copy directory into itself");
+                    Fail("cannot move/copy directory into itself");
                     return;
                 }
 
@@ -444,7 +440,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
                 {
                     if (!overwrite)
                     {
-                        Fail(result, "ALREADY_EXISTS", "target already exists: " + target);
+                        Fail("target already exists: " + target);
                         return;
                     }
                     DeleteRecursively(target);
@@ -482,21 +478,21 @@ namespace NoOne.Plugins.Dotnet.FileManager
             string newName = GetTrimString(ctx, "newName");
             if (string.IsNullOrEmpty(newName) || newName.IndexOf('/') >= 0 || newName.IndexOf('\\') >= 0)
             {
-                Fail(result, "INVALID_ARG", "invalid newName");
+                Fail("invalid newName");
                 return;
             }
 
             string parent = Path.GetDirectoryName(sourcePath);
             if (string.IsNullOrEmpty(parent))
             {
-                Fail(result, "INVALID_ARG", "cannot rename root path");
+                Fail("cannot rename root path");
                 return;
             }
 
             string target = CanonicalPath(Path.Combine(parent, newName));
             if ((File.Exists(target) || Directory.Exists(target)) && !IsSamePath(sourcePath, target))
             {
-                Fail(result, "ALREADY_EXISTS", "target already exists");
+                Fail("target already exists");
                 return;
             }
 
@@ -513,7 +509,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             List<string> paths = ParseSourcePaths(ctx, "paths", "path", cwd);
             if (paths.Count == 0)
             {
-                Fail(result, "INVALID_ARG", "path or paths is required");
+                Fail("path or paths is required");
                 return;
             }
 
@@ -546,7 +542,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
             List<string> paths = ParseSourcePaths(ctx, "paths", "path", cwd);
             if (paths.Count == 0)
             {
-                Fail(result, "INVALID_ARG", "path or paths is required");
+                Fail("path or paths is required");
                 return;
             }
             bool recursive = GetBool(ctx, "recursive", false);
@@ -558,7 +554,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
                 EnsureExists(p);
                 if (Directory.Exists(p) && !recursive)
                 {
-                    Fail(result, "INVALID_ARG", "directory delete requires recursive=true: " + p);
+                    Fail("directory delete requires recursive=true: " + p);
                     return;
                 }
                 DeleteRecursively(p);
@@ -575,14 +571,14 @@ namespace NoOne.Plugins.Dotnet.FileManager
             List<string> rawSources = ParseSourcePaths(ctx, "sourcePaths", "sourcePath", cwd);
             if (rawSources.Count == 0)
             {
-                Fail(result, "INVALID_ARG", "sourcePath or sourcePaths is required");
+                Fail("sourcePath or sourcePaths is required");
                 return;
             }
 
             string destinationText = GetTrimString(ctx, "destinationPath");
             if (string.IsNullOrEmpty(destinationText))
             {
-                Fail(result, "INVALID_ARG", "destinationPath is required");
+                Fail("destinationPath is required");
                 return;
             }
 
@@ -597,17 +593,17 @@ namespace NoOne.Plugins.Dotnet.FileManager
                 string source = CanonicalPath(rawSources[i]);
                 if (!File.Exists(source) && !Directory.Exists(source))
                 {
-                    Fail(result, "NOT_FOUND", "source path does not exist: " + source);
+                    Fail("source path does not exist: " + source);
                     return;
                 }
                 if (IsSamePath(source, destinationPath))
                 {
-                    Fail(result, "INVALID_ARG", "destinationPath cannot be the same as source path");
+                    Fail("destinationPath cannot be the same as source path");
                     return;
                 }
                 if (Directory.Exists(source) && IsDescendantPath(destinationPath, source))
                 {
-                    Fail(result, "INVALID_ARG", "destinationPath cannot be inside source directory");
+                    Fail("destinationPath cannot be inside source directory");
                     return;
                 }
                 sources.Add(source);
@@ -618,14 +614,14 @@ namespace NoOne.Plugins.Dotnet.FileManager
             {
                 if (!overwrite)
                 {
-                    Fail(result, "ALREADY_EXISTS", "destinationPath already exists");
+                    Fail("destinationPath already exists");
                     return;
                 }
                 File.Delete(destinationPath);
             }
             if (Directory.Exists(destinationPath))
             {
-                Fail(result, "ALREADY_EXISTS", "destinationPath exists and is a directory");
+                Fail("destinationPath exists and is a directory");
                 return;
             }
 
@@ -726,14 +722,14 @@ namespace NoOne.Plugins.Dotnet.FileManager
             archivePath = CanonicalPath(archivePath);
             if (!File.Exists(archivePath))
             {
-                Fail(result, "NOT_FOUND", "path does not exist: " + archivePath);
+                Fail("path does not exist: " + archivePath);
                 return;
             }
 
             string destinationText = GetTrimString(ctx, "destinationPath");
             if (string.IsNullOrEmpty(destinationText))
             {
-                Fail(result, "INVALID_ARG", "destinationPath is required");
+                Fail("destinationPath is required");
                 return;
             }
 
@@ -743,7 +739,7 @@ namespace NoOne.Plugins.Dotnet.FileManager
 
             if (File.Exists(destinationPath))
             {
-                Fail(result, "INVALID_ARG", "destinationPath exists and is not a directory");
+                Fail("destinationPath exists and is not a directory");
                 return;
             }
             if (!Directory.Exists(destinationPath))
@@ -1257,10 +1253,9 @@ namespace NoOne.Plugins.Dotnet.FileManager
 
         // ── error / format helpers ──────────────────────────────────────
 
-        private static void Fail(Dictionary<string, object> result, string errorCode, string message)
+        private static void Fail(string message)
         {
-            result["errorCode"] = errorCode;
-            result["error"] = message;
+            throw new ArgumentException(message);
         }
 
         private static string IsoTime(DateTime utc)

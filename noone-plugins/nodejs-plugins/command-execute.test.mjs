@@ -7,9 +7,7 @@ import test from "node:test";
 import { createTempDir, executePlugin } from "./plugin-test-utils.mjs";
 
 test("command-execute plugin requires op", async () => {
-    const result = await executePlugin("command-execute.mjs");
-
-    assert.equal(result.error, "op is required");
+    await assert.rejects(executePlugin("command-execute.mjs"), /op is required/);
 });
 
 test("command-execute plugin changes cwd for cd op", async (t) => {
@@ -25,7 +23,6 @@ test("command-execute plugin changes cwd for cd op", async (t) => {
         cwd: baseDir,
     });
 
-    assert.equal(result.error, undefined);
     assert.equal(result.exitCode, 0);
     assert.equal(result.stdout, "");
     assert.equal(result.stderr, "");
@@ -44,7 +41,6 @@ test("command-execute plugin executes a command in the provided cwd", async (t) 
         cwd: workingDir,
     });
 
-    assert.equal(result.error, undefined);
     assert.equal(result.exitCode, 0);
     assert.equal(result.stdout, workingDir);
     assert.equal(result.stderr, "");

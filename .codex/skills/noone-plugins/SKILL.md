@@ -18,7 +18,7 @@ Implement or update plugins for the noone multi-runtime plugin subsystem. Read t
 
 ## Shared Rules
 
-- Preserve the execution contract: the runtime invokes `equals(ctx)`, the plugin writes a map-like result to `ctx.result` or `ctx["result"]`, and the method returns `true`.
+- Preserve the execution contract: the runtime invokes `execute(ctx)`, and the plugin returns the result, which becomes the response `data`. Do not write to `ctx.result` / `ctx["result"]`.
 - Keep plugin id, source filename, test name, project metadata, and release JSON aligned.
 - Treat `payload` in release JSON as generated output. Edit source and metadata first, then regenerate artifacts.
 - Prefer small, self-contained changes that match the conventions of the target runtime.

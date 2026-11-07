@@ -18,28 +18,15 @@ public class DotnetSystemInfoPluginTests
     }
 
     [Fact]
-    public void Equals_WithNonMapInput_ReturnsTrue()
-    {
-        var plugin = new DotnetSystemInfoPlugin();
-
-        bool ok = plugin.Equals("invalid");
-
-        Assert.True(ok);
-    }
-
-    [Fact]
-    public void Equals_ShouldPopulateResultWithCoreSections()
+    public void Execute_ShouldPopulateResultWithCoreSections()
     {
         var plugin = new DotnetSystemInfoPlugin();
         var ctx = new Dictionary<string, object>();
 
-        bool ok = plugin.Equals(ctx);
-        string json = JsonSerializer.Serialize(ctx["result"], new JsonSerializerOptions { WriteIndented = true });
+        var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+        string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         _output.WriteLine(json);
-        Assert.True(ok);
-        Assert.True(ctx.ContainsKey("result"));
 
-        var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
         Assert.True(result.ContainsKey("os"));
         Assert.True(result.ContainsKey("runtime"));
         Assert.True(result.ContainsKey("env"));
@@ -49,13 +36,11 @@ public class DotnetSystemInfoPluginTests
     }
 
     [Fact]
-    public void Equals_RuntimeAndOsFields_ShouldMatchContract()
+    public void Execute_RuntimeAndOsFields_ShouldMatchContract()
     {
         var plugin = new DotnetSystemInfoPlugin();
         var ctx = new Dictionary<string, object>();
-        plugin.Equals(ctx);
-
-        var result = Assert.IsType<Dictionary<string, object>>(ctx["result"]);
+        var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
         var runtime = Assert.IsType<Dictionary<string, object>>(result["runtime"]);
         var os = Assert.IsType<Dictionary<string, object>>(result["os"]);
         var process = Assert.IsType<Dictionary<string, object>>(result["process"]);

@@ -17,16 +17,11 @@ public class DotnetFileManagerPluginTests
         _output = output;
     }
 
-    private void PrintResult(Dictionary<string, object> ctx)
+    private void PrintResult(object result)
     {
-        string json = JsonSerializer.Serialize(ctx["result"],
+        string json = JsonSerializer.Serialize(result,
             new JsonSerializerOptions { WriteIndented = true });
         _output.WriteLine(json);
-    }
-
-    private Dictionary<string, object> GetResult(Dictionary<string, object> ctx)
-    {
-        return Assert.IsType<Dictionary<string, object>>(ctx["result"]);
     }
 
     private string CreateTempDir()
@@ -37,23 +32,13 @@ public class DotnetFileManagerPluginTests
     }
 
     [Fact]
-    public void Equals_WithNonMapInput_ReturnsTrue()
-    {
-        var plugin = new DotnetFileManagerPlugin();
-        bool ok = plugin.Equals("invalid");
-        Assert.True(ok);
-    }
-
-    [Fact]
-    public void Equals_WithoutOp_ShouldReturnError()
+    public void Execute_WithoutOp_ShouldThrow()
     {
         var plugin = new DotnetFileManagerPlugin();
         var ctx = new Dictionary<string, object>();
 
-        plugin.Equals(ctx);
-
-        var result = GetResult(ctx);
-        Assert.Equal("op is required", result["error"]);
+        var error = Assert.Throws<System.ArgumentException>(() => plugin.Execute(ctx));
+        Assert.Equal("op is required", error.Message);
     }
 
     [Fact]
@@ -70,11 +55,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "list";
             ctx["path"] = dir;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True(result.ContainsKey("entries"));
         }
         finally
@@ -97,11 +79,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "stat";
             ctx["path"] = file;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True(result.ContainsKey("entry"));
         }
         finally
@@ -124,11 +103,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "read-all";
             ctx["path"] = file;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True(result.ContainsKey("bytes"));
             Assert.Equal(11L, result["fileSize"]);
         }
@@ -154,11 +130,8 @@ public class DotnetFileManagerPluginTests
             ctx["offset"] = 100L;
             ctx["length"] = 200;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.Equal(100L, result["offset"]);
             Assert.Equal(300L, result["nextOffset"]);
             Assert.Equal(1024L, result["fileSize"]);
@@ -182,11 +155,8 @@ public class DotnetFileManagerPluginTests
             ctx["path"] = file;
             ctx["bytes"] = Encoding.UTF8.GetBytes("written content");
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.Equal("written content", File.ReadAllText(file));
         }
         finally
@@ -207,11 +177,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "mkdir";
             ctx["path"] = newDir;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True((bool)result["created"]);
             Assert.True(Directory.Exists(newDir));
         }
@@ -233,11 +200,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "create-file";
             ctx["path"] = file;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True((bool)result["created"]);
             Assert.True(File.Exists(file));
             Assert.Equal(0L, result["fileSize"]);
@@ -263,11 +227,8 @@ public class DotnetFileManagerPluginTests
             ctx["path"] = file;
             ctx["newName"] = "new.txt";
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.False(File.Exists(file));
             Assert.True(File.Exists(Path.Combine(dir, "new.txt")));
         }
@@ -291,11 +252,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "delete";
             ctx["path"] = file;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.False(File.Exists(file));
         }
         finally
@@ -318,11 +276,8 @@ public class DotnetFileManagerPluginTests
             ctx["op"] = "delete";
             ctx["path"] = subDir;
 
-            plugin.Equals(ctx);
-
-            var result = GetResult(ctx);
-            Assert.True(result.ContainsKey("error"));
-            Assert.Contains("recursive=true", (string)result["error"]);
+            var error = Assert.Throws<System.ArgumentException>(() => plugin.Execute(ctx));
+            Assert.Contains("recursive=true", error.Message);
         }
         finally
         {
@@ -346,11 +301,8 @@ public class DotnetFileManagerPluginTests
             ctx["sourcePath"] = src;
             ctx["destinationPath"] = dest;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.True(File.Exists(src));
             Assert.True(File.Exists(dest));
             Assert.Equal("copy me", File.ReadAllText(dest));
@@ -377,11 +329,8 @@ public class DotnetFileManagerPluginTests
             ctx["sourcePath"] = src;
             ctx["destinationPath"] = dest;
 
-            plugin.Equals(ctx);
-            PrintResult(ctx);
-
-            var result = GetResult(ctx);
-            Assert.False(result.ContainsKey("error"));
+            var result = Assert.IsType<Dictionary<string, object>>(plugin.Execute(ctx));
+            PrintResult(result);
             Assert.False(File.Exists(src));
             Assert.True(File.Exists(dest));
         }
@@ -412,11 +361,8 @@ public class DotnetFileManagerPluginTests
             zipCtx["sourcePath"] = srcDir;
             zipCtx["destinationPath"] = zipFile;
 
-            plugin.Equals(zipCtx);
-            PrintResult(zipCtx);
-
-            var zipResult = GetResult(zipCtx);
-            Assert.False(zipResult.ContainsKey("error"));
+            var zipResult = Assert.IsType<Dictionary<string, object>>(plugin.Execute(zipCtx));
+            PrintResult(zipResult);
             Assert.True(File.Exists(zipFile));
 
             // unzip
@@ -425,11 +371,8 @@ public class DotnetFileManagerPluginTests
             unzipCtx["path"] = zipFile;
             unzipCtx["destinationPath"] = unzipDir;
 
-            plugin.Equals(unzipCtx);
-            PrintResult(unzipCtx);
-
-            var unzipResult = GetResult(unzipCtx);
-            Assert.False(unzipResult.ContainsKey("error"));
+            var unzipResult = Assert.IsType<Dictionary<string, object>>(plugin.Execute(unzipCtx));
+            PrintResult(unzipResult);
             Assert.True(Directory.Exists(unzipDir));
         }
         finally

@@ -6,8 +6,8 @@ using System.Text.Json;
 
 /// <summary>
 /// .NET Plugin Runner — loads a plugin DLL via reflection, instantiates the
-/// first public class, invokes Equals(Dictionary), and writes the result to
-/// a JSON file.
+/// first public class, invokes Execute(IDictionary&lt;string, object&gt;), and
+/// writes the returned result to a JSON file.
 ///
 /// Usage: dotnet dotnet-runner.dll <plugin.dll> <className> <input.json> <output.json>
 /// </summary>
@@ -64,12 +64,17 @@ class Program
             Dictionary<string, object> ctx = JsonSerializer.Deserialize<Dictionary<string, object>>(inputText)
                 ?? new Dictionary<string, object>();
 
-            Console.WriteLine($"[Runner] Calling Equals() with {ctx.Count} context keys");
-            plugin.Equals(ctx);
+            Console.WriteLine($"[Runner] Calling Execute() with {ctx.Count} context keys");
+            MethodInfo execute = pluginType.GetMethod(
+                "Execute",
+                new[] { typeof(IDictionary<string, object>) });
+            if (execute == null)
+            {
+                Console.Error.WriteLine("[Runner] Plugin does not implement Execute(IDictionary<string, object>)");
+                return 1;
+            }
 
-            // Extract result
-            object result;
-            ctx.TryGetValue("result", out result);
+            object result = execute.Invoke(plugin, new object[] { ctx });
 
             string resultJson = result != null
                 ? JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = false })

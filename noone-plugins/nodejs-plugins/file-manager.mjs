@@ -13,7 +13,7 @@
     })();
 
     return {
-        equals: async function (ctx) {
+        execute: async function (ctx) {
             const result = {};
             const fs = await import("node:fs");
             const path = await import("node:path");
@@ -22,9 +22,8 @@
             try {
                 const op = asTrimString(ctx != null ? ctx.op : null);
                 if (!op) {
-                    fail(result, "INVALID_ARG", "op is required");
-                    ctx.result = result;
-                    return;
+                    fail("op is required");
+                    return result;
                 }
 
                 const cwd = normalizeCwd(asTrimString(ctx.cwd), fs, path, os);
@@ -61,13 +60,16 @@
                 } else if (op === "unzip") {
                     handleUnzip(ctx, result, cwd, fs, path, zlib);
                 } else {
-                    fail(result, "INVALID_ARG", "unsupported op: " + op);
+                    fail("unsupported op: " + op);
                 }
             } catch (e) {
-                fail(result, "IO_ERROR", "File manager failed: " + safeMessage(e));
+                if (e != null && e.pluginError === true) {
+                    throw e;
+                }
+                fail("File manager failed: " + safeMessage(e));
             }
 
-            ctx.result = result;
+            return result;
         }
     };
 
@@ -97,12 +99,12 @@
         const fileSize = stat.size;
         const maxBytes = asLong(ctx.maxBytes, -1);
         if (maxBytes > -1 && fileSize > maxBytes) {
-            fail(result, "FILE_TOO_LARGE", "file exceeds maxBytes");
+            fail("file exceeds maxBytes");
             result.fileSize = fileSize;
             return;
         }
         if (fileSize > 0x7fffffff) {
-            fail(result, "FILE_TOO_LARGE", "file is too large for read-all");
+            fail("file is too large for read-all");
             result.fileSize = fileSize;
             return;
         }
@@ -118,18 +120,18 @@
         const offset = asLong(ctx.offset, 0);
         const length = asInt(ctx.length, DEFAULT_CHUNK_LENGTH);
         if (offset < 0) {
-            fail(result, "INVALID_ARG", "offset must be >= 0");
+            fail("offset must be >= 0");
             return;
         }
         if (length <= 0) {
-            fail(result, "INVALID_ARG", "length must be > 0");
+            fail("length must be > 0");
             return;
         }
 
         const stat = fs.statSync(file);
         const fileSize = stat.size;
         if (offset > fileSize) {
-            fail(result, "OFFSET_OUT_OF_RANGE", "offset exceeds file size");
+            fail("offset exceeds file size");
             result.fileSize = fileSize;
             return;
         }
@@ -156,7 +158,7 @@
         const file = resolvePath(ctx.path, cwd, true, fs, path);
         const bytes = asBytes(ctx.bytes);
         if (bytes == null) {
-            fail(result, "INVALID_ARG", "bytes is required");
+            fail("bytes is required");
             return;
         }
 
@@ -172,14 +174,14 @@
         const file = resolvePath(ctx.path, cwd, true, fs, path);
         const bytes = asBytes(ctx.bytes);
         if (bytes == null) {
-            fail(result, "INVALID_ARG", "bytes is required");
+            fail("bytes is required");
             return;
         }
 
         const offset = asLong(ctx.offset, 0);
         const truncate = asBoolean(ctx.truncate, false);
         if (offset < 0) {
-            fail(result, "INVALID_ARG", "offset must be >= 0");
+            fail("offset must be >= 0");
             return;
         }
 
@@ -200,13 +202,13 @@
             if (truncate) {
                 fs.ftruncateSync(fd, 0);
                 if (offset !== 0) {
-                    fail(result, "INVALID_ARG", "offset must be 0 when truncate=true");
+                    fail("offset must be 0 when truncate=true");
                     return;
                 }
             }
             const currentLength = fs.fstatSync(fd).size;
             if (offset > currentLength) {
-                fail(result, "OFFSET_OUT_OF_RANGE", "offset exceeds current file size");
+                fail("offset exceeds current file size");
                 result.fileSize = currentLength;
                 return;
             }
@@ -230,7 +232,7 @@
 
         if (fs.existsSync(dir)) {
             if (!fs.statSync(dir).isDirectory()) {
-                fail(result, "ALREADY_EXISTS", "path exists and is not a directory");
+                fail("path exists and is not a directory");
                 return;
             }
             result.path = canonicalPath(dir, fs, path);
@@ -255,7 +257,7 @@
         if (fs.existsSync(file)) {
             const stat = fs.statSync(file);
             if (stat.isDirectory()) {
-                fail(result, "ALREADY_EXISTS", "path exists and is a directory");
+                fail("path exists and is a directory");
                 return;
             }
             if (overwrite) {
@@ -277,7 +279,7 @@
     function handleMoveOrCopy(ctx, result, cwd, fs, path, move) {
         const sources = parseSourcePaths(ctx.sourcePaths, ctx.sourcePath, cwd, fs, path);
         if (sources.length === 0) {
-            fail(result, "INVALID_ARG", "sourcePaths is required");
+            fail("sourcePaths is required");
             return;
         }
         const destination = resolvePath(ctx.destinationPath, cwd, true, fs, path);
@@ -286,7 +288,7 @@
         const destinationExists = fs.existsSync(destination);
         const destinationIsDir = destinationExists && fs.statSync(destination).isDirectory();
         if (sources.length > 1 && !destinationIsDir) {
-            fail(result, "INVALID_ARG", "destinationPath must be an existing directory for multiple sources");
+            fail("destinationPath must be an existing directory for multiple sources");
             return;
         }
 
@@ -310,13 +312,13 @@
                 continue;
             }
             if (sourceIsDir && isDescendantPath(target, source, path)) {
-                fail(result, "INVALID_ARG", "cannot move/copy directory into itself");
+                fail("cannot move/copy directory into itself");
                 return;
             }
 
             if (fs.existsSync(target)) {
                 if (!overwrite) {
-                    fail(result, "ALREADY_EXISTS", "target already exists: " + target);
+                    fail("target already exists: " + target);
                     return;
                 }
                 deleteRecursively(target, fs, path);
@@ -344,20 +346,20 @@
 
         const newName = asTrimString(ctx.newName);
         if (!newName || newName.indexOf("/") >= 0 || newName.indexOf("\\") >= 0) {
-            fail(result, "INVALID_ARG", "invalid newName");
+            fail("invalid newName");
             return;
         }
 
         const parent = path.dirname(source);
         if (!parent || parent === source) {
-            fail(result, "INVALID_ARG", "cannot rename root path");
+            fail("cannot rename root path");
             return;
         }
 
         const target = canonicalPath(path.join(parent, newName), fs, path);
         const canonicalSource = canonicalPath(source, fs, path);
         if (fs.existsSync(target) && !isSamePath(canonicalSource, target, path)) {
-            fail(result, "ALREADY_EXISTS", "target already exists");
+            fail("target already exists");
             return;
         }
 
@@ -369,7 +371,7 @@
     function handleTouch(ctx, result, cwd, fs, path) {
         const paths = parseSourcePaths(ctx.paths, ctx.path, cwd, fs, path);
         if (paths.length === 0) {
-            fail(result, "INVALID_ARG", "path or paths is required");
+            fail("path or paths is required");
             return;
         }
 
@@ -389,7 +391,7 @@
     function handleDelete(ctx, result, cwd, fs, path) {
         const paths = parseSourcePaths(ctx.paths, ctx.path, cwd, fs, path);
         if (paths.length === 0) {
-            fail(result, "INVALID_ARG", "path or paths is required");
+            fail("path or paths is required");
             return;
         }
         const recursive = asBoolean(ctx.recursive, false);
@@ -398,7 +400,7 @@
         for (const file of paths) {
             ensureExists(file, fs);
             if (fs.statSync(file).isDirectory() && !recursive) {
-                fail(result, "INVALID_ARG", "directory delete requires recursive=true: " + file);
+                fail("directory delete requires recursive=true: " + file);
                 return;
             }
             deleteRecursively(file, fs, path);
@@ -411,13 +413,13 @@
     function handleZip(ctx, result, cwd, fs, path, zlib) {
         const rawSources = parseSourcePaths(ctx.sourcePaths, ctx.sourcePath, cwd, fs, path);
         if (rawSources.length === 0) {
-            fail(result, "INVALID_ARG", "sourcePath or sourcePaths is required");
+            fail("sourcePath or sourcePaths is required");
             return;
         }
 
         const destinationText = asTrimString(ctx.destinationPath);
         if (!destinationText) {
-            fail(result, "INVALID_ARG", "destinationPath is required");
+            fail("destinationPath is required");
             return;
         }
 
@@ -431,11 +433,11 @@
             const source = canonicalPath(sourcePath, fs, path);
             ensureExists(source, fs);
             if (isSamePath(source, destination, path)) {
-                fail(result, "INVALID_ARG", "destinationPath cannot be the same as source path");
+                fail("destinationPath cannot be the same as source path");
                 return;
             }
             if (fs.statSync(source).isDirectory() && isDescendantPath(destination, source, path)) {
-                fail(result, "INVALID_ARG", "destinationPath cannot be inside source directory");
+                fail("destinationPath cannot be inside source directory");
                 return;
             }
             sources.push(source);
@@ -444,11 +446,11 @@
 
         if (fs.existsSync(destination)) {
             if (fs.statSync(destination).isDirectory()) {
-                fail(result, "ALREADY_EXISTS", "destinationPath exists and is a directory");
+                fail("destinationPath exists and is a directory");
                 return;
             }
             if (!overwrite) {
-                fail(result, "ALREADY_EXISTS", "destinationPath already exists");
+                fail("destinationPath already exists");
                 return;
             }
         }
@@ -478,21 +480,21 @@
     function handleUnzip(ctx, result, cwd, fs, path, zlib) {
         const archive = canonicalPath(resolvePath(ctx.path, cwd, true, fs, path), fs, path);
         if (!fs.existsSync(archive)) {
-            fail(result, "NOT_FOUND", "path does not exist: " + archive);
+            fail("path does not exist: " + archive);
             return;
         }
         if (!fs.statSync(archive).isFile()) {
-            fail(result, "INVALID_ARG", "path must be a file");
+            fail("path must be a file");
             return;
         }
         if (!hasZipMagic(archive, fs)) {
-            fail(result, "INVALID_ARG", "path is not a zip file");
+            fail("path is not a zip file");
             return;
         }
 
         const destinationText = asTrimString(ctx.destinationPath);
         if (!destinationText) {
-            fail(result, "INVALID_ARG", "destinationPath is required");
+            fail("destinationPath is required");
             return;
         }
 
@@ -501,7 +503,7 @@
 
         const destinationRaw = resolvePath(destinationText, cwd, true, fs, path);
         if (fs.existsSync(destinationRaw) && !fs.statSync(destinationRaw).isDirectory()) {
-            fail(result, "INVALID_ARG", "destinationPath exists and is not a directory");
+            fail("destinationPath exists and is not a directory");
             return;
         }
         if (!fs.existsSync(destinationRaw)) {
@@ -515,7 +517,7 @@
         try {
             parsed = parseZipArchive(archiveBytes);
         } catch (e) {
-            fail(result, "INVALID_ARG", safeMessage(e));
+            fail(safeMessage(e));
             return;
         }
 
@@ -525,11 +527,11 @@
 
         for (const entry of parsed.entries) {
             if ((entry.flags & 0x0008) !== 0) {
-                fail(result, "INVALID_ARG", "zip data descriptor is not supported");
+                fail("zip data descriptor is not supported");
                 return;
             }
             if (entry.method !== 0 && entry.method !== 8) {
-                fail(result, "INVALID_ARG", "unsupported zip compression method: " + entry.method);
+                fail("unsupported zip compression method: " + entry.method);
                 return;
             }
 
@@ -580,12 +582,12 @@
             }
 
             if (content.length !== entry.uncompressedSize) {
-                fail(result, "INVALID_ARG", "zip entry size mismatch: " + entry.name);
+                fail("zip entry size mismatch: " + entry.name);
                 return;
             }
             const crc = crc32(content) >>> 0;
             if (crc !== entry.crc32) {
-                fail(result, "INVALID_ARG", "zip entry checksum mismatch: " + entry.name);
+                fail("zip entry checksum mismatch: " + entry.name);
                 return;
             }
 
@@ -608,14 +610,14 @@
     function mapUnzipError(result, e) {
         const message = safeMessage(e);
         if (e && e.name === "SecurityError") {
-            fail(result, "SECURITY_ERROR", message);
+            fail(message);
             return;
         }
         if (message.indexOf("target already exists:") === 0) {
-            fail(result, "ALREADY_EXISTS", message);
+            fail(message);
             return;
         }
-        fail(result, "IO_ERROR", message);
+        fail(message);
     }
 
     function compareFiles(a, b, fs, path) {
@@ -1307,9 +1309,10 @@
         }
     }
 
-    function fail(result, errorCode, message) {
-        result.errorCode = errorCode;
-        result.error = message;
+    function fail(message) {
+        const error = new Error(message);
+        error.pluginError = true;
+        throw error;
     }
 
     function asTrimString(value) {

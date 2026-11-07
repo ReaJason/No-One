@@ -78,6 +78,38 @@ class TlvCodecTest {
     }
 
     @Test
+    void shouldRoundTripLongString() {
+        String longString = "x".repeat(70000);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("big", longString);
+
+        Map<String, Object> decoded = TlvCodec.deserialize(TlvCodec.serialize(map));
+
+        assertEquals(longString, decoded.get("big"));
+    }
+
+    @Test
+    void shouldRoundTripModifiedUtf8EdgeCases() {
+        String value = "A\u0000B😀你好";
+        Map<String, Object> map = Map.of("value", value);
+
+        Map<String, Object> decoded = TlvCodec.deserialize(TlvCodec.serialize(map));
+
+        assertEquals(value, decoded.get("value"));
+    }
+
+    @Test
+    void shouldRejectNegativeAndOversizedLengths() {
+        // MAP(1) + key "x" + BYTE_ARRAY with length -1
+        byte[] negative = new byte[]{0x10, 0, 0, 0, 1, 0, 1, 'x', 0x06, -1, -1, -1, -1};
+        assertThrows(Exception.class, () -> TlvCodec.deserialize(negative));
+
+        // MAP(1) + key "x" + BYTE_ARRAY claiming 2GB
+        byte[] oversized = new byte[]{0x10, 0, 0, 0, 1, 0, 1, 'x', 0x06, 0x7f, -1, -1, -1};
+        assertThrows(Exception.class, () -> TlvCodec.deserialize(oversized));
+    }
+
+    @Test
     void shouldBeCompatibleWithNoOneCoreSerialization() throws Exception {
         NoOneCore core = new NoOneCore();
 
@@ -100,5 +132,20 @@ class TlvCodecTest {
         Map<String, Object> decodedByCore = core.deserialize(codecBytes);
         assertTrue(decodedByCore.get("pluginCaches") instanceof Map);
         assertEquals(plugins, decodedByCore.get("pluginCaches"));
+    }
+
+    @Test
+    void shouldExchangeLongStringsWithNoOneCore() throws Exception {
+        NoOneCore core = new NoOneCore();
+        // 40000 CJK characters -> 120000 modified UTF-8 bytes, above writeUTF's 65535 limit.
+        String longString = "你".repeat(40000);
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("value", longString);
+
+        Map<String, Object> decodedByCodec = TlvCodec.deserialize(core.serialize(map));
+        assertEquals(longString, decodedByCodec.get("value"));
+
+        Map<String, Object> decodedByCore = core.deserialize(TlvCodec.serialize(map));
+        assertEquals(longString, decodedByCore.get("value"));
     }
 }

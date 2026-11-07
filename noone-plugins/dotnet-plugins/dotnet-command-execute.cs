@@ -9,23 +9,15 @@ namespace NoOne.Plugins.Dotnet.CommandExecute
 {
     public sealed class DotnetCommandExecutePlugin
     {
-        public override bool Equals(object obj)
+        public object Execute(IDictionary<string, object> ctx)
         {
-            IDictionary<string, object> ctx = obj as IDictionary<string, object>;
-            if (ctx == null)
-            {
-                return true;
-            }
-
             Dictionary<string, object> result = new Dictionary<string, object>();
             try
             {
                 string op = GetTrimString(ctx, "op");
                 if (string.IsNullOrEmpty(op))
                 {
-                    result["error"] = "op is required";
-                    ctx["result"] = result;
-                    return true;
+                    throw new ArgumentException("op is required");
                 }
 
                 string cwd = NormalizeCwd(GetTrimString(ctx, "cwd"));
@@ -42,23 +34,18 @@ namespace NoOne.Plugins.Dotnet.CommandExecute
                     result["stderr"] = "";
                     result["exitCode"] = 0;
                     result["cwd"] = nextCwd;
-                    ctx["result"] = result;
-                    return true;
+                    return result;
                 }
 
                 if (op != "exec")
                 {
-                    result["error"] = "unsupported op: " + op;
-                    ctx["result"] = result;
-                    return true;
+                    throw new ArgumentException("unsupported op: " + op);
                 }
 
                 string executable = GetTrimString(ctx, "executable");
                 if (string.IsNullOrEmpty(executable))
                 {
-                    result["error"] = "executable is required";
-                    ctx["result"] = result;
-                    return true;
+                    throw new ArgumentException("executable is required");
                 }
 
                 List<string> argv = ToStringList(ctx, "argv");
@@ -84,13 +71,16 @@ namespace NoOne.Plugins.Dotnet.CommandExecute
                 result["stderr"] = charset.GetString(stderrBytes);
                 result["exitCode"] = process.ExitCode;
             }
+            catch (ArgumentException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
-                result["error"] = "Command execution failed: " + SafeMessage(ex);
+                throw new InvalidOperationException("Command execution failed: " + SafeMessage(ex), ex);
             }
 
-            ctx["result"] = result;
-            return true;
+            return result;
         }
 
         public override int GetHashCode()

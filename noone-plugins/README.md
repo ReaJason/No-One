@@ -13,7 +13,7 @@ Currently, after editing any plugin (Java / Node.js / .NET), you can generate al
 # For .NET, you must build the project first:
 # cd noone-plugins/dotnet-plugins && dotnet build
 
-./gradlew :noone-plugins:java-plugins:generateRelease
+./gradlew :noone-plugins:generateRelease
 ```
 
 This task will automatically:

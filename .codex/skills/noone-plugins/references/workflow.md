@@ -11,10 +11,12 @@
 All runtimes follow the same contract:
 
 1. The platform loads the plugin dynamically.
-2. The platform calls `equals(ctx)`.
+2. The platform calls `execute(ctx)`.
 3. The plugin reads input values from `ctx`.
-4. The plugin stores a map-like result into `ctx.result` or `ctx["result"]`.
-5. The plugin returns `true`.
+4. The plugin returns the result; the runtime places it in the response `data`.
+5. Expected failures are reported by throwing an exception; the core catches it and returns `code=1` with `error`. Do not return `error`/`errorCode` fields or write to `ctx`.
+
+Entry-point signatures: Java `public Object execute(Map<String, Object> ctx)`, Node.js `execute(ctx)` (sync or async), .NET `public object Execute(IDictionary<string, object> ctx)`. The runtime also injects `pluginCaches` and `globalCaches` into `ctx`; Java additionally injects `request` and `response`.
 
 Treat this contract as the stable boundary across Java, Node.js, and .NET.
 
@@ -29,7 +31,7 @@ Treat this contract as the stable boundary across Java, Node.js, and .NET.
    - For .NET, ensure the `.csproj` `PluginId` matches the release json `id`
 4. Regenerate artifacts:
    - Build the matching `.NET` project first if the plugin is in `dotnet-plugins/`
-   - Run `./gradlew :noone-plugins:java-plugins:generateRelease`
+   - Run `./gradlew :noone-plugins:generateRelease`
 5. Run targeted tests, then broader compatibility tests only if the change needs them.
 
 ## Alignment Checks
@@ -46,7 +48,7 @@ Before finishing, verify these identifiers all agree:
 ## Useful Validation Commands
 
 ```bash
-./gradlew :noone-plugins:java-plugins:generateRelease
+./gradlew :noone-plugins:generateRelease
 ./gradlew :noone-plugins:plugin-tests:test
 ./gradlew :noone-plugins:plugin-tests:dockerAllMatrixTest
 ```

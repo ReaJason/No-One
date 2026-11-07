@@ -30,11 +30,11 @@ Polyglot web shell manager with a multi-language plugin system (Java, Node.js, .
 - Test: `node noone-plugins/nodejs-plugins/test.mjs`
 
 ### .NET Plugins (.NET Standard 2.0, C# 7.3)
-- Build: `cd noone-plugins/dotnet-plugins && dotnet build --configuration Release`
+- Build: `cd noone-plugins/dotnet-plugins && dotnet build dotnet-plugins.sln --configuration Release`
 - Test: `cd noone-plugins/dotnet-plugins.Tests && dotnet test --configuration Release`
 
 ### Plugin Release Generation
-.NET plugins MUST be built first, then: `./gradlew :noone-plugins:java-plugins:generateRelease`
+.NET plugins MUST be built first, then: `./gradlew :noone-plugins:generateRelease`
 
 ## Code Style
 
@@ -62,7 +62,11 @@ Plugins are single `.class` files base64-encoded. They MUST NOT use:
 
 ## Architecture Notes
 
-- All plugins follow the same contract: runtime calls `equals(ctx)` where `ctx` is a Map carrying input params; plugin writes results to `ctx["result"]` and returns `true`
+- All plugins follow the same contract (v2): the runtime calls `execute(ctx)` where `ctx` is a Map carrying input params plus runtime keys (`pluginCaches`, `globalCaches`; Java also gets `request`/`response`); the returned value becomes the response `data` — do not write to `ctx["result"]`
+  - Java: `public Object execute(Map<String, Object> ctx)`
+  - Node.js: `execute(ctx)` (sync or async)
+  - .NET: `public object Execute(IDictionary<string, object> ctx)`
+- Plugins report failures by throwing an exception; the core catches it and returns `code=1` with `error`. Never put `error`/`errorCode` fields in the returned result
 - Java plugins need a `javaPluginMapping` entry in `noone-plugins/build.gradle.kts` to generate payloads
 - Java plugin tests require JVM flag: `--add-opens java.base/java.net=ALL-UNNAMED`
 - Subdirectory CLAUDE.md files can be added for module-specific instructions (e.g., `noone-web/CLAUDE.md`)

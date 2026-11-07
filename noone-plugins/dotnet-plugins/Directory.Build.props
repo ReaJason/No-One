@@ -1,0 +1,16 @@
+<Project>
+  <!--
+    All .NET plugin projects live in this one directory. By default they would
+    share obj/project.assets.json and bin/, so building them in parallel (for
+    example, `dotnet test` building its ProjectReferences) makes the projects
+    overwrite each other's restore output and fail with CS0518 "Predefined type
+    'System.String' is not defined".
+
+    Give every project its own intermediate and output directory. This file is
+    imported by Microsoft.Common.props before those paths are defaulted.
+  -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildProjectDirectory)/obj/$(MSBuildProjectName)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildProjectDirectory)/bin/$(MSBuildProjectName)/</BaseOutputPath>
+  </PropertyGroup>
+</Project>
