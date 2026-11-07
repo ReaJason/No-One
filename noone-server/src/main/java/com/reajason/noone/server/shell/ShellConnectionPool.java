@@ -88,6 +88,8 @@ public class ShellConnectionPool {
 
     private ShellConnection createConnection(Shell shell, ProfileEntity profile, ProfileEntity loaderProfile) {
         Profile coreProfile = profileMapper.toProfile(profile);
+        // Both clients are built by ClientFactory from the same Shell.clientConfig, so transport
+        // overrides such as proxy and browser impersonation apply identically to core and loader.
         Client coreClient = ClientFactory.create(shell, coreProfile);
         ShellLanguage language = effectiveLanguage(shell);
         ShellConnection conn;

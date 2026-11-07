@@ -116,6 +116,10 @@ public class Shell {
      * <ul>
      *   <li>HTTP: proxyUrl, customHeaders, connectTimeoutMs, readTimeoutMs, skipSslVerify, maxRetries, retryDelayMs</li>
      *   <li>WebSocket: proxyUrl, customHeaders, connectTimeoutMs, readTimeoutMs, skipSslVerify</li>
+     *   <li>HTTP and WebSocket: browserImpersonation, impersonationProfile — TLS/JA3/JA4 and HTTP/2
+     *       fingerprint impersonation, shared by the core and loader clients</li>
+     *   <li>HTTP and WebSocket: clientCertificate (Base64 PKCS#12), clientCertificatePassword — mutual
+     *       TLS client certificate, shared by the core and loader clients</li>
      *   <li>Dubbo: readTimeoutMs</li>
      * </ul>
      */

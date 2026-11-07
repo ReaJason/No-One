@@ -13,6 +13,16 @@ export const LANGUAGE_ITEMS = [
   { label: "DotNet", value: "dotnet" },
 ] as const;
 
+export const BROWSER_IMPERSONATION_PROFILES = [
+  { label: "Chrome (macOS)", value: "MAC_CHROME" },
+  { label: "Firefox (macOS)", value: "MAC_FIREFOX" },
+  { label: "Safari (macOS)", value: "MAC_SAFARI" },
+  { label: "Safari (iOS)", value: "IOS" },
+  { label: "Chrome (Android)", value: "ANDROID" },
+] as const;
+
+export const DEFAULT_IMPERSONATION_PROFILE = "MAC_CHROME";
+
 export const COMMON_SHELL_TYPES = [
   "Servlet",
   "JakartaServlet",
@@ -61,6 +71,10 @@ export const shellFormSchema = z.object({
   maxRetries: z.string(),
   retryDelayMs: z.string(),
   skipSslVerify: z.boolean(),
+  browserImpersonation: z.boolean(),
+  impersonationProfile: z.string(),
+  clientCertificate: z.string(),
+  clientCertificatePassword: z.string(),
 });
 
 export type ShellFormValues = z.infer<typeof shellFormSchema>;
@@ -118,6 +132,10 @@ export function getDefaultValues(
       skipSslVerify: clientConfig.skipSslVerify ?? false,
       maxRetries: clientConfig.maxRetries == null ? "" : String(clientConfig.maxRetries),
       retryDelayMs: clientConfig.retryDelayMs == null ? "" : String(clientConfig.retryDelayMs),
+      browserImpersonation: clientConfig.browserImpersonation ?? false,
+      impersonationProfile: clientConfig.impersonationProfile ?? "",
+      clientCertificate: clientConfig.clientCertificate ?? "",
+      clientCertificatePassword: clientConfig.clientCertificatePassword ?? "",
     };
   }
 
@@ -147,6 +165,10 @@ export function getDefaultValues(
     skipSslVerify: false,
     maxRetries: "",
     retryDelayMs: "",
+    browserImpersonation: false,
+    impersonationProfile: DEFAULT_IMPERSONATION_PROFILE,
+    clientCertificate: "",
+    clientCertificatePassword: "",
   };
 }
 
@@ -274,6 +296,10 @@ function normalizeFormData(formData: FormData): ShellFormValues {
     maxRetries: get("maxRetries"),
     retryDelayMs: get("retryDelayMs"),
     skipSslVerify: get("skipSslVerify") === "true",
+    browserImpersonation: get("browserImpersonation") === "true",
+    impersonationProfile: get("impersonationProfile"),
+    clientCertificate: get("clientCertificate"),
+    clientCertificatePassword: get("clientCertificatePassword"),
   };
 }
 
@@ -341,6 +367,18 @@ function buildClientConfig(values: ShellFormValues): ShellClientConfig | undefin
   if (retryDelayMs != null) {
     clientConfig.retryDelayMs = retryDelayMs;
   }
+
+  // Both keys are always written: the server merges clientConfig into the stored one, so omitting
+  // browserImpersonation would leave a previously enabled switch on, and omitting the profile
+  // would leave the old browser selected.
+  clientConfig.browserImpersonation = values.browserImpersonation;
+  clientConfig.impersonationProfile = values.browserImpersonation
+    ? values.impersonationProfile
+    : "";
+
+  // Written even when empty so clearing the certificate on an existing shell removes the stored one.
+  clientConfig.clientCertificate = values.clientCertificate;
+  clientConfig.clientCertificatePassword = values.clientCertificatePassword;
 
   return Object.keys(clientConfig).length > 0 ? clientConfig : undefined;
 }

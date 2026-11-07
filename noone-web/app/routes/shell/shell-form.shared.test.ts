@@ -25,6 +25,10 @@ describe("shell-form.shared", () => {
       maxRetries: "2",
       retryDelayMs: "3000",
       skipSslVerify: true,
+      browserImpersonation: true,
+      impersonationProfile: "MAC_FIREFOX",
+      clientCertificate: "MIIBcAIBAzCCASY=",
+      clientCertificatePassword: "test-password",
     });
 
     expect(payload.clientConfig).toEqual({
@@ -35,6 +39,10 @@ describe("shell-form.shared", () => {
       skipSslVerify: true,
       maxRetries: 2,
       retryDelayMs: 3000,
+      browserImpersonation: true,
+      impersonationProfile: "MAC_FIREFOX",
+      clientCertificate: "MIIBcAIBAzCCASY=",
+      clientCertificatePassword: "test-password",
     });
     expect(payload).not.toHaveProperty("proxyUrl");
     expect(payload).not.toHaveProperty("customHeaders");
@@ -58,11 +66,19 @@ describe("shell-form.shared", () => {
       maxRetries: "",
       retryDelayMs: "",
       skipSslVerify: false,
+      browserImpersonation: false,
+      impersonationProfile: "",
+      clientCertificate: "",
+      clientCertificatePassword: "",
     });
 
     expect(payload.clientConfig).toEqual({
       proxyUrl: "http://127.0.0.1:8080",
       readTimeoutMs: 2500,
+      browserImpersonation: false,
+      impersonationProfile: "",
+      clientCertificate: "",
+      clientCertificatePassword: "",
     });
     expect(payload).not.toHaveProperty("proxyUrl");
   });
@@ -85,6 +101,10 @@ describe("shell-form.shared", () => {
         skipSslVerify: true,
         maxRetries: 2,
         retryDelayMs: 3000,
+        browserImpersonation: true,
+        impersonationProfile: "ANDROID",
+        clientCertificate: "MIIBcAIBAzCCASY=",
+        clientCertificatePassword: "test-password",
       },
     };
 
@@ -96,6 +116,70 @@ describe("shell-form.shared", () => {
       skipSslVerify: true,
       maxRetries: "2",
       retryDelayMs: "3000",
+      browserImpersonation: true,
+      impersonationProfile: "ANDROID",
+      clientCertificate: "MIIBcAIBAzCCASY=",
+      clientCertificatePassword: "test-password",
+    });
+  });
+
+  it("clears the stored impersonation profile when the switch is turned off", () => {
+    const payload = buildCreatePayload({
+      name: "demo",
+      url: "https://127.0.0.1/test",
+      language: "java",
+      profileId: "1",
+      shellType: "",
+      interfaceName: "",
+      projectId: "",
+      staging: false,
+      loaderProfileId: "",
+      proxyUrl: "",
+      customHeaders: "",
+      connectTimeoutMs: "",
+      readTimeoutMs: "",
+      maxRetries: "",
+      retryDelayMs: "",
+      skipSslVerify: false,
+      browserImpersonation: false,
+      impersonationProfile: "MAC_SAFARI",
+      clientCertificate: "",
+      clientCertificatePassword: "",
+    });
+
+    expect(payload.clientConfig).toMatchObject({
+      browserImpersonation: false,
+      impersonationProfile: "",
+    });
+  });
+
+  it("clears a stored client certificate when it is removed from the form", () => {
+    const payload = buildCreatePayload({
+      name: "demo",
+      url: "https://127.0.0.1/test",
+      language: "java",
+      profileId: "1",
+      shellType: "",
+      interfaceName: "",
+      projectId: "",
+      staging: false,
+      loaderProfileId: "",
+      proxyUrl: "",
+      customHeaders: "",
+      connectTimeoutMs: "",
+      readTimeoutMs: "",
+      maxRetries: "",
+      retryDelayMs: "",
+      skipSslVerify: false,
+      browserImpersonation: false,
+      impersonationProfile: "",
+      clientCertificate: "",
+      clientCertificatePassword: "",
+    });
+
+    expect(payload.clientConfig).toMatchObject({
+      clientCertificate: "",
+      clientCertificatePassword: "",
     });
   });
 });
