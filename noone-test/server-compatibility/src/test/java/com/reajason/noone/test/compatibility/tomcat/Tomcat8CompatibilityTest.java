@@ -31,8 +31,10 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -103,5 +105,28 @@ public class Tomcat8CompatibilityTest {
         Map<String, Object> result = conn.runPlugin(pluginId, new HashMap<>());
         log.info("result: {}", result);
         assertNotNull(result);
+        assertEquals(0, ((Number) result.get("code")).intValue(), "system-info failed: " + result.get("error"));
+        assertNotNull(result.get("data"), "system-info returned no data");
+
+        byte[] commandPluginBytes = Files.readAllBytes(Paths.get("..", "..", "noone-plugins/release/java/java-command-execute-plugin-0.0.1.json"));
+        JSONObject commandPlugin = JSONObject.parseObject(new String(commandPluginBytes, StandardCharsets.UTF_8));
+        String commandPluginId = commandPlugin.getString("id");
+        conn.loadPlugin(commandPluginId, commandPlugin.getString("version"),
+                Base64.getDecoder().decode(commandPlugin.getString("payload")));
+
+        Map<String, Object> commandTemplate = new HashMap<>();
+        commandTemplate.put("executable", "/bin/echo");
+        commandTemplate.put("args", List.of("{{cmd}}"));
+        Map<String, Object> commandArgs = new HashMap<>();
+        commandArgs.put("cmd", "no-one-integration");
+        commandArgs.put("commandTemplate", commandTemplate);
+
+        Map<String, Object> commandResult = conn.runPlugin(commandPluginId, commandArgs);
+        log.info("command result: {}", commandResult);
+        assertEquals(0, ((Number) commandResult.get("code")).intValue(),
+                "command-execute failed: " + commandResult.get("error"));
+        Map<?, ?> commandData = (Map<?, ?>) commandResult.get("data");
+        assertNotNull(commandData, "command-execute returned no data");
+        assertEquals("no-one-integration", String.valueOf(commandData.get("stdout")).trim());
     }
 }
