@@ -41,3 +41,11 @@ No One（无名）：Next Generation Polyglot Website Manager，打破语言边�
 ![img_4.png](assets/file_manager.png)
 
 ![img_5.png](assets/command.png)
+
+## 许可证
+
+本项目以 [Apache License 2.0](LICENSE) 发布。
+
+分发的构建产物中包含 LGPL-3.0、GPL-3.0 等第三方组件，组件清单与合规说明见
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)，LGPL-3.0 / GPL-3.0 许可证全文位于
+[licenses/](licenses/) 目录。
